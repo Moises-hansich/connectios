@@ -1,0 +1,14 @@
+# Dependências Node
+node_modules/
+
+# Arquivos de ambiente
+.env
+
+# Banco local
+*.db
+
+# Logs
+*.log
+
+# Build
+dist/
