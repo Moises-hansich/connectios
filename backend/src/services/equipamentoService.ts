@@ -2,6 +2,7 @@ import {
   CreateEquipamentoData,
   EquipamentoRepository,
 } from "../repositories/equipamentoRepository";
+import { AppError } from "../errors/AppError";
 
 export class EquipamentoService {
   private repository: EquipamentoRepository;
@@ -16,15 +17,15 @@ export class EquipamentoService {
 
   async criar(data: CreateEquipamentoData) {
     if (!data.nome || data.nome.trim().length < 3) {
-      throw new Error("Nome deve ter pelo menos 3 caracteres");
+      throw new AppError("Nome deve ter pelo menos 3 caracteres", 400);
     }
 
     if (!data.categoria || data.categoria.trim() === "") {
-      throw new Error("Categoria é obrigatória");
+      throw new AppError("Categoria é obrigatória", 400);
     }
 
     if (!data.status || data.status.trim() === "") {
-      throw new Error("Status é obrigatório");
+      throw new AppError("Status é obrigatório", 400);
     }
 
     if (data.numeroSerie) {
@@ -33,7 +34,7 @@ export class EquipamentoService {
       );
 
       if (equipamentoComMesmoSerial) {
-        throw new Error("Número de série já cadastrado");
+        throw new AppError("Número de série já cadastrado", 409);
       }
     }
 
@@ -42,7 +43,7 @@ export class EquipamentoService {
         await this.repository.findByPatrimonio(data.patrimonio.trim());
 
       if (equipamentoComMesmoPatrimonio) {
-        throw new Error("Patrimônio já cadastrado");
+        throw new AppError("Patrimônio já cadastrado", 409);
       }
     }
 
@@ -63,7 +64,7 @@ export class EquipamentoService {
   async buscarPorId(id: number) {
     const equipamento = await this.repository.findById(id);
     if (!equipamento) {
-      throw new Error("Equipamento não encontrado");
+      throw new AppError("Equipamento não encontrado", 404);
     }
     return equipamento;
   }
@@ -71,19 +72,19 @@ export class EquipamentoService {
     const equipamentoExistente = await this.repository.findById(id);
 
     if (!equipamentoExistente) {
-      throw new Error("Equipamento não encontrado");
+      throw new AppError("Equipamento não encontrado", 404);
     }
 
     if (data.nome !== undefined && data.nome.trim().length < 3) {
-      throw new Error("Nome deve ter pelo menos 3 caracteres");
+      throw new AppError("Nome deve ter pelo menos 3 caracteres", 400);
     }
 
     if (data.categoria !== undefined && data.categoria.trim() === "") {
-      throw new Error("Categoria não pode ficar vazia");
+      throw new AppError("Categoria não pode ficar vazia", 400);
     }
 
     if (data.status !== undefined && data.status.trim() === "") {
-      throw new Error("Status não pode ficar vazio");
+      throw new AppError("Status não pode ficar vazio", 400);
     }
 
     if (
@@ -96,7 +97,7 @@ export class EquipamentoService {
       );
 
       if (equipamentoComMesmoSerial && equipamentoComMesmoSerial.id !== id) {
-        throw new Error("Número de série já cadastrado");
+        throw new AppError("Número de série já cadastrado", 409);
       }
     }
 

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import equipamentoRoutes from "./routes/equipamentoRoutes";
+import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
 
@@ -16,5 +17,5 @@ app.get("/", (req, res) => {
 
 // Rotas da API
 app.use("/api/equipamentos", equipamentoRoutes);
-
+app.use(errorHandler);
 export default app;
