@@ -1,22 +1,7 @@
-import express from "express";
-import { prisma } from "./prisma";
+import app from "./app";
 
-const app = express();
+const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-
-app.get("/", (req, res) => {
-  res.json({
-    mensagem: "API Connectionjs funcionando!",
-  });
-});
-
-app.get("/equipamentos", async (req, res) => {
-  const equipamentos = await prisma.equipamento.findMany();
-
-  res.json(equipamentos);
-});
-
-app.listen(3000, () => {
-  console.log("Servidor rodando na porta 3000");
+app.listen(PORT, () => {
+  console.log(` Servidor rodando na porta ${PORT}`);
 });
