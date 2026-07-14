@@ -156,4 +156,13 @@ export class EquipamentoService {
 
     return this.repository.update(id, equipamentoLimpo);
   }
+  async deletar(id: number) {
+    const equipamentoExistente = await this.repository.findById(id);
+
+    if (!equipamentoExistente) {
+      throw new Error("Equipamento não encontrado");
+    }
+
+    return this.repository.delete(id);
+  }
 }

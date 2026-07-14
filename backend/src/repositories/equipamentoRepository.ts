@@ -58,4 +58,11 @@ export class EquipamentoRepository {
       data,
     });
   }
+  async delete(id: number) {
+    return prisma.equipamento.delete({
+      where: {
+        id,
+      },
+    });
+  }
 }

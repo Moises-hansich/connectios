@@ -105,4 +105,31 @@ export class EquipamentoController {
       });
     }
   }
+  async deletar(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "ID inválido",
+        });
+      }
+
+      await this.service.deletar(id);
+
+      return res.status(200).json({
+        success: true,
+        message: "Equipamento deletado com sucesso",
+      });
+    } catch (error) {
+      const mensagem =
+        error instanceof Error ? error.message : "Erro desconhecido";
+
+      return res.status(500).json({
+        success: false,
+        message: mensagem,
+      });
+    }
+  }
 }
