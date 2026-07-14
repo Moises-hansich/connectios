@@ -113,7 +113,7 @@ export class EquipamentoService {
         equipamentoComMesmoPatrimonio &&
         equipamentoComMesmoPatrimonio.id !== id
       ) {
-        throw new Error("Patrimônio já cadastrado");
+        throw new AppError("Patrimônio já cadastrado", 409);
       }
     }
 
@@ -161,7 +161,7 @@ export class EquipamentoService {
     const equipamentoExistente = await this.repository.findById(id);
 
     if (!equipamentoExistente) {
-      throw new Error("Equipamento não encontrado");
+      throw new AppError("Equipamento não encontrado", 404);
     }
 
     return this.repository.delete(id);
