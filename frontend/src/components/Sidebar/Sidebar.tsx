@@ -1,3 +1,5 @@
+import { menuItems } from "./menu";
+
 export function Sidebar() {
   return (
     <aside className="w-64 bg-slate-900 text-white">
@@ -5,26 +7,20 @@ export function Sidebar() {
         <h2 className="text-xl font-bold">ConnectionJS</h2>
       </div>
 
-      <nav className="mt-6 flex flex-col">
-        <button className="px-6 py-4 text-left transition hover:bg-slate-800">
-          📊 Dashboard
-        </button>
+      <nav className="mt-6">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
 
-        <button className="bg-slate-800 px-6 py-4 text-left">
-          💻 Equipamentos
-        </button>
-
-        <button className="px-6 py-4 text-left transition hover:bg-slate-800">
-          📍 Localizações
-        </button>
-
-        <button className="px-6 py-4 text-left transition hover:bg-slate-800">
-          👤 Usuários
-        </button>
-
-        <button className="px-6 py-4 text-left transition hover:bg-slate-800">
-          ⚙ Configurações
-        </button>
+          return (
+            <button
+              key={item.title}
+              className="flex w-full items-center gap-3 px-6 py-4 text-left transition hover:bg-slate-800"
+            >
+              <Icon size={20} />
+              {item.title}
+            </button>
+          );
+        })}
       </nav>
     </aside>
   );
