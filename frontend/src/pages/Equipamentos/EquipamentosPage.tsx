@@ -1,13 +1,23 @@
 import { MainLayout } from "../../layouts";
+import { Button } from "../../components/Button";
+import { Plus } from "lucide-react";
+import { Card } from "../../components/Card";
 
 export function EquipamentosPage() {
   return (
-    <MainLayout>
-      <h1 className="mb-6 text-3xl font-bold">Equipamentos</h1>
+    <mainLayout>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Equipamentos</h1>
 
-      <div className="rounded-xl bg-white p-6 shadow">
-        Aqui ficará a tabela de equipamentos.
+        <Button>
+          <Plus size={18} />
+          Adicionar Equipamento
+        </Button>
       </div>
-    </MainLayout>
+
+      <Card>
+        <p>Este é um exemplo de card.</p>
+      </Card>
+    </mainLayout>
   );
 }
