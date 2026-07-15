@@ -6,12 +6,38 @@ export class EquipamentoController {
   private service = new EquipamentoService();
 
   async listarTodos(req: Request, res: Response) {
-    const equipamentos = await this.service.listarTodos();
+    const search =
+      typeof req.query.search === "string" ? req.query.search : undefined;
+
+    const categoria =
+      typeof req.query.categoria === "string" ? req.query.categoria : undefined;
+
+    const status =
+      typeof req.query.status === "string" ? req.query.status : undefined;
+
+    const page =
+      typeof req.query.page === "string" ? Number(req.query.page) : 1;
+
+    const limit =
+      typeof req.query.limit === "string" ? Number(req.query.limit) : 10;
+
+    const resultado = await this.service.buscarComFiltros({
+      search,
+      categoria,
+      status,
+      page,
+      limit,
+    });
 
     return res.status(200).json({
       success: true,
-      data: equipamentos,
-      total: equipamentos.length,
+      data: resultado.equipamentos,
+      pagination: {
+        total: resultado.total,
+        page: resultado.page,
+        limit: resultado.limit,
+        totalPages: resultado.totalPages,
+      },
     });
   }
 

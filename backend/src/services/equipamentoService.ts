@@ -3,6 +3,11 @@ import {
   EquipamentoRepository,
 } from "../repositories/equipamentoRepository";
 import { AppError } from "../errors/AppError";
+import {
+  CreateEquipamentoData,
+  EquipamentoFilters,
+  EquipamentoRepository,
+} from "../repositories/equipamentoRepository";
 
 export class EquipamentoService {
   private repository: EquipamentoRepository;
@@ -165,5 +170,27 @@ export class EquipamentoService {
     }
 
     return this.repository.delete(id);
+  }
+
+  async buscarComFiltros(filters: EquipamentoFilters) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+
+    if (!Number.isInteger(page) || page <= 0) {
+      throw new AppError("Página inválida", 400);
+    }
+
+    if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
+      throw new AppError("Limite deve ser um número entre 1 e 100", 400);
+    }
+
+    return this.repository.findWithFilters({
+      ...filters,
+      search: filters.search?.trim() || undefined,
+      categoria: filters.categoria?.trim() || undefined,
+      status: filters.status?.trim() || undefined,
+      page,
+      limit,
+    });
   }
 }

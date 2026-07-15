@@ -1,5 +1,12 @@
 import { prisma } from "../prisma";
 
+export interface EquipamentoFilters {
+  search?: string;
+  categoria?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}
 export interface CreateEquipamentoData {
   nome: string;
   categoria: string;
@@ -64,5 +71,73 @@ export class EquipamentoRepository {
         id,
       },
     });
+  }
+  async findWithFilters(filters: EquipamentoFilters) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where = {
+      ...(filters.categoria && {
+        categoria: filters.categoria,
+      }),
+
+      ...(filters.status && {
+        status: filters.status,
+      }),
+
+      ...(filters.search && {
+        OR: [
+          {
+            nome: {
+              contains: filters.search,
+            },
+          },
+          {
+            fabricante: {
+              contains: filters.search,
+            },
+          },
+          {
+            modelo: {
+              contains: filters.search,
+            },
+          },
+          {
+            numeroSerie: {
+              contains: filters.search,
+            },
+          },
+          {
+            patrimonio: {
+              contains: filters.search,
+            },
+          },
+        ],
+      }),
+    };
+
+    const [equipamentos, total] = await Promise.all([
+      prisma.equipamento.findMany({
+        where,
+        orderBy: {
+          criadoEm: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+
+      prisma.equipamento.count({
+        where,
+      }),
+    ]);
+
+    return {
+      equipamentos,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 }
