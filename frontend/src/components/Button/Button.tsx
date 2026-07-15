@@ -26,7 +26,7 @@ export function Button({
         items-center
         justify-center
         gap-2
-        rounded-lg
+      
         px-4
         py-2
         font-medium
