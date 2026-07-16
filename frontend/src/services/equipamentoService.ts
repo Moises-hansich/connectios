@@ -14,6 +14,7 @@ export const equipamentoService = {
 
   async criar(data: unknown) {
     const response = await api.post("/equipamentos", data);
+
     return response.data;
   },
 
