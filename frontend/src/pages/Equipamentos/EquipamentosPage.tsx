@@ -13,6 +13,10 @@ export function EquipamentosPage() {
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
   const [pesquisa, setPesquisa] = useState("");
 
+  const equipamentosFiltrados = equipamentos.filter((equipamento) =>
+    equipamento.nome.toLowerCase().includes(pesquisa.toLowerCase()),
+  );
+
   useEffect(() => {
     async function carregarEquipamentos() {
       try {
@@ -47,7 +51,7 @@ export function EquipamentosPage() {
       </div>
 
       <Card>
-        <EquipmentTable equipamentos={equipamentos} />
+        <EquipmentTable equipamentos={equipamentosFiltrados} />
       </Card>
     </MainLayout>
   );
