@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-
+import { Modal } from "../../components/Modal";
 import { SearchInput } from "../../components/SearchInput";
 import { MainLayout } from "../../layouts";
 import { Button } from "../../components/Button";
@@ -12,7 +12,7 @@ import type { Equipamento } from "../../types/equipamento";
 export function EquipamentosPage() {
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
   const [pesquisa, setPesquisa] = useState("");
-
+  const [modalAberto, setModalAberto] = useState(false);
   const equipamentosFiltrados = equipamentos.filter((equipamento) =>
     equipamento.nome.toLowerCase().includes(pesquisa.toLowerCase()),
   );
@@ -36,7 +36,7 @@ export function EquipamentosPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">Equipamentos</h1>
 
-        <Button>
+        <Button onClick={() => setModalAberto(true)}>
           <Plus size={18} />
           Adicionar Equipamento
         </Button>
@@ -53,6 +53,13 @@ export function EquipamentosPage() {
       <Card>
         <EquipmentTable equipamentos={equipamentosFiltrados} />
       </Card>
+      <Modal
+        isOpen={modalAberto}
+        title="Novo Equipamento"
+        onClose={() => setModalAberto(false)}
+      >
+        <p>O formulário ficará aqui.</p>
+      </Modal>
     </MainLayout>
   );
 }
