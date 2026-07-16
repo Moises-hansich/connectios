@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 
+import { SearchInput } from "../../components/SearchInput";
 import { MainLayout } from "../../layouts";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
@@ -10,6 +11,7 @@ import type { Equipamento } from "../../types/equipamento";
 
 export function EquipamentosPage() {
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
+  const [pesquisa, setPesquisa] = useState("");
 
   useEffect(() => {
     async function carregarEquipamentos() {
@@ -34,6 +36,14 @@ export function EquipamentosPage() {
           <Plus size={18} />
           Adicionar Equipamento
         </Button>
+      </div>
+
+      <div className="mb-6">
+        <SearchInput
+          value={pesquisa}
+          onChange={setPesquisa}
+          placeholder="Pesquisar equipamento..."
+        />
       </div>
 
       <Card>

@@ -1,5 +1,6 @@
 import type { Equipamento } from "../../types/equipamento";
-
+import { Pencil, Trash2 } from "lucide-react";
+import { Badge } from "../Badge/Badge";
 interface EquipmentTableProps {
   equipamentos: Equipamento[];
 }
@@ -14,6 +15,7 @@ export function EquipmentTable({ equipamentos }: EquipmentTableProps) {
           <th className="p-3">Fabricante</th>
           <th className="p-3">Status</th>
           <th className="p-3">Localização</th>
+          <th className="p-3">Ações</th>
         </tr>
       </thead>
 
@@ -23,8 +25,21 @@ export function EquipmentTable({ equipamentos }: EquipmentTableProps) {
             <td className="p-3">{equipamento.nome}</td>
             <td className="p-3">{equipamento.categoria}</td>
             <td className="p-3">{equipamento.fabricante ?? "-"}</td>
-            <td className="p-3">{equipamento.status}</td>
+            <td className="p-3">
+              <Badge status={equipamento.status} />
+            </td>
             <td className="p-3">{equipamento.localizacao ?? "-"}</td>
+            <td className="p-3">
+              <div className="flex justify-center gap-2">
+                <button className="rounded p-2 text-blue-600 transition hover:bg-blue-100">
+                  <Pencil size={18} />
+                </button>
+
+                <button className="rounded p-2 text-gray-600 transition hover:bg-red-300">
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </td>
           </tr>
         ))}
       </tbody>
