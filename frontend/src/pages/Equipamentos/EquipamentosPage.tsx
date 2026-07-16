@@ -8,7 +8,7 @@ import { Card } from "../../components/Card";
 import { EquipmentTable } from "../../components/EquipmentTable";
 import { equipamentoService } from "../../services/equipamentoService";
 import type { Equipamento } from "../../types/equipamento";
-
+import { EquipmentForm } from "../../components/EquipamentForm";
 export function EquipamentosPage() {
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
   const [pesquisa, setPesquisa] = useState("");
@@ -58,7 +58,7 @@ export function EquipamentosPage() {
         title="Novo Equipamento"
         onClose={() => setModalAberto(false)}
       >
-        <p>O formulário ficará aqui.</p>
+        <EquipmentForm />
       </Modal>
     </MainLayout>
   );
