@@ -4,40 +4,46 @@ import type { FormEvent } from "react";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { equipamentoService } from "../../services/equipamentoService";
+import type { Equipamento } from "../../types/equipamento";
+interface EquipmentFormProps {
+  onSuccess: () => void;
+  onCancel: () => void;
 
-export function EquipmentForm() {
+  modo: "criar" | "editar";
+  equipamento?: Equipamento;
+}
+export function EquipmentForm({
+  onSuccess,
+  onCancel,
+  modo,
+  equipamento,
+}: EquipmentFormProps) {
   const [formData, setFormData] = useState({
-    nome: "",
-    categoria: "",
-    fabricante: "",
-    modelo: "",
-    numeroSerie: "",
-    patrimonio: "",
-    status: "Disponível",
-    localizacao: "",
-    observacoes: "",
+    nome: equipamento?.nome ?? "",
+    categoria: equipamento?.categoria ?? "",
+    fabricante: equipamento?.fabricante ?? "",
+    modelo: equipamento?.modelo ?? "",
+    numeroSerie: equipamento?.numeroSerie ?? "",
+    patrimonio: equipamento?.patrimonio ?? "",
+    status: equipamento?.status ?? "Disponível",
+    localizacao: equipamento?.localizacao ?? "",
+    observacoes: equipamento?.observacoes ?? "",
   });
-
-  function handleChange(campo: string, valor: string) {
-    setFormData((dadosAtuais) => ({
-      ...dadosAtuais,
-      [campo]: valor,
-    }));
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     try {
-      console.log("Dados enviados:", formData);
+      if (modo === "editar" && equipamento) {
+        await equipamentoService.atualizar(equipamento.id, formData);
+      } else {
+        await equipamentoService.criar(formData);
+      }
 
-      const resposta = await equipamentoService.criar(formData);
-
-      console.log("Resposta da API:", resposta);
-      alert("Equipamento cadastrado com sucesso!");
+      onSuccess();
     } catch (error) {
-      console.error("Erro ao cadastrar equipamento:", error);
-      alert("Erro ao cadastrar equipamento.");
+      console.error("Erro ao salvar equipamento:", error);
+      alert("Erro ao salvar equipamento.");
     }
   }
 
@@ -98,11 +104,13 @@ export function EquipmentForm() {
       />
 
       <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="secondary">
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancelar
         </Button>
 
-        <Button type="submit">Salvar</Button>
+        <Button type="submit">
+          {modo === "editar" ? "Atualizar" : "Salvar"}
+        </Button>
       </div>
     </form>
   );

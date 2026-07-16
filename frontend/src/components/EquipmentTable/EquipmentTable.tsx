@@ -1,11 +1,13 @@
 import type { Equipamento } from "../../types/equipamento";
 import { Pencil, Trash2 } from "lucide-react";
 import { Badge } from "../Badge/Badge";
+
 interface EquipmentTableProps {
   equipamentos: Equipamento[];
+  onEdit: (equipamento: Equipamento) => void;
 }
 
-export function EquipmentTable({ equipamentos }: EquipmentTableProps) {
+export function EquipmentTable({ equipamentos, onEdit }: EquipmentTableProps) {
   return (
     <table className="w-full border-collapse">
       <thead>
@@ -31,7 +33,10 @@ export function EquipmentTable({ equipamentos }: EquipmentTableProps) {
             <td className="p-3">{equipamento.localizacao ?? "-"}</td>
             <td className="p-3">
               <div className="flex justify-center gap-2">
-                <button className="rounded p-2 text-blue-600 transition hover:bg-blue-100">
+                <button
+                  className="rounded p-2 text-blue-600 hover:bg-blue-100"
+                  onClick={() => onEdit(equipamento)}
+                >
                   <Pencil size={18} />
                 </button>
 

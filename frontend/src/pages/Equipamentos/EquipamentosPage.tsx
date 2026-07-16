@@ -9,10 +9,13 @@ import { EquipmentTable } from "../../components/EquipmentTable";
 import { equipamentoService } from "../../services/equipamentoService";
 import type { Equipamento } from "../../types/equipamento";
 import { EquipmentForm } from "../../components/EquipamentForm";
+
 export function EquipamentosPage() {
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
   const [pesquisa, setPesquisa] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
+  const [equipamentoSelecionado, setEquipamentoSelecionado] =
+    useState<Equipamento | null>(null);
   const equipamentosFiltrados = equipamentos.filter((equipamento) =>
     equipamento.nome.toLowerCase().includes(pesquisa.toLowerCase()),
   );
@@ -51,14 +54,39 @@ export function EquipamentosPage() {
       </div>
 
       <Card>
-        <EquipmentTable equipamentos={equipamentosFiltrados} />
+        <EquipmentTable
+          equipamentos={equipamentosFiltrados}
+          onEdit={(equipamento) => {
+            setEquipamentoSelecionado(equipamento);
+            setModalAberto(true);
+          }}
+        />
       </Card>
       <Modal
         isOpen={modalAberto}
-        title="Novo Equipamento"
-        onClose={() => setModalAberto(false)}
+        title={
+          equipamentoSelecionado ? "Editar Equipamento" : "Novo Equipamento"
+        }
+        onClose={() => {
+          setModalAberto(false);
+          setEquipamentoSelecionado(null);
+        }}
       >
-        <EquipmentForm />
+        <EquipmentForm
+          modo={equipamentoSelecionado ? "editar" : "criar"}
+          equipamento={equipamentoSelecionado ?? undefined}
+          onCancel={() => {
+            setModalAberto(false);
+            setEquipamentoSelecionado(null);
+          }}
+          onSuccess={async () => {
+            setModalAberto(false);
+            setEquipamentoSelecionado(null);
+
+            const response = await equipamentoService.listar();
+            setEquipamentos(response.data);
+          }}
+        />
       </Modal>
     </MainLayout>
   );
