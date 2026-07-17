@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-
+import { Select } from "../Select";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { equipamentoService } from "../../services/equipamentoService";
@@ -30,6 +30,13 @@ export function EquipmentForm({
     observacoes: equipamento?.observacoes ?? "",
   });
 
+  function handleChange(campo: string, valor: string) {
+    setFormData((dadosAtuais) => ({
+      ...dadosAtuais,
+      [campo]: valor,
+    }));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -51,12 +58,14 @@ export function EquipmentForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input
         label="Nome"
+        required
         value={formData.nome}
         onChange={(event) => handleChange("nome", event.target.value)}
       />
 
       <Input
         label="Categoria"
+        required
         value={formData.categoria}
         onChange={(event) => handleChange("categoria", event.target.value)}
       />
@@ -85,11 +94,18 @@ export function EquipmentForm({
         onChange={(event) => handleChange("patrimonio", event.target.value)}
       />
 
-      <Input
+      <Select
         label="Status"
+        required
         value={formData.status}
         onChange={(event) => handleChange("status", event.target.value)}
-      />
+      >
+        <option value="Disponível">Disponível</option>
+        <option value="Em uso">Em uso</option>
+        <option value="Em manutenção">Em manutenção</option>
+        <option value="Reservado">Reservado</option>
+        <option value="Baixado">Baixado</option>
+      </Select>
 
       <Input
         label="Localização"
