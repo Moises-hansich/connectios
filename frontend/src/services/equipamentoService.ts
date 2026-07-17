@@ -1,30 +1,37 @@
 import { api } from "./api";
-import type { EquipamentosResponse } from "../types/equipamento";
+import type { Equipamento } from "../types/equipamento";
+
+type ListarEquipamentosResponse = {
+  success: boolean;
+  data: Equipamento[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
 
 export const equipamentoService = {
-  async listar() {
-    const response = await api.get<EquipamentosResponse>("/equipamentos");
-    return response.data;
+  async listar(): Promise<Equipamento[]> {
+    const response = await api.get<ListarEquipamentosResponse>("/equipamentos");
+
+    return response.data.data;
   },
 
-  async buscarPorId(id: number) {
-    const response = await api.get(`/equipamentos/${id}`);
-    return response.data;
-  },
-
-  async criar(data: unknown) {
-    const response = await api.post("/equipamentos", data);
+  async criar(dados: Omit<Equipamento, "id" | "criadoEm" | "atualizadoEm">) {
+    const response = await api.post("/equipamentos", dados);
 
     return response.data;
   },
 
-  async atualizar(id: number, data: unknown) {
-    const response = await api.put(`/equipamentos/${id}`, data);
+  async atualizar(id: number, dados: Partial<Equipamento>) {
+    const response = await api.put(`/equipamentos/${id}`, dados);
+
     return response.data;
   },
 
   async excluir(id: number) {
-    const response = await api.delete(`/equipamentos/${id}`);
-    return response.data;
+    await api.delete(`/equipamentos/${id}`);
   },
 };

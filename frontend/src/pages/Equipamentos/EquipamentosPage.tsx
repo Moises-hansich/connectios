@@ -1,107 +1,43 @@
-import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { useToast } from "../../components/Toast";
-import { Modal } from "../../components/Modal";
-import { SearchInput } from "../../components/SearchInput";
-import { MainLayout } from "../../layouts";
+
+import { MainLayout } from "../../layouts/MainLayout";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
+import { SearchInput } from "../../components/SearchInput";
 import { EquipmentTable } from "../../components/EquipmentTable";
 import { EquipmentForm } from "../../components/EquipamentForm";
+import { Modal } from "../../components/Modal";
+import { ConfirmModal } from "../../components/ConfirmModal";
+import { SkeletonTable } from "../../components/Skeleton";
 
-import { equipamentoService } from "../../services/equipamentoService";
-
-import type { Equipamento } from "../../types/equipamento";
+import { useEquipamentos } from "../../hooks/useEquipamentos";
 
 export function EquipamentosPage() {
-  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
-  const [pesquisa, setPesquisa] = useState("");
-  const [modalAberto, setModalAberto] = useState(false);
-  const { mostrarToast } = useToast();
-  const [equipamentoSelecionado, setEquipamentoSelecionado] =
-    useState<Equipamento | null>(null);
+  const {
+    equipamentosFiltrados,
 
-  const equipamentosFiltrados = equipamentos.filter((equipamento) => {
-    const termo = pesquisa.toLowerCase();
+    pesquisa,
+    setPesquisa,
 
-    return (
-      equipamento.nome.toLowerCase().includes(termo) ||
-      equipamento.categoria.toLowerCase().includes(termo) ||
-      equipamento.fabricante?.toLowerCase().includes(termo) ||
-      equipamento.modelo?.toLowerCase().includes(termo) ||
-      equipamento.patrimonio?.toLowerCase().includes(termo) ||
-      equipamento.localizacao?.toLowerCase().includes(termo)
-    );
-  });
+    carregando,
+    excluindo,
 
-  async function carregarEquipamentos() {
-    try {
-      const response = await equipamentoService.listar();
-      setEquipamentos(response.data);
-    } catch (error) {
-      console.error("Erro ao carregar equipamentos:", error);
-    }
-  }
+    modalAberto,
+    modalExcluirAberto,
 
-  useEffect(() => {
-    carregarEquipamentos();
-  }, []);
+    equipamentoSelecionado,
+    equipamentoExcluir,
 
-  function abrirModalCriacao() {
-    setEquipamentoSelecionado(null);
-    setModalAberto(true);
-  }
+    abrirModalCriacao,
+    abrirModalEdicao,
+    fecharModal,
 
-  function abrirModalEdicao(equipamento: Equipamento) {
-    setEquipamentoSelecionado(equipamento);
-    setModalAberto(true);
-  }
+    abrirModalExclusao,
+    fecharModalExclusao,
+    confirmarExclusao,
 
-  function fecharModal() {
-    setModalAberto(false);
-    setEquipamentoSelecionado(null);
-  }
-
-  async function excluirEquipamento(equipamento: Equipamento) {
-    const confirmou = window.confirm(
-      `Deseja realmente excluir o equipamento "${equipamento.nome}"?`,
-    );
-
-    if (!confirmou) {
-      return;
-    }
-
-    try {
-      await equipamentoService.excluir(equipamento.id);
-
-      setEquipamentos((equipamentosAtuais) =>
-        equipamentosAtuais.filter((item) => item.id !== equipamento.id),
-      );
-
-      mostrarToast(
-        `Equipamento "${equipamento.nome}" excluído com sucesso.`,
-        "sucesso",
-      );
-    } catch (error) {
-      console.error("Erro ao excluir equipamento:", error);
-
-      mostrarToast("Não foi possível excluir o equipamento.", "erro");
-    }
-  }
-
-  async function finalizarCadastroOuEdicao() {
-    const estavaEditando = equipamentoSelecionado !== null;
-
-    fecharModal();
-    await carregarEquipamentos();
-
-    mostrarToast(
-      estavaEditando
-        ? "Equipamento atualizado com sucesso."
-        : "Equipamento cadastrado com sucesso.",
-      "sucesso",
-    );
-  }
+    finalizarCadastroOuEdicao,
+  } = useEquipamentos();
 
   return (
     <MainLayout>
@@ -127,11 +63,15 @@ export function EquipamentosPage() {
       </div>
 
       <Card>
-        <EquipmentTable
-          equipamentos={equipamentosFiltrados}
-          onEdit={abrirModalEdicao}
-          onDelete={excluirEquipamento}
-        />
+        {carregando ? (
+          <SkeletonTable />
+        ) : (
+          <EquipmentTable
+            equipamentos={equipamentosFiltrados}
+            onEdit={abrirModalEdicao}
+            onDelete={abrirModalExclusao}
+          />
+        )}
       </Card>
 
       <Modal
@@ -148,6 +88,19 @@ export function EquipamentosPage() {
           onSuccess={finalizarCadastroOuEdicao}
         />
       </Modal>
+
+      <ConfirmModal
+        aberto={modalExcluirAberto}
+        titulo="Excluir equipamento"
+        mensagem={
+          equipamentoExcluir
+            ? `Deseja realmente excluir "${equipamentoExcluir.nome}"?`
+            : ""
+        }
+        carregando={excluindo}
+        onCancel={fecharModalExclusao}
+        onConfirm={confirmarExclusao}
+      />
     </MainLayout>
   );
 }

@@ -1,7 +1,7 @@
-import { EquipamentosPage } from "./pages/Equipamentos/EquipamentosPage";
+import { DashboardPage } from "./pages/Dashboard/DashboardPage";
 
 function App() {
-  return <EquipamentosPage />;
+  return <DashboardPage />;
 }
 
 export default App;
