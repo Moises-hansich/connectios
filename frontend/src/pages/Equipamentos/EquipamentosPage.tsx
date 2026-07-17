@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-
+import { useToast } from "../../components/Toast";
 import { Modal } from "../../components/Modal";
 import { SearchInput } from "../../components/SearchInput";
 import { MainLayout } from "../../layouts";
@@ -17,7 +17,7 @@ export function EquipamentosPage() {
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
   const [pesquisa, setPesquisa] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
-
+  const { mostrarToast } = useToast();
   const [equipamentoSelecionado, setEquipamentoSelecionado] =
     useState<Equipamento | null>(null);
 
@@ -77,15 +77,30 @@ export function EquipamentosPage() {
       setEquipamentos((equipamentosAtuais) =>
         equipamentosAtuais.filter((item) => item.id !== equipamento.id),
       );
+
+      mostrarToast(
+        `Equipamento "${equipamento.nome}" excluído com sucesso.`,
+        "sucesso",
+      );
     } catch (error) {
       console.error("Erro ao excluir equipamento:", error);
-      window.alert("Não foi possível excluir o equipamento.");
+
+      mostrarToast("Não foi possível excluir o equipamento.", "erro");
     }
   }
 
   async function finalizarCadastroOuEdicao() {
+    const estavaEditando = equipamentoSelecionado !== null;
+
     fecharModal();
     await carregarEquipamentos();
+
+    mostrarToast(
+      estavaEditando
+        ? "Equipamento atualizado com sucesso."
+        : "Equipamento cadastrado com sucesso.",
+      "sucesso",
+    );
   }
 
   return (

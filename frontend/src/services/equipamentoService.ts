@@ -23,7 +23,7 @@ export const equipamentoService = {
     return response.data;
   },
 
-  async deletar(id: number) {
+  async excluir(id: number) {
     const response = await api.delete(`/equipamentos/${id}`);
     return response.data;
   },
