@@ -1,67 +1,58 @@
-import { useMemo } from "react";
-import { useEquipamentos } from "./useEquipamentos";
+import { useEffect, useState } from "react";
+import { buscarDashboard } from "../services/dashboardService";
+import type { Equipamento } from "../types/equipamento";
+
+type GraficoItem = {
+  name: string;
+  value: number;
+};
+
+type DashboardData = {
+  cards: {
+    total: number;
+    emUso: number;
+    manutencao: number;
+    disponivel: number;
+  };
+  categorias: GraficoItem[];
+  status: GraficoItem[];
+  ultimos: Equipamento[];
+};
+
+const dashboardInicial: DashboardData = {
+  cards: {
+    total: 0,
+    emUso: 0,
+    manutencao: 0,
+    disponivel: 0,
+  },
+  categorias: [],
+  status: [],
+  ultimos: [],
+};
 
 export function useDashboard() {
-  const { equipamentos, carregando } = useEquipamentos();
+  const [dashboard, setDashboard] = useState<DashboardData>(dashboardInicial);
 
-  const estatisticas = useMemo(() => {
-    const total = equipamentos.length;
+  const [carregando, setCarregando] = useState(true);
 
-    const emUso = equipamentos.filter(
-      (equipamento) => equipamento.status === "Em uso",
-    ).length;
+  useEffect(() => {
+    async function carregarDashboard() {
+      try {
+        const dados = await buscarDashboard();
+        setDashboard(dados);
+      } catch (error) {
+        console.error("Erro ao carregar dashboard:", error);
+      } finally {
+        setCarregando(false);
+      }
+    }
 
-    const manutencao = equipamentos.filter(
-      (equipamento) => equipamento.status === "Manutenção",
-    ).length;
-
-    const disponivel = equipamentos.filter(
-      (equipamento) => equipamento.status === "Disponível",
-    ).length;
-
-    return {
-      total,
-      emUso,
-      manutencao,
-      disponivel,
-    };
-  }, [equipamentos]);
-
-  const categorias = useMemo(() => {
-    const mapa = new Map<string, number>();
-
-    equipamentos.forEach((equipamento) => {
-      const categoria = equipamento.categoria || "Sem categoria";
-
-      mapa.set(categoria, (mapa.get(categoria) ?? 0) + 1);
-    });
-
-    return Array.from(mapa.entries()).map(([name, value]) => ({
-      name,
-      value,
-    }));
-  }, [equipamentos]);
-
-  const status = useMemo(() => {
-    const mapa = new Map<string, number>();
-
-    equipamentos.forEach((equipamento) => {
-      const nomeStatus = equipamento.status || "Sem status";
-
-      mapa.set(nomeStatus, (mapa.get(nomeStatus) ?? 0) + 1);
-    });
-
-    return Array.from(mapa.entries()).map(([name, value]) => ({
-      name,
-      value,
-    }));
-  }, [equipamentos]);
+    carregarDashboard();
+  }, []);
 
   return {
-    equipamentos,
+    dashboard,
     carregando,
-    estatisticas,
-    categorias,
-    status,
   };
 }

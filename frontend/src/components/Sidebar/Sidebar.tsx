@@ -1,4 +1,7 @@
-import { LayoutDashboard, Menu, Package, Settings, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { NavLink } from "react-router-dom";
+
+import { menuItems } from "./menu";
 
 interface SidebarProps {
   aberta: boolean;
@@ -6,24 +9,6 @@ interface SidebarProps {
   onAlternar: () => void;
   onFecharMobile: () => void;
 }
-
-const itensMenu = [
-  {
-    nome: "Dashboard",
-    icone: LayoutDashboard,
-    href: "/",
-  },
-  {
-    nome: "Equipamentos",
-    icone: Package,
-    href: "/equipamentos",
-  },
-  {
-    nome: "Configurações",
-    icone: Settings,
-    href: "/configuracoes",
-  },
-];
 
 export function Sidebar({
   aberta,
@@ -91,18 +76,25 @@ export function Sidebar({
         </div>
 
         <nav className="flex-1 space-y-2 p-3">
-          {itensMenu.map((item) => {
-            const Icone = item.icone;
+          {menuItems.map((item) => {
+            const Icone = item.icon;
 
             return (
-              <a
-                key={item.nome}
-                href={item.href}
-                title={!aberta ? item.nome : undefined}
-                className={`
+              <NavLink
+                key={item.title}
+                to={item.path}
+                end={item.path === "/"}
+                onClick={onFecharMobile}
+                title={!aberta ? item.title : undefined}
+                className={({ isActive }) => `
                   flex items-center rounded-lg px-3 py-3
-                  text-slate-300 transition-colors
-                  hover:bg-slate-800 hover:text-white
+                  transition-colors
+
+                  ${
+                    isActive
+                      ? "bg-slate-600 text-white"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }
 
                   ${aberta ? "gap-3" : "md:justify-center"}
                 `}
@@ -115,9 +107,9 @@ export function Sidebar({
                     ${aberta ? "md:block" : "md:hidden"}
                   `}
                 >
-                  {item.nome}
+                  {item.title}
                 </span>
-              </a>
+              </NavLink>
             );
           })}
         </nav>

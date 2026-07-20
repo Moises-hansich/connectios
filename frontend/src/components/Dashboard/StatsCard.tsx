@@ -20,7 +20,7 @@ export function StatsCard({
         <div>
           <p className="text-sm font-medium text-gray-500">{titulo}</p>
 
-          <h2 className="mt-3 text-4xl font-bold text-gray-800">{valor}</h2>
+          <h2 className="mt-3 text-4xl font-bold text-gray-700">{valor}</h2>
 
           <div className="mt-3 flex items-center gap-1 text-xs text-green-600">
             <TrendingUp size={14} />
