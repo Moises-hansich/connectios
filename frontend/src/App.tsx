@@ -4,6 +4,7 @@ import { LoginPage } from "./pages/Login";
 import { DashboardPage } from "./pages/Dashboard/DashboardPage";
 import { EquipamentosPage } from "./pages/Equipamentos/EquipamentosPage";
 import { PrivateRoute } from "./routes/PrivateRoute";
+import { UsuariosPage } from "./pages/usuarios/UsuariosPage";
 
 function PaginaEmConstrucao({ titulo }: { titulo: string }) {
   return (
@@ -53,7 +54,7 @@ export default function App() {
         path="/usuarios"
         element={
           <PrivateRoute>
-            <PaginaEmConstrucao titulo="Usuários" />
+            <UsuariosPage />
           </PrivateRoute>
         }
       />

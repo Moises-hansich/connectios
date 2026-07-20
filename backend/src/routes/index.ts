@@ -1,10 +1,15 @@
 import { Router } from "express";
-import equipamentoRoutes from "./equipamentoRoutes";
+
+import authRoutes from "./authRoutes";
 import dashboardRoutes from "./dashboardRoutes";
+import equipamentoRoutes from "./equipamentoRoutes";
+import usuarioRoutes from "./usuarioRoutes";
 
-const router = Router();
+const routes = Router();
 
-router.use("/equipamentos", equipamentoRoutes);
-router.use("/dashboard", dashboardRoutes);
+routes.use("/auth", authRoutes);
+routes.use("/dashboard", dashboardRoutes);
+routes.use("/equipamentos", equipamentoRoutes);
+routes.use("/usuarios", usuarioRoutes);
 
-export default router;
+export default routes;
