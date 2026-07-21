@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { toast } from "sonner";
 
 import { Select } from "../Select";
 import { Button } from "../Button";
@@ -54,14 +55,23 @@ export function EquipmentForm({
 
       if (modo === "editar" && equipamento) {
         await equipamentoService.atualizar(equipamento.id, formData);
+
+        toast.success("Equipamento atualizado com sucesso.");
       } else {
         await equipamentoService.criar(formData);
+
+        toast.success("Equipamento cadastrado com sucesso.");
       }
 
       onSuccess();
     } catch (error) {
       console.error("Erro ao salvar equipamento:", error);
-      alert("Erro ao salvar equipamento.");
+
+      toast.error(
+        modo === "editar"
+          ? "Não foi possível atualizar o equipamento."
+          : "Não foi possível cadastrar o equipamento.",
+      );
     } finally {
       setSalvando(false);
     }

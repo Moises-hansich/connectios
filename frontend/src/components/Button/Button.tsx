@@ -8,7 +8,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const estilosPorVariant = {
-  primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+  primary: "bg-slate-900 text-white hover:bg-slate-700 focus:ring-slate-500",
 
   secondary:
     "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-400",

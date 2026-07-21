@@ -77,7 +77,7 @@ export function EquipmentTable({
               <button
                 type="button"
                 onClick={() => onEdit?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 min-[400px]:w-auto"
+                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50 min-[400px]:w-auto"
               >
                 <Pencil size={17} />
                 Editar
@@ -86,7 +86,7 @@ export function EquipmentTable({
               <button
                 type="button"
                 onClick={() => onDelete?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 min-[400px]:w-auto"
+                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-50 min-[400px]:w-auto"
               >
                 <Trash2 size={17} />
                 Excluir

@@ -8,18 +8,32 @@ datasource db {
 }
 
 model Equipamento {
-  id           Int      @id @default(autoincrement())
-  nome         String
-  categoria    String
-  fabricante   String?
-  modelo       String?
-  numeroSerie  String?  @unique
-  patrimonio   String?  @unique
-  status       String
-  localizacao  String?
-  observacoes  String?
+  id          Int     @id @default(autoincrement())
+  nome        String
+  categoria   String
+  fabricante  String?
+  modelo      String?
+  numeroSerie String? @unique
+  patrimonio  String? @unique
+  status      String
+  observacoes String?
+
+  localizacaoId Int?
+  localizacao   Localizacao? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+
+  @@index([localizacaoId])
+}
+
+model Localizacao {
+  id           Int           @id @default(autoincrement())
+  nome         String        @unique
+  descricao    String?
+  equipamentos Equipamento[]
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
 }
 
 model Usuario {

@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { equipamentoService } from "../services/equipamentoService";
 import type { Equipamento } from "../types/equipamento";
-import { useToast } from "../components/Toast";
 
 export function useEquipamentos() {
-  const { mostrarToast } = useToast();
-
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
   const [pesquisa, setPesquisa] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -35,11 +33,11 @@ export function useEquipamentos() {
     } catch (error) {
       console.error("Erro ao carregar equipamentos:", error);
 
-      mostrarToast("Não foi possível carregar os equipamentos.", "erro");
+      toast.error("Não foi possível carregar os equipamentos.");
     } finally {
       setCarregando(false);
     }
-  }, [mostrarToast]);
+  }, []);
 
   useEffect(() => {
     void carregarEquipamentos();
@@ -117,14 +115,13 @@ export function useEquipamentos() {
         ),
       );
 
-      mostrarToast(
+      toast.success(
         `Equipamento "${equipamentoExcluir.nome}" excluído com sucesso.`,
-        "sucesso",
       );
     } catch (error) {
       console.error("Erro ao excluir equipamento:", error);
 
-      mostrarToast("Não foi possível excluir o equipamento.", "erro");
+      toast.error("Não foi possível excluir o equipamento.");
     } finally {
       setExcluindo(false);
       setModalExcluirAberto(false);
@@ -133,17 +130,8 @@ export function useEquipamentos() {
   }
 
   async function finalizarCadastroOuEdicao() {
-    const estavaEditando = equipamentoSelecionado !== null;
-
     fecharModal();
     await carregarEquipamentos();
-
-    mostrarToast(
-      estavaEditando
-        ? "Equipamento atualizado com sucesso."
-        : "Equipamento cadastrado com sucesso.",
-      "sucesso",
-    );
   }
 
   return {

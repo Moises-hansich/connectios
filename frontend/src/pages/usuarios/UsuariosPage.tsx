@@ -222,7 +222,7 @@ export function UsuariosPage() {
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
-              <UserRound className="h-7 w-7 text-blue-600" />
+              <UserRound className="h-7 w-7 text-slate-800" />
               Gerenciamento de usuários
             </h1>
 
@@ -234,7 +234,7 @@ export function UsuariosPage() {
           <button
             type="button"
             onClick={abrirNovoUsuario}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white transition hover:bg-blue-700"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-700"
           >
             <CirclePlus className="h-5 w-5" />
             Novo usuário
@@ -357,7 +357,7 @@ export function UsuariosPage() {
                             type="button"
                             title="Editar usuário"
                             onClick={() => abrirEdicaoUsuario(usuario)}
-                            className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50"
+                            className="rounded-lg p-2 text-slate-800 transition hover:bg-blue-50"
                           >
                             <Pencil className="h-4 w-4" />
                           </button>

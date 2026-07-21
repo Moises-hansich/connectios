@@ -1,11 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { Toaster } from "sonner";
 
 import { LoginPage } from "./pages/Login";
 import { DashboardPage } from "./pages/Dashboard/DashboardPage";
 import { EquipamentosPage } from "./pages/Equipamentos/EquipamentosPage";
-import { PrivateRoute } from "./routes/PrivateRoute";
 import { UsuariosPage } from "./pages/usuarios/UsuariosPage";
-
+import { PrivateRoute } from "./routes/PrivateRoute";
+import { LocalizacoesPage } from "./pages/localizacao/LocalizacoesPage";
 function PaginaEmConstrucao({ titulo }: { titulo: string }) {
   return (
     <div className="rounded-xl bg-white p-6 shadow-sm">
@@ -20,55 +21,65 @@ function PaginaEmConstrucao({ titulo }: { titulo: string }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
+    <>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
 
-      <Route
-        path="/"
-        element={
-          <PrivateRoute>
-            <DashboardPage />
-          </PrivateRoute>
-        }
+        <Route
+          path="/"
+          element={
+            <PrivateRoute>
+              <DashboardPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/equipamentos"
+          element={
+            <PrivateRoute>
+              <EquipamentosPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/localizacoes"
+          element={
+            <PrivateRoute>
+              <LocalizacoesPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/usuarios"
+          element={
+            <PrivateRoute>
+              <UsuariosPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/configuracoes"
+          element={
+            <PrivateRoute>
+              <PaginaEmConstrucao titulo="Configurações" />
+            </PrivateRoute>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        duration={3000}
+        theme="light"
       />
-
-      <Route
-        path="/equipamentos"
-        element={
-          <PrivateRoute>
-            <EquipamentosPage />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/localizacoes"
-        element={
-          <PrivateRoute>
-            <PaginaEmConstrucao titulo="Localizações" />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/usuarios"
-        element={
-          <PrivateRoute>
-            <UsuariosPage />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/configuracoes"
-        element={
-          <PrivateRoute>
-            <PaginaEmConstrucao titulo="Configurações" />
-          </PrivateRoute>
-        }
-      />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    </>
   );
 }

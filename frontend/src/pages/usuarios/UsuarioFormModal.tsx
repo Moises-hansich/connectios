@@ -146,7 +146,7 @@ export function UsuarioFormModal({
       <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-slate-800">
               <UserPlus className="h-5 w-5" />
             </div>
 
@@ -196,7 +196,7 @@ export function UsuarioFormModal({
                 onChange={(event) => atualizarCampo("nome", event.target.value)}
                 disabled={carregando}
                 placeholder="Nome completo"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
               />
             </div>
 
@@ -217,7 +217,7 @@ export function UsuarioFormModal({
                 }
                 disabled={carregando}
                 placeholder="usuario@empresa.com"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
               />
             </div>
 
@@ -242,7 +242,7 @@ export function UsuarioFormModal({
                     ? "Deixe em branco para manter a senha atual"
                     : "Mínimo de 6 caracteres"
                 }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
               />
 
               {modoEdicao && (
@@ -268,7 +268,7 @@ export function UsuarioFormModal({
                     atualizarCampo("perfil", event.target.value)
                   }
                   disabled={carregando}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
                 >
                   <option value="USUARIO">Usuário</option>
                   <option value="CONSULTA">Consulta</option>
@@ -291,7 +291,7 @@ export function UsuarioFormModal({
                         atualizarCampo("ativo", event.target.checked)
                       }
                       disabled={carregando}
-                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                     />
 
                     <span className="text-sm text-slate-700">
@@ -316,7 +316,7 @@ export function UsuarioFormModal({
             <button
               type="submit"
               disabled={carregando}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {carregando ? (
                 <LoaderCircle className="h-5 w-5 animate-spin" />
