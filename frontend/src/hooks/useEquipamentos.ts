@@ -6,7 +6,12 @@ import type { Equipamento } from "../types/equipamento";
 
 export function useEquipamentos() {
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
+
   const [pesquisa, setPesquisa] = useState("");
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState("");
+  const [localizacaoSelecionada, setLocalizacaoSelecionada] = useState("");
+  const [statusSelecionado, setStatusSelecionado] = useState("");
+
   const [carregando, setCarregando] = useState(true);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -23,11 +28,7 @@ export function useEquipamentos() {
     try {
       setCarregando(true);
 
-      console.log("Consultando API de equipamentos...");
-
       const dados = await equipamentoService.listar();
-
-      console.log("Resposta da API:", dados);
 
       setEquipamentos(dados);
     } catch (error) {
@@ -43,32 +44,95 @@ export function useEquipamentos() {
     void carregarEquipamentos();
   }, [carregarEquipamentos]);
 
+  const categorias = useMemo(() => {
+    return Array.from(
+      new Set(
+        equipamentos
+          .map((equipamento) => equipamento.categoria?.trim())
+          .filter((categoria): categoria is string => Boolean(categoria)),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [equipamentos]);
+
+  const localizacoes = useMemo(() => {
+    return Array.from(
+      new Set(
+        equipamentos
+          .map((equipamento) => equipamento.localizacao?.nome?.trim())
+          .filter((localizacao): localizacao is string => Boolean(localizacao)),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [equipamentos]);
+
+  const statusDisponiveis = useMemo(() => {
+    return Array.from(
+      new Set(
+        equipamentos
+          .map((equipamento) => equipamento.status?.trim())
+          .filter((status): status is string => Boolean(status)),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [equipamentos]);
+
   const equipamentosFiltrados = useMemo(() => {
     const termo = pesquisa.trim().toLowerCase();
 
-    if (!termo) {
-      return equipamentos;
-    }
-
     return equipamentos.filter((equipamento) => {
-      const valores = [
-        equipamento.nome,
-        equipamento.categoria,
-        equipamento.fabricante,
-        equipamento.modelo,
-        equipamento.numeroSerie,
-        equipamento.patrimonio,
-        equipamento.status,
-        equipamento.localizacao,
-      ];
+      const correspondePesquisa =
+        !termo ||
+        [
+          equipamento.nome,
+          equipamento.categoria,
+          equipamento.fabricante,
+          equipamento.modelo,
+          equipamento.numeroSerie,
+          equipamento.patrimonio,
+          equipamento.status,
+          equipamento.localizacao?.nome,
+          equipamento.observacoes,
+        ].some((valor) =>
+          String(valor ?? "")
+            .toLowerCase()
+            .includes(termo),
+        );
 
-      return valores.some((valor) =>
-        String(valor ?? "")
-          .toLowerCase()
-          .includes(termo),
+      const correspondeCategoria =
+        !categoriaSelecionada || equipamento.categoria === categoriaSelecionada;
+
+      const correspondeLocalizacao =
+        !localizacaoSelecionada ||
+        equipamento.localizacao?.nome === localizacaoSelecionada;
+
+      const correspondeStatus =
+        !statusSelecionado || equipamento.status === statusSelecionado;
+
+      return (
+        correspondePesquisa &&
+        correspondeCategoria &&
+        correspondeLocalizacao &&
+        correspondeStatus
       );
     });
-  }, [equipamentos, pesquisa]);
+  }, [
+    equipamentos,
+    pesquisa,
+    categoriaSelecionada,
+    localizacaoSelecionada,
+    statusSelecionado,
+  ]);
+
+  const filtrosAtivos =
+    pesquisa.trim() !== "" ||
+    categoriaSelecionada !== "" ||
+    localizacaoSelecionada !== "" ||
+    statusSelecionado !== "";
+
+  function limparFiltros() {
+    setPesquisa("");
+    setCategoriaSelecionada("");
+    setLocalizacaoSelecionada("");
+    setStatusSelecionado("");
+  }
 
   function abrirModalCriacao() {
     setEquipamentoSelecionado(null);
@@ -140,6 +204,22 @@ export function useEquipamentos() {
 
     pesquisa,
     setPesquisa,
+
+    categoriaSelecionada,
+    setCategoriaSelecionada,
+
+    localizacaoSelecionada,
+    setLocalizacaoSelecionada,
+
+    statusSelecionado,
+    setStatusSelecionado,
+
+    categorias,
+    localizacoes,
+    statusDisponiveis,
+
+    filtrosAtivos,
+    limparFiltros,
 
     carregando,
     excluindo,

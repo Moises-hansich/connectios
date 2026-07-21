@@ -68,7 +68,7 @@ export function EquipmentTable({
               <div>
                 <span className="font-medium text-gray-700">Localização:</span>{" "}
                 <span className="text-gray-600">
-                  {equipamento.localizacao || "Não informada"}
+                  {equipamento.localizacao?.nome || "Não informada"}
                 </span>
               </div>
             </div>
@@ -134,14 +134,16 @@ export function EquipmentTable({
                   <Badge status={equipamento.status} />
                 </td>
 
-                <td className="px-4 py-3">{equipamento.localizacao || "-"}</td>
+                <td className="px-4 py-3">
+                  {equipamento.localizacao?.nome || "-"}
+                </td>
 
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => onEdit?.(equipamento)}
-                      className=" p-2 text-slate-800 transition-colors hover:bg-blue-200"
+                      className="p-2 text-slate-800 transition-colors hover:bg-blue-200"
                       aria-label={`Editar ${equipamento.nome}`}
                     >
                       <Pencil size={18} />
@@ -150,7 +152,7 @@ export function EquipmentTable({
                     <button
                       type="button"
                       onClick={() => onDelete?.(equipamento)}
-                      className=" p-2 text-slate-800 transition-colors hover:bg-red-200"
+                      className="p-2 text-slate-800 transition-colors hover:bg-red-200"
                       aria-label={`Excluir ${equipamento.nome}`}
                     >
                       <Trash2 size={18} />

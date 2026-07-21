@@ -42,6 +42,8 @@ export class EquipamentoController {
   }
 
   async criar(req: Request, res: Response) {
+    console.log("BODY APÓS O ZOD:", req.body);
+
     const equipamento = await this.service.criar(req.body);
 
     return res.status(201).json({
@@ -50,7 +52,6 @@ export class EquipamentoController {
       data: equipamento,
     });
   }
-
   async buscarPorId(req: Request, res: Response) {
     const id = Number(req.params.id);
 

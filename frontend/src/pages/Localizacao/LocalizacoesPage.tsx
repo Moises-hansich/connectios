@@ -1,15 +1,20 @@
 import { Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
 import { MainLayout } from "../../layouts/MainLayout";
 import { Modal } from "../../components/Modal";
-
 import { LocalizacaoForm } from "../../components/LocalizacaoForm";
 import { LocalizacaoTable } from "../../components/LocalizacaoTable";
-import { useLocalizacoes, type Localizacao } from "../../hooks/useLocalizacoes";
+
+import {
+  useLocalizacoes,
+  type LocalizacaoFormData,
+} from "../../hooks/useLocalizacoes";
 
 export function LocalizacoesPage() {
   const {
     localizacoesFiltradas,
+    carregando,
 
     pesquisa,
     setPesquisa,
@@ -27,56 +32,53 @@ export function LocalizacoesPage() {
     abrirModalExclusao,
     fecharModalExclusao,
 
-    setLocalizacoes,
+    criarLocalizacao,
+    atualizarLocalizacao,
+    excluirLocalizacao,
   } = useLocalizacoes();
 
-  async function salvarLocalizacao(
-    dados: Omit<Localizacao, "id">,
-  ): Promise<void> {
-    if (localizacaoSelecionada) {
-      setLocalizacoes((localizacoesAtuais) =>
-        localizacoesAtuais.map((localizacao) =>
-          localizacao.id === localizacaoSelecionada.id
-            ? {
-                ...localizacao,
-                ...dados,
-              }
-            : localizacao,
-        ),
-      );
+  async function salvarLocalizacao(dados: LocalizacaoFormData): Promise<void> {
+    try {
+      if (localizacaoSelecionada) {
+        await atualizarLocalizacao(localizacaoSelecionada.id, dados);
 
-      toast.success("Localização atualizada com sucesso.");
+        toast.success("Localização atualizada com sucesso.");
+        fecharModal();
+        return;
+      }
+
+      await criarLocalizacao(dados);
+
+      toast.success("Localização cadastrada com sucesso.");
       fecharModal();
-      return;
+    } catch (erro) {
+      const mensagem =
+        erro instanceof Error
+          ? erro.message
+          : "Ocorreu um erro ao salvar a localização.";
+
+      toast.error(mensagem);
     }
-
-    const novaLocalizacao: Localizacao = {
-      id: Date.now(),
-      ...dados,
-    };
-
-    setLocalizacoes((localizacoesAtuais) => [
-      ...localizacoesAtuais,
-      novaLocalizacao,
-    ]);
-
-    toast.success("Localização cadastrada com sucesso.");
-    fecharModal();
   }
 
-  function excluirLocalizacao() {
+  async function confirmarExclusao(): Promise<void> {
     if (!localizacaoExcluir) {
       return;
     }
 
-    setLocalizacoes((localizacoesAtuais) =>
-      localizacoesAtuais.filter(
-        (localizacao) => localizacao.id !== localizacaoExcluir.id,
-      ),
-    );
+    try {
+      await excluirLocalizacao(localizacaoExcluir.id);
 
-    toast.success("Localização excluída com sucesso.");
-    fecharModalExclusao();
+      toast.success("Localização excluída com sucesso.");
+      fecharModalExclusao();
+    } catch (erro) {
+      const mensagem =
+        erro instanceof Error
+          ? erro.message
+          : "Ocorreu um erro ao excluir a localização.";
+
+      toast.error(mensagem);
+    }
   }
 
   return (
@@ -95,11 +97,11 @@ export function LocalizacoesPage() {
             type="button"
             onClick={abrirModalCriacao}
             className="
-            inline-flex items-center justify-center gap-2
-            rounded-lg bg-slate-900 px-4 py-2.5
-            font-medium text-white transition
-            hover:bg-slate-700
-          "
+              inline-flex items-center justify-center gap-2
+              rounded-lg bg-slate-900 px-4 py-2.5
+              font-medium text-white transition
+              hover:bg-slate-700
+            "
           >
             <Plus size={18} />
             Nova localização
@@ -110,9 +112,9 @@ export function LocalizacoesPage() {
           <Search
             size={18}
             className="
-            pointer-events-none absolute left-3 top-1/2
-            -translate-y-1/2 text-slate-400
-          "
+              pointer-events-none absolute left-3 top-1/2
+              -translate-y-1/2 text-slate-400
+            "
           />
 
           <input
@@ -121,20 +123,26 @@ export function LocalizacoesPage() {
             onChange={(event) => setPesquisa(event.target.value)}
             placeholder="Pesquisar localização..."
             className="
-            w-full rounded-lg border border-slate-300
-            bg-white py-2.5 pl-10 pr-4
-            text-sm text-slate-900 outline-none transition
-            placeholder:text-slate-400
-            focus:border-blue-500 focus:ring-2 focus:ring-blue-100
-          "
+              w-full rounded-lg border border-slate-300
+              bg-white py-2.5 pl-10 pr-4
+              text-sm text-slate-900 outline-none transition
+              placeholder:text-slate-400
+              focus:border-blue-500 focus:ring-2 focus:ring-blue-100
+            "
           />
         </div>
 
-        <LocalizacaoTable
-          localizacoes={localizacoesFiltradas}
-          onEditar={abrirModalEdicao}
-          onExcluir={abrirModalExclusao}
-        />
+        {carregando ? (
+          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
+            <p className="text-sm text-slate-500">Carregando localizações...</p>
+          </div>
+        ) : (
+          <LocalizacaoTable
+            localizacoes={localizacoesFiltradas}
+            onEditar={abrirModalEdicao}
+            onExcluir={abrirModalExclusao}
+          />
+        )}
 
         <Modal
           aberto={modalAberto}
@@ -161,9 +169,9 @@ export function LocalizacoesPage() {
             <div className="flex flex-col items-center text-center">
               <div
                 className="
-                mb-4 flex h-14 w-14 items-center justify-center
-                rounded-full bg-red-100 text-red-600
-              "
+                  mb-4 flex h-14 w-14 items-center justify-center
+                  rounded-full bg-red-100 text-red-600
+                "
               >
                 <Trash2 size={26} />
               </div>
@@ -190,23 +198,23 @@ export function LocalizacoesPage() {
                 type="button"
                 onClick={fecharModalExclusao}
                 className="
-                rounded-lg border border-slate-300
-                px-4 py-2.5 font-medium text-slate-700
-                transition hover:bg-slate-100
-              "
+                  rounded-lg border border-slate-300
+                  px-4 py-2.5 font-medium text-slate-700
+                  transition hover:bg-slate-100
+                "
               >
                 Cancelar
               </button>
 
               <button
                 type="button"
-                onClick={excluirLocalizacao}
+                onClick={confirmarExclusao}
                 className="
-                inline-flex items-center justify-center gap-2
-                rounded-lg bg-red-600 px-4 py-2.5
-                font-medium text-white transition
-                hover:bg-red-700
-              "
+                  inline-flex items-center justify-center gap-2
+                  rounded-lg bg-red-600 px-4 py-2.5
+                  font-medium text-white transition
+                  hover:bg-red-700
+                "
               >
                 <Trash2 size={17} />
                 Excluir localização

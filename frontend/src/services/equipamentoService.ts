@@ -1,5 +1,10 @@
 import { api } from "./api";
-import type { Equipamento } from "../types/equipamento";
+
+import type {
+  AtualizarEquipamentoData,
+  CriarEquipamentoData,
+  Equipamento,
+} from "../types/equipamento";
 
 type ListarEquipamentosResponse = {
   success: boolean;
@@ -14,18 +19,26 @@ type ListarEquipamentosResponse = {
 
 export const equipamentoService = {
   async listar(): Promise<Equipamento[]> {
-    const response = await api.get<ListarEquipamentosResponse>("/equipamentos");
+    const response = await api.get<ListarEquipamentosResponse>(
+      "/equipamentos",
+      {
+        params: {
+          page: 1,
+          limit: 100,
+        },
+      },
+    );
 
-    return response.data.data;
+    return Array.isArray(response.data.data) ? response.data.data : [];
   },
 
-  async criar(dados: Omit<Equipamento, "id" | "criadoEm" | "atualizadoEm">) {
+  async criar(dados: CriarEquipamentoData) {
     const response = await api.post("/equipamentos", dados);
 
     return response.data;
   },
 
-  async atualizar(id: number, dados: Partial<Equipamento>) {
+  async atualizar(id: number, dados: AtualizarEquipamentoData) {
     const response = await api.put(`/equipamentos/${id}`, dados);
 
     return response.data;

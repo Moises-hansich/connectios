@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus, FilterX } from "lucide-react";
 
 import { MainLayout } from "../../layouts/MainLayout";
 import { Button } from "../../components/Button";
@@ -9,6 +9,7 @@ import { EquipmentForm } from "../../components/EquipamentForm";
 import { Modal } from "../../components/Modal";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { SkeletonTable } from "../../components/Skeleton";
+import { Select } from "../../components/Select";
 
 import { useEquipamentos } from "../../hooks/useEquipamentos";
 
@@ -18,6 +19,22 @@ export function EquipamentosPage() {
 
     pesquisa,
     setPesquisa,
+
+    categoriaSelecionada,
+    setCategoriaSelecionada,
+
+    localizacaoSelecionada,
+    setLocalizacaoSelecionada,
+
+    statusSelecionado,
+    setStatusSelecionado,
+
+    categorias,
+    localizacoes,
+    statusDisponiveis,
+
+    filtrosAtivos,
+    limparFiltros,
 
     carregando,
     excluindo,
@@ -41,26 +58,83 @@ export function EquipamentosPage() {
 
   return (
     <MainLayout>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold sm:text-3xl">Equipamentos</h1>
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Equipamentos</h1>
+          <p className="text-sm text-gray-500">
+            Total encontrado: {equipamentosFiltrados.length}
+          </p>
+        </div>
 
-        <Button
-          type="button"
-          className="w-full sm:w-auto"
-          onClick={abrirModalCriacao}
-        >
+        <Button onClick={abrirModalCriacao}>
           <Plus size={18} />
           Adicionar Equipamento
         </Button>
       </div>
 
-      <div className="mb-6 w-full sm:max-w-md">
-        <SearchInput
-          value={pesquisa}
-          onChange={setPesquisa}
-          placeholder="Pesquisar equipamentos..."
-        />
-      </div>
+      <Card className="mb-6">
+        <div className="grid items-end gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <SearchInput
+            value={pesquisa}
+            onChange={setPesquisa}
+            placeholder="Pesquisar..."
+          />
+
+          <Select
+            label="Categoria"
+            value={categoriaSelecionada}
+            onChange={(e) => setCategoriaSelecionada(e.target.value)}
+          >
+            <option value="">Todas</option>
+
+            {categorias.map((categoria) => (
+              <option key={categoria} value={categoria}>
+                {categoria}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            label="Localização"
+            value={localizacaoSelecionada}
+            onChange={(e) => setLocalizacaoSelecionada(e.target.value)}
+          >
+            <option value="">Todas</option>
+
+            {localizacoes.map((localizacao) => (
+              <option key={localizacao} value={localizacao}>
+                {localizacao}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            label="Status"
+            value={statusSelecionado}
+            onChange={(e) => setStatusSelecionado(e.target.value)}
+          >
+            <option value="">Todos</option>
+
+            {statusDisponiveis.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </Select>
+
+          <div className="flex items-end">
+            <Button
+              variant="secondary"
+              className="w-full"
+              disabled={!filtrosAtivos}
+              onClick={limparFiltros}
+            >
+              <FilterX size={18} />
+              Limpar filtros
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       <Card>
         {carregando ? (

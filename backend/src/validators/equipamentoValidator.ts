@@ -6,6 +6,21 @@ const campoOpcional = z
   .optional()
   .transform((valor) => (valor === "" ? undefined : valor));
 
+const localizacaoIdSchema = z
+  .union([
+    z.number(),
+    z
+      .string()
+      .trim()
+      .transform((valor) => Number(valor)),
+  ])
+  .refine(
+    (valor) => Number.isInteger(valor) && valor > 0,
+    "Localização inválida",
+  )
+  .nullable()
+  .optional();
+
 export const criarEquipamentoSchema = z.object({
   nome: z
     .string({ message: "Nome é obrigatório" })
@@ -27,7 +42,8 @@ export const criarEquipamentoSchema = z.object({
     .trim()
     .min(1, "Status é obrigatório"),
 
-  localizacao: campoOpcional,
+  localizacaoId: localizacaoIdSchema,
+
   observacoes: campoOpcional,
 });
 

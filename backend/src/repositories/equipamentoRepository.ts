@@ -4,9 +4,11 @@ export interface EquipamentoFilters {
   search?: string;
   categoria?: string;
   status?: string;
+  localizacaoId?: number;
   page?: number;
   limit?: number;
 }
+
 export interface CreateEquipamentoData {
   nome: string;
   categoria: string;
@@ -15,13 +17,16 @@ export interface CreateEquipamentoData {
   numeroSerie?: string;
   patrimonio?: string;
   status: string;
-  localizacao?: string;
+  localizacaoId?: number | null;
   observacoes?: string;
 }
 
 export class EquipamentoRepository {
   async findAll() {
     return prisma.equipamento.findMany({
+      include: {
+        localizacao: true,
+      },
       orderBy: {
         criadoEm: "desc",
       },
@@ -33,6 +38,9 @@ export class EquipamentoRepository {
       where: {
         numeroSerie,
       },
+      include: {
+        localizacao: true,
+      },
     });
   }
 
@@ -41,12 +49,18 @@ export class EquipamentoRepository {
       where: {
         patrimonio,
       },
+      include: {
+        localizacao: true,
+      },
     });
   }
 
   async create(data: CreateEquipamentoData) {
     return prisma.equipamento.create({
       data,
+      include: {
+        localizacao: true,
+      },
     });
   }
 
@@ -55,23 +69,35 @@ export class EquipamentoRepository {
       where: {
         id,
       },
+      include: {
+        localizacao: true,
+      },
     });
   }
+
   async update(id: number, data: Partial<CreateEquipamentoData>) {
     return prisma.equipamento.update({
       where: {
         id,
       },
       data,
+      include: {
+        localizacao: true,
+      },
     });
   }
+
   async delete(id: number) {
     return prisma.equipamento.delete({
       where: {
         id,
       },
+      include: {
+        localizacao: true,
+      },
     });
   }
+
   async findWithFilters(filters: EquipamentoFilters) {
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 10;
@@ -84,6 +110,10 @@ export class EquipamentoRepository {
 
       ...(filters.status && {
         status: filters.status,
+      }),
+
+      ...(filters.localizacaoId !== undefined && {
+        localizacaoId: filters.localizacaoId,
       }),
 
       ...(filters.search && {
@@ -113,6 +143,15 @@ export class EquipamentoRepository {
               contains: filters.search,
             },
           },
+          {
+            localizacao: {
+              is: {
+                nome: {
+                  contains: filters.search,
+                },
+              },
+            },
+          },
         ],
       }),
     };
@@ -120,6 +159,9 @@ export class EquipamentoRepository {
     const [equipamentos, total] = await Promise.all([
       prisma.equipamento.findMany({
         where,
+        include: {
+          localizacao: true,
+        },
         orderBy: {
           criadoEm: "desc",
         },

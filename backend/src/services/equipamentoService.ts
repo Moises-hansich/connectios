@@ -1,19 +1,20 @@
-import {
-  CreateEquipamentoData,
-  EquipamentoRepository,
-} from "../repositories/equipamentoRepository";
 import { AppError } from "../errors/AppError";
+
 import {
-  CreateEquipamentoData,
-  EquipamentoFilters,
+  type CreateEquipamentoData,
+  type EquipamentoFilters,
   EquipamentoRepository,
 } from "../repositories/equipamentoRepository";
+
+import { LocalizacaoRepository } from "../repositories/localizacaoRepository";
 
 export class EquipamentoService {
   private repository: EquipamentoRepository;
+  private localizacaoRepository: LocalizacaoRepository;
 
   constructor() {
     this.repository = new EquipamentoRepository();
+    this.localizacaoRepository = new LocalizacaoRepository();
   }
 
   async listarTodos() {
@@ -33,7 +34,7 @@ export class EquipamentoService {
       throw new AppError("Status é obrigatório", 400);
     }
 
-    if (data.numeroSerie) {
+    if (data.numeroSerie?.trim()) {
       const equipamentoComMesmoSerial = await this.repository.findByNumeroSerie(
         data.numeroSerie.trim(),
       );
@@ -43,12 +44,26 @@ export class EquipamentoService {
       }
     }
 
-    if (data.patrimonio) {
+    if (data.patrimonio?.trim()) {
       const equipamentoComMesmoPatrimonio =
         await this.repository.findByPatrimonio(data.patrimonio.trim());
 
       if (equipamentoComMesmoPatrimonio) {
         throw new AppError("Patrimônio já cadastrado", 409);
+      }
+    }
+
+    if (data.localizacaoId !== undefined && data.localizacaoId !== null) {
+      if (!Number.isInteger(data.localizacaoId) || data.localizacaoId <= 0) {
+        throw new AppError("Localização inválida", 400);
+      }
+
+      const localizacao = await this.localizacaoRepository.findById(
+        data.localizacaoId,
+      );
+
+      if (!localizacao) {
+        throw new AppError("Localização não encontrada", 404);
       }
     }
 
@@ -60,20 +75,32 @@ export class EquipamentoService {
       numeroSerie: data.numeroSerie?.trim() || undefined,
       patrimonio: data.patrimonio?.trim() || undefined,
       status: data.status.trim(),
-      localizacao: data.localizacao?.trim() || undefined,
+      localizacaoId: data.localizacaoId ?? null,
       observacoes: data.observacoes?.trim() || undefined,
     };
 
     return this.repository.create(equipamentoLimpo);
   }
+
   async buscarPorId(id: number) {
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new AppError("ID do equipamento inválido", 400);
+    }
+
     const equipamento = await this.repository.findById(id);
+
     if (!equipamento) {
       throw new AppError("Equipamento não encontrado", 404);
     }
+
     return equipamento;
   }
+
   async atualizar(id: number, data: Partial<CreateEquipamentoData>) {
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new AppError("ID do equipamento inválido", 400);
+    }
+
     const equipamentoExistente = await this.repository.findById(id);
 
     if (!equipamentoExistente) {
@@ -122,6 +149,20 @@ export class EquipamentoService {
       }
     }
 
+    if (data.localizacaoId !== undefined && data.localizacaoId !== null) {
+      if (!Number.isInteger(data.localizacaoId) || data.localizacaoId <= 0) {
+        throw new AppError("Localização inválida", 400);
+      }
+
+      const localizacao = await this.localizacaoRepository.findById(
+        data.localizacaoId,
+      );
+
+      if (!localizacao) {
+        throw new AppError("Localização não encontrada", 404);
+      }
+    }
+
     const equipamentoLimpo: Partial<CreateEquipamentoData> = {};
 
     if (data.nome !== undefined) {
@@ -152,8 +193,8 @@ export class EquipamentoService {
       equipamentoLimpo.status = data.status.trim();
     }
 
-    if (data.localizacao !== undefined) {
-      equipamentoLimpo.localizacao = data.localizacao.trim() || undefined;
+    if (data.localizacaoId !== undefined) {
+      equipamentoLimpo.localizacaoId = data.localizacaoId;
     }
 
     if (data.observacoes !== undefined) {
@@ -162,7 +203,12 @@ export class EquipamentoService {
 
     return this.repository.update(id, equipamentoLimpo);
   }
+
   async deletar(id: number) {
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new AppError("ID do equipamento inválido", 400);
+    }
+
     const equipamentoExistente = await this.repository.findById(id);
 
     if (!equipamentoExistente) {
@@ -182,6 +228,13 @@ export class EquipamentoService {
 
     if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
       throw new AppError("Limite deve ser um número entre 1 e 100", 400);
+    }
+
+    if (
+      filters.localizacaoId !== undefined &&
+      (!Number.isInteger(filters.localizacaoId) || filters.localizacaoId <= 0)
+    ) {
+      throw new AppError("Localização inválida", 400);
     }
 
     return this.repository.findWithFilters({
