@@ -6,8 +6,9 @@ import { Select } from "../Select";
 import { Button } from "../Button";
 import { Input } from "../Input";
 
-import { api } from "../../services/api";
 import { equipamentoService } from "../../services/equipamentoService";
+import { localizacaoService } from "../../services/localizacaoService";
+import { colaboradorService } from "../../services/colaboradorService";
 
 import type {
   CriarEquipamentoData,
@@ -22,9 +23,10 @@ interface EquipmentFormProps {
   equipamento?: Equipamento;
 }
 
-interface ListarLocalizacoesResponse {
-  success?: boolean;
-  data?: Localizacao[];
+interface ColaboradorOption {
+  id: number;
+  nome: string;
+  ativo?: boolean;
 }
 
 interface FormData {
@@ -36,6 +38,7 @@ interface FormData {
   patrimonio: string;
   status: string;
   localizacaoId: string;
+  responsavelId: string;
   observacoes: string;
 }
 
@@ -49,6 +52,7 @@ function criarEstadoInicial(equipamento?: Equipamento): FormData {
     patrimonio: equipamento?.patrimonio ?? "",
     status: equipamento?.status ?? "Disponível",
     localizacaoId: equipamento?.localizacaoId?.toString() ?? "",
+    responsavelId: equipamento?.responsavelId?.toString() ?? "",
     observacoes: equipamento?.observacoes ?? "",
   };
 }
@@ -64,7 +68,10 @@ export function EquipmentForm({
   );
 
   const [localizacoes, setLocalizacoes] = useState<Localizacao[]>([]);
+  const [colaboradores, setColaboradores] = useState<ColaboradorOption[]>([]);
+
   const [carregandoLocalizacoes, setCarregandoLocalizacoes] = useState(true);
+  const [carregandoColaboradores, setCarregandoColaboradores] = useState(true);
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
@@ -76,27 +83,11 @@ export function EquipmentForm({
       try {
         setCarregandoLocalizacoes(true);
 
-        const response = await api.get<
-          ListarLocalizacoesResponse | Localizacao[]
-        >("/localizacoes");
+        const dadosLocalizacoes = await localizacaoService.listar();
 
-        console.log("Resposta de localizações:", response.data);
-
-        let dadosLocalizacoes: Localizacao[] = [];
-
-        if (Array.isArray(response.data)) {
-          dadosLocalizacoes = response.data;
-        } else if (Array.isArray(response.data.data)) {
-          dadosLocalizacoes = response.data.data;
-        }
-
-        setLocalizacoes(dadosLocalizacoes);
-
-        if (dadosLocalizacoes.length === 0) {
-          console.warn(
-            "Nenhuma localização foi encontrada ou o formato da resposta é diferente.",
-          );
-        }
+        setLocalizacoes(
+          Array.isArray(dadosLocalizacoes) ? dadosLocalizacoes : [],
+        );
       } catch (error) {
         console.error("Erro ao carregar localizações:", error);
 
@@ -109,6 +100,40 @@ export function EquipmentForm({
     }
 
     void carregarLocalizacoes();
+  }, []);
+
+  useEffect(() => {
+    async function carregarColaboradores() {
+      try {
+        setCarregandoColaboradores(true);
+
+        const dadosColaboradores = await colaboradorService.listar();
+
+        const lista = Array.isArray(dadosColaboradores)
+          ? dadosColaboradores
+          : [];
+
+        setColaboradores(
+          lista
+            .filter((colaborador) => colaborador.ativo !== false)
+            .map((colaborador) => ({
+              id: colaborador.id,
+              nome: colaborador.nome,
+              ativo: colaborador.ativo,
+            })),
+        );
+      } catch (error) {
+        console.error("Erro ao carregar colaboradores:", error);
+
+        setColaboradores([]);
+
+        toast.error("Não foi possível carregar os colaboradores.");
+      } finally {
+        setCarregandoColaboradores(false);
+      }
+    }
+
+    void carregarColaboradores();
   }, []);
 
   function handleChange(campo: keyof FormData, valor: string) {
@@ -130,11 +155,24 @@ export function EquipmentForm({
         ? null
         : Number.parseInt(formData.localizacaoId, 10);
 
+    const responsavelId =
+      formData.responsavelId === ""
+        ? null
+        : Number.parseInt(formData.responsavelId, 10);
+
     if (
       localizacaoId !== null &&
       (!Number.isInteger(localizacaoId) || localizacaoId <= 0)
     ) {
       toast.error("Selecione uma localização válida.");
+      return;
+    }
+
+    if (
+      responsavelId !== null &&
+      (!Number.isInteger(responsavelId) || responsavelId <= 0)
+    ) {
+      toast.error("Selecione um responsável válido.");
       return;
     }
 
@@ -147,6 +185,7 @@ export function EquipmentForm({
       patrimonio: formData.patrimonio.trim(),
       status: formData.status,
       localizacaoId,
+      responsavelId,
       observacoes: formData.observacoes.trim(),
     };
 
@@ -177,7 +216,9 @@ export function EquipmentForm({
     }
   }
 
-  const formularioDesabilitado = salvando || carregandoLocalizacoes;
+  const carregandoDados = carregandoLocalizacoes || carregandoColaboradores;
+
+  const formularioDesabilitado = salvando || carregandoDados;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -251,12 +292,30 @@ export function EquipmentForm({
             : "Sem localização"}
         </option>
 
-        {Array.isArray(localizacoes) &&
-          localizacoes.map((localizacao) => (
-            <option key={localizacao.id} value={String(localizacao.id)}>
-              {localizacao.nome}
-            </option>
-          ))}
+        {localizacoes.map((localizacao) => (
+          <option key={localizacao.id} value={String(localizacao.id)}>
+            {localizacao.nome}
+          </option>
+        ))}
+      </Select>
+
+      <Select
+        label="Responsável"
+        value={formData.responsavelId}
+        disabled={formularioDesabilitado}
+        onChange={(event) => handleChange("responsavelId", event.target.value)}
+      >
+        <option value="">
+          {carregandoColaboradores
+            ? "Carregando colaboradores..."
+            : "Sem responsável"}
+        </option>
+
+        {colaboradores.map((colaborador) => (
+          <option key={colaborador.id} value={String(colaborador.id)}>
+            {colaborador.nome}
+          </option>
+        ))}
       </Select>
 
       <Input
@@ -276,11 +335,7 @@ export function EquipmentForm({
           Cancelar
         </Button>
 
-        <Button
-          type="submit"
-          loading={salvando}
-          disabled={carregandoLocalizacoes}
-        >
+        <Button type="submit" loading={salvando} disabled={carregandoDados}>
           {modo === "editar" ? "Atualizar" : "Salvar"}
         </Button>
       </div>

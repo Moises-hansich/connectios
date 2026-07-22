@@ -1,4 +1,11 @@
-import { LayoutDashboard, Laptop, MapPin, Settings, User } from "lucide-react";
+import {
+  LayoutDashboard,
+  Laptop,
+  MapPin,
+  Settings,
+  UserCog2Icon,
+  Users,
+} from "lucide-react";
 
 export const menuItems = [
   {
@@ -17,8 +24,13 @@ export const menuItems = [
     path: "/localizacoes",
   },
   {
+    title: "Colaboradores",
+    icon: Users,
+    path: "/colaboradores",
+  },
+  {
     title: "Usuários",
-    icon: User,
+    icon: UserCog2Icon,
     path: "/usuarios",
   },
   {

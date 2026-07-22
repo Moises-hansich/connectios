@@ -25,12 +25,14 @@ export function EquipamentosPage() {
 
     localizacaoSelecionada,
     setLocalizacaoSelecionada,
-
+    responsavelSelecionado,
+    setResponsavelSelecionado,
     statusSelecionado,
     setStatusSelecionado,
 
     categorias,
     localizacoes,
+    responsaveis,
     statusDisponiveis,
 
     filtrosAtivos,
@@ -73,7 +75,7 @@ export function EquipamentosPage() {
       </div>
 
       <Card className="mb-6">
-        <div className="grid items-end gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid items-end gap-4 md:grid-cols-2 xl:grid-cols-6">
           <SearchInput
             value={pesquisa}
             onChange={setPesquisa}
@@ -107,7 +109,19 @@ export function EquipamentosPage() {
               </option>
             ))}
           </Select>
+          <Select
+            label="Responsável"
+            value={responsavelSelecionado}
+            onChange={(e) => setResponsavelSelecionado(e.target.value)}
+          >
+            <option value="">Todos</option>
 
+            {responsaveis.map((responsavel) => (
+              <option key={responsavel} value={responsavel}>
+                {responsavel}
+              </option>
+            ))}
+          </Select>
           <Select
             label="Status"
             value={statusSelecionado}

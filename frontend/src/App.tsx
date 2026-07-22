@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
-
+import { ColaboradoresPage } from "./pages/Colaboradores/ColaboradoresPage";
 import { LoginPage } from "./pages/Login";
 import { DashboardPage } from "./pages/Dashboard/DashboardPage";
 import { EquipamentosPage } from "./pages/Equipamentos/EquipamentosPage";
@@ -48,6 +48,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <LocalizacoesPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/colaboradores"
+          element={
+            <PrivateRoute>
+              <ColaboradoresPage />
             </PrivateRoute>
           }
         />

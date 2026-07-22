@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
+
+import { Button } from "../Button";
+import { Input } from "../Input";
 
 import type { Localizacao } from "../../hooks/useLocalizacoes";
 
@@ -8,31 +12,49 @@ interface LocalizacaoFormProps {
   onSalvar: (dados: Omit<Localizacao, "id">) => Promise<void>;
 }
 
+interface FormData {
+  nome: string;
+  descricao: string;
+}
+
+function criarEstadoInicial(localizacao?: Localizacao | null): FormData {
+  return {
+    nome: localizacao?.nome ?? "",
+    descricao: localizacao?.descricao ?? "",
+  };
+}
+
 export function LocalizacaoForm({
   localizacao,
   onCancelar,
   onSalvar,
 }: LocalizacaoFormProps) {
-  const [nome, setNome] = useState("");
-  const [descricao, setDescricao] = useState("");
+  const [formData, setFormData] = useState<FormData>(() =>
+    criarEstadoInicial(localizacao),
+  );
+
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    if (localizacao) {
-      setNome(localizacao.nome);
-      setDescricao(localizacao.descricao ?? "");
+    setFormData(criarEstadoInicial(localizacao));
+  }, [localizacao]);
+
+  function handleChange(campo: keyof FormData, valor: string) {
+    setFormData((dadosAtuais) => ({
+      ...dadosAtuais,
+      [campo]: valor,
+    }));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (salvando) {
       return;
     }
 
-    setNome("");
-    setDescricao("");
-  }, [localizacao]);
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const nomeFormatado = nome.trim();
-    const descricaoFormatada = descricao.trim();
+    const nomeFormatado = formData.nome.trim();
+    const descricaoFormatada = formData.descricao.trim();
 
     if (!nomeFormatado) {
       return;
@@ -50,28 +72,19 @@ export function LocalizacaoForm({
     }
   }
 
+  const nomeInvalido = formData.nome.trim().length === 0;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <div>
-        <label
-          htmlFor="nome-localizacao"
-          className="mb-2 block text-sm font-medium text-slate-700"
-        >
-          Nome da localização
-        </label>
-
-        <input
-          id="nome-localizacao"
-          type="text"
-          value={nome}
-          onChange={(event) => setNome(event.target.value)}
-          required
-          autoFocus
-          disabled={salvando}
-          placeholder="Ex.: Sala de TI"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-        />
-      </div>
+      <Input
+        label="Nome da localização"
+        required
+        autoFocus
+        value={formData.nome}
+        disabled={salvando}
+        placeholder="Ex.: Sala de TI"
+        onChange={(event) => handleChange("nome", event.target.value)}
+      />
 
       <div>
         <label
@@ -84,35 +97,27 @@ export function LocalizacaoForm({
         <textarea
           id="descricao-localizacao"
           rows={4}
-          value={descricao}
-          onChange={(event) => setDescricao(event.target.value)}
+          value={formData.descricao}
           disabled={salvando}
           placeholder="Ex.: Sala localizada no segundo andar."
+          onChange={(event) => handleChange("descricao", event.target.value)}
           className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
         />
       </div>
 
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
-        <button
+        <Button
           type="button"
-          onClick={onCancelar}
+          variant="secondary"
           disabled={salvando}
-          className="rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={onCancelar}
         >
           Cancelar
-        </button>
+        </Button>
 
-        <button
-          type="submit"
-          disabled={salvando || !nome.trim()}
-          className="rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {salvando
-            ? "Salvando..."
-            : localizacao
-              ? "Salvar alterações"
-              : "Cadastrar"}
-        </button>
+        <Button type="submit" loading={salvando} disabled={nomeInvalido}>
+          {localizacao ? "Salvar alterações" : "Cadastrar"}
+        </Button>
       </div>
     </form>
   );

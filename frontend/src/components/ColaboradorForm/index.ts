@@ -1,0 +1,1 @@
+export { ColaboradorForm } from "./ColaboradorForm";

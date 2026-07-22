@@ -10,6 +10,7 @@ export function useEquipamentos() {
   const [pesquisa, setPesquisa] = useState("");
   const [categoriaSelecionada, setCategoriaSelecionada] = useState("");
   const [localizacaoSelecionada, setLocalizacaoSelecionada] = useState("");
+  const [responsavelSelecionado, setResponsavelSelecionado] = useState("");
   const [statusSelecionado, setStatusSelecionado] = useState("");
 
   const [carregando, setCarregando] = useState(true);
@@ -74,6 +75,16 @@ export function useEquipamentos() {
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [equipamentos]);
 
+  const responsaveis = useMemo(() => {
+    return Array.from(
+      new Set(
+        equipamentos
+          .map((equipamento) => equipamento.responsavel?.nome?.trim())
+          .filter((nome): nome is string => Boolean(nome)),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [equipamentos]);
+
   const equipamentosFiltrados = useMemo(() => {
     const termo = pesquisa.trim().toLowerCase();
 
@@ -102,7 +113,9 @@ export function useEquipamentos() {
       const correspondeLocalizacao =
         !localizacaoSelecionada ||
         equipamento.localizacao?.nome === localizacaoSelecionada;
-
+      const correspondeResponsavel =
+        !responsavelSelecionado ||
+        equipamento.responsavel?.nome === responsavelSelecionado;
       const correspondeStatus =
         !statusSelecionado || equipamento.status === statusSelecionado;
 
@@ -110,6 +123,7 @@ export function useEquipamentos() {
         correspondePesquisa &&
         correspondeCategoria &&
         correspondeLocalizacao &&
+        correspondeResponsavel &&
         correspondeStatus
       );
     });
@@ -118,6 +132,7 @@ export function useEquipamentos() {
     pesquisa,
     categoriaSelecionada,
     localizacaoSelecionada,
+    responsavelSelecionado,
     statusSelecionado,
   ]);
 
@@ -125,12 +140,14 @@ export function useEquipamentos() {
     pesquisa.trim() !== "" ||
     categoriaSelecionada !== "" ||
     localizacaoSelecionada !== "" ||
+    responsavelSelecionado !== "" ||
     statusSelecionado !== "";
 
   function limparFiltros() {
     setPesquisa("");
     setCategoriaSelecionada("");
     setLocalizacaoSelecionada("");
+    setResponsavelSelecionado("");
     setStatusSelecionado("");
   }
 
@@ -210,12 +227,15 @@ export function useEquipamentos() {
 
     localizacaoSelecionada,
     setLocalizacaoSelecionada,
+    responsavelSelecionado,
+    setResponsavelSelecionado,
 
     statusSelecionado,
     setStatusSelecionado,
 
     categorias,
     localizacoes,
+    responsaveis,
     statusDisponiveis,
 
     filtrosAtivos,

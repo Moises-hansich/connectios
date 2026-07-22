@@ -6,6 +6,18 @@ export interface Localizacao {
   atualizadoEm: string;
 }
 
+export interface Responsavel {
+  id: number;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  cargo: string | null;
+  localizacaoId: number | null;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export interface Equipamento {
   id: number;
   nome: string;
@@ -15,9 +27,15 @@ export interface Equipamento {
   numeroSerie: string | null;
   patrimonio: string | null;
   status: string;
+
   localizacaoId: number | null;
   localizacao: Localizacao | null;
+
+  responsavelId: number | null;
+  responsavel: Responsavel | null;
+
   observacoes: string | null;
+
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -41,7 +59,10 @@ export interface CriarEquipamentoData {
   numeroSerie?: string;
   patrimonio?: string;
   status: string;
+
   localizacaoId?: number | null;
+  responsavelId?: number | null;
+
   observacoes?: string;
 }
 
@@ -53,6 +74,9 @@ export interface AtualizarEquipamentoData {
   numeroSerie?: string;
   patrimonio?: string;
   status?: string;
+
   localizacaoId?: number | null;
+  responsavelId?: number | null;
+
   observacoes?: string;
 }

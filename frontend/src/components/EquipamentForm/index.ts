@@ -1,1 +1,1 @@
-export * from "./EquipamentForm";
+export { EquipmentForm } from "./EquipamentForm";
