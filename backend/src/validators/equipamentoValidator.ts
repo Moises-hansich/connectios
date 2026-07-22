@@ -21,6 +21,21 @@ const localizacaoIdSchema = z
   .nullable()
   .optional();
 
+const responsavelIdSchema = z
+  .union([
+    z.number(),
+    z
+      .string()
+      .trim()
+      .transform((valor) => Number(valor)),
+  ])
+  .refine(
+    (valor) => Number.isInteger(valor) && valor > 0,
+    "Responsável inválido",
+  )
+  .nullable()
+  .optional();
+
 export const criarEquipamentoSchema = z.object({
   nome: z
     .string({ message: "Nome é obrigatório" })
@@ -43,6 +58,8 @@ export const criarEquipamentoSchema = z.object({
     .min(1, "Status é obrigatório"),
 
   localizacaoId: localizacaoIdSchema,
+
+  responsavelId: responsavelIdSchema,
 
   observacoes: campoOpcional,
 });

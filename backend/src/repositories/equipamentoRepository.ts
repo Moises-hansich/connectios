@@ -18,6 +18,7 @@ export interface CreateEquipamentoData {
   patrimonio?: string;
   status: string;
   localizacaoId?: number | null;
+  responsavelId?: number | null;
   observacoes?: string;
 }
 
@@ -26,6 +27,7 @@ export class EquipamentoRepository {
     return prisma.equipamento.findMany({
       include: {
         localizacao: true,
+        responsavel: true,
       },
       orderBy: {
         criadoEm: "desc",
@@ -40,6 +42,7 @@ export class EquipamentoRepository {
       },
       include: {
         localizacao: true,
+        responsavel: true,
       },
     });
   }
@@ -51,6 +54,7 @@ export class EquipamentoRepository {
       },
       include: {
         localizacao: true,
+        responsavel: true,
       },
     });
   }
@@ -60,6 +64,7 @@ export class EquipamentoRepository {
       data,
       include: {
         localizacao: true,
+        responsavel: true,
       },
     });
   }
@@ -71,6 +76,7 @@ export class EquipamentoRepository {
       },
       include: {
         localizacao: true,
+        responsavel: true,
       },
     });
   }
@@ -83,6 +89,7 @@ export class EquipamentoRepository {
       data,
       include: {
         localizacao: true,
+        responsavel: true,
       },
     });
   }
@@ -94,6 +101,7 @@ export class EquipamentoRepository {
       },
       include: {
         localizacao: true,
+        responsavel: true,
       },
     });
   }
@@ -152,6 +160,15 @@ export class EquipamentoRepository {
               },
             },
           },
+          {
+            responsavel: {
+              is: {
+                nome: {
+                  contains: filters.search,
+                },
+              },
+            },
+          },
         ],
       }),
     };
@@ -161,6 +178,7 @@ export class EquipamentoRepository {
         where,
         include: {
           localizacao: true,
+          responsavel: true,
         },
         orderBy: {
           criadoEm: "desc",

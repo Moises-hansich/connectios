@@ -7,14 +7,17 @@ import {
 } from "../repositories/equipamentoRepository";
 
 import { LocalizacaoRepository } from "../repositories/localizacaoRepository";
+import { ColaboradorRepository } from "../repositories/colaboradorRepository";
 
 export class EquipamentoService {
   private repository: EquipamentoRepository;
   private localizacaoRepository: LocalizacaoRepository;
+  private colaboradorRepository: ColaboradorRepository;
 
   constructor() {
     this.repository = new EquipamentoRepository();
     this.localizacaoRepository = new LocalizacaoRepository();
+    this.colaboradorRepository = new ColaboradorRepository();
   }
 
   async listarTodos() {
@@ -67,6 +70,20 @@ export class EquipamentoService {
       }
     }
 
+    if (data.responsavelId !== undefined && data.responsavelId !== null) {
+      if (!Number.isInteger(data.responsavelId) || data.responsavelId <= 0) {
+        throw new AppError("Responsável inválido", 400);
+      }
+
+      const colaborador = await this.colaboradorRepository.findById(
+        data.responsavelId,
+      );
+
+      if (!colaborador) {
+        throw new AppError("Colaborador responsável não encontrado", 404);
+      }
+    }
+
     const equipamentoLimpo: CreateEquipamentoData = {
       nome: data.nome.trim(),
       categoria: data.categoria.trim(),
@@ -76,6 +93,7 @@ export class EquipamentoService {
       patrimonio: data.patrimonio?.trim() || undefined,
       status: data.status.trim(),
       localizacaoId: data.localizacaoId ?? null,
+      responsavelId: data.responsavelId ?? null,
       observacoes: data.observacoes?.trim() || undefined,
     };
 
@@ -163,6 +181,20 @@ export class EquipamentoService {
       }
     }
 
+    if (data.responsavelId !== undefined && data.responsavelId !== null) {
+      if (!Number.isInteger(data.responsavelId) || data.responsavelId <= 0) {
+        throw new AppError("Responsável inválido", 400);
+      }
+
+      const colaborador = await this.colaboradorRepository.findById(
+        data.responsavelId,
+      );
+
+      if (!colaborador) {
+        throw new AppError("Colaborador responsável não encontrado", 404);
+      }
+    }
+
     const equipamentoLimpo: Partial<CreateEquipamentoData> = {};
 
     if (data.nome !== undefined) {
@@ -195,6 +227,10 @@ export class EquipamentoService {
 
     if (data.localizacaoId !== undefined) {
       equipamentoLimpo.localizacaoId = data.localizacaoId;
+    }
+
+    if (data.responsavelId !== undefined) {
+      equipamentoLimpo.responsavelId = data.responsavelId;
     }
 
     if (data.observacoes !== undefined) {
