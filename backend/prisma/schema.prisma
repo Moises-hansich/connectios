@@ -21,10 +21,14 @@ model Equipamento {
   localizacaoId Int?
   localizacao   Localizacao? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
 
+  responsavelId Int?
+  responsavel   Colaborador? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   @@index([localizacaoId])
+  @@index([responsavelId])
 }
 
 model Localizacao {
@@ -32,8 +36,30 @@ model Localizacao {
   nome         String        @unique
   descricao    String?
   equipamentos Equipamento[]
+  colaboradores Colaborador[]
   criadoEm     DateTime      @default(now())
   atualizadoEm DateTime      @updatedAt
+}
+
+model Colaborador {
+  id             Int      @id @default(autoincrement())
+
+  nome           String
+  email          String?  @unique
+  telefone       String?
+  cargo          String?
+
+  localizacaoId  Int?
+  localizacao    Localizacao? @relation(fields: [localizacaoId], references: [id])
+
+  ativo          Boolean @default(true)
+
+  equipamentos   Equipamento[]
+
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+
+  @@index([localizacaoId])
 }
 
 model Usuario {
