@@ -24,7 +24,7 @@ model Equipamento {
   responsavelId Int?
   responsavel   Colaborador? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
 
-  hardwares Hardware[]
+  hardware Hardware[]
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
@@ -33,44 +33,92 @@ model Equipamento {
   @@index([responsavelId])
 }
 
+model TipoHardware {
+  id        Int     @id @default(autoincrement())
+  nome      String  @unique
+  descricao String?
+  ativo     Boolean @default(true)
+  ordem     Int     @default(0)
+
+  campos    CampoHardware[]
+  hardwares Hardware[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model CampoHardware {
+  id Int @id @default(autoincrement())
+
+  nome  String
+  chave String
+
+  tipoDado String @default("texto")
+
+  unidade String?
+
+  placeholder String?
+
+  obrigatorio Boolean @default(false)
+
+  ativo Boolean @default(true)
+
+  ordem Int @default(0)
+
+  tipoHardwareId Int
+  tipoHardware   TipoHardware @relation(fields: [tipoHardwareId], references: [id], onDelete: Cascade)
+
+  valores HardwareValor[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([tipoHardwareId, chave])
+  @@index([tipoHardwareId])
+}
+
 model Hardware {
   id Int @id @default(autoincrement())
 
-  tipo        String
-  nome        String
+  nome String
+
   fabricante  String?
   modelo      String?
   numeroSerie String?
   observacoes String?
 
+  tipoHardwareId Int
+  tipoHardware   TipoHardware @relation(fields: [tipoHardwareId], references: [id])
+
   equipamentoId Int
   equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
 
-  atributos HardwareAtributo[]
+  valores HardwareValor[]
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
+  @@index([tipoHardwareId])
   @@index([equipamentoId])
-  @@index([tipo])
 }
 
-model HardwareAtributo {
+model HardwareValor {
   id Int @id @default(autoincrement())
 
-  nome    String
-  valor   String
-  unidade String?
-  ordem   Int     @default(0)
+  valor String
 
   hardwareId Int
   hardware   Hardware @relation(fields: [hardwareId], references: [id], onDelete: Cascade)
 
+  campoHardwareId Int
+  campoHardware   CampoHardware @relation(fields: [campoHardwareId], references: [id], onDelete: Cascade)
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  @@unique([hardwareId, nome])
+  @@unique([hardwareId, campoHardwareId])
   @@index([hardwareId])
+  @@index([campoHardwareId])
 }
 
 model Localizacao {
@@ -79,20 +127,25 @@ model Localizacao {
   descricao     String?
   equipamentos  Equipamento[]
   colaboradores Colaborador[]
-  criadoEm      DateTime      @default(now())
-  atualizadoEm  DateTime      @updatedAt
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }
 
 model Colaborador {
   id Int @id @default(autoincrement())
 
-  nome     String
-  email    String? @unique
+  nome String
+
+  email String? @unique
+
   telefone String?
-  cargo    String?
+
+  cargo String?
 
   localizacaoId Int?
-  localizacao   Localizacao? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
+
+  localizacao Localizacao? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
 
   ativo Boolean @default(true)
 
@@ -105,12 +158,18 @@ model Colaborador {
 }
 
 model Usuario {
-  id           Int      @id @default(autoincrement())
-  nome         String
-  email        String   @unique
-  senhaHash    String
-  perfil       String   @default("USUARIO")
-  ativo        Boolean  @default(true)
+  id Int @id @default(autoincrement())
+
+  nome String
+
+  email String @unique
+
+  senhaHash String
+
+  perfil String @default("USUARIO")
+
+  ativo Boolean @default(true)
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
