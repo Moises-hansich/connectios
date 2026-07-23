@@ -8,7 +8,7 @@ export class DashboardService {
       await Promise.all([
         this.repository.contarEquipamentos(),
         this.repository.contarPorStatus("Em uso"),
-        this.repository.contarPorStatus("Manutenção"),
+        this.repository.contarPorStatus("Em manutenção"),
         this.repository.contarPorStatus("Disponível"),
         this.repository.buscarCategorias(),
         this.repository.buscarStatus(),

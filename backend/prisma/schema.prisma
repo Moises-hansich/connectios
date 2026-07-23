@@ -24,6 +24,8 @@ model Equipamento {
   responsavelId Int?
   responsavel   Colaborador? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
 
+  hardwares Hardware[]
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
@@ -31,33 +33,73 @@ model Equipamento {
   @@index([responsavelId])
 }
 
+model Hardware {
+  id Int @id @default(autoincrement())
+
+  tipo        String
+  nome        String
+  fabricante  String?
+  modelo      String?
+  numeroSerie String?
+  observacoes String?
+
+  equipamentoId Int
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+
+  atributos HardwareAtributo[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([equipamentoId])
+  @@index([tipo])
+}
+
+model HardwareAtributo {
+  id Int @id @default(autoincrement())
+
+  nome    String
+  valor   String
+  unidade String?
+  ordem   Int     @default(0)
+
+  hardwareId Int
+  hardware   Hardware @relation(fields: [hardwareId], references: [id], onDelete: Cascade)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([hardwareId, nome])
+  @@index([hardwareId])
+}
+
 model Localizacao {
-  id           Int           @id @default(autoincrement())
-  nome         String        @unique
-  descricao    String?
-  equipamentos Equipamento[]
+  id            Int           @id @default(autoincrement())
+  nome          String        @unique
+  descricao     String?
+  equipamentos  Equipamento[]
   colaboradores Colaborador[]
-  criadoEm     DateTime      @default(now())
-  atualizadoEm DateTime      @updatedAt
+  criadoEm      DateTime      @default(now())
+  atualizadoEm  DateTime      @updatedAt
 }
 
 model Colaborador {
-  id             Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  nome           String
-  email          String?  @unique
-  telefone       String?
-  cargo          String?
+  nome     String
+  email    String? @unique
+  telefone String?
+  cargo    String?
 
-  localizacaoId  Int?
-  localizacao    Localizacao? @relation(fields: [localizacaoId], references: [id])
+  localizacaoId Int?
+  localizacao   Localizacao? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
 
-  ativo          Boolean @default(true)
+  ativo Boolean @default(true)
 
-  equipamentos   Equipamento[]
+  equipamentos Equipamento[]
 
-  criadoEm       DateTime @default(now())
-  atualizadoEm   DateTime @updatedAt
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 
   @@index([localizacaoId])
 }
