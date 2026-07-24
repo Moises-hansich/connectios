@@ -201,3 +201,4 @@ export class EquipamentoRepository {
     };
   }
 }
+export const equipamentoRepository = new EquipamentoRepository();
