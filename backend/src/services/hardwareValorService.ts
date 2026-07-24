@@ -1,14 +1,14 @@
 import { AppError } from "../errors/AppError";
 
-import { hardwareRepository } from "../repositories/hardwareRepository";
 import { campoHardwareRepository } from "../repositories/campoHardwareRepository";
+import { hardwareRepository } from "../repositories/hardwareRepository";
 import { hardwareValorRepository } from "../repositories/hardwareValorRepository";
 
 import {
-  atualizarHardwareValorSchema,
-  criarHardwareValorSchema,
   AtualizarHardwareValorInput,
   CriarHardwareValorInput,
+  atualizarHardwareValorSchema,
+  criarHardwareValorSchema,
 } from "../validators/hardwareValorValidator";
 
 class HardwareValorService {
@@ -29,6 +29,13 @@ class HardwareValorService {
 
     if (!campo) {
       throw new AppError("Campo de hardware não encontrado.", 404);
+    }
+
+    if (campo.tipoHardwareId !== hardware.tipoHardwareId) {
+      throw new AppError(
+        "O campo informado não pertence ao tipo deste hardware.",
+        400,
+      );
     }
 
     const valorExistente = await hardwareValorRepository.findByHardwareECampo(
@@ -54,7 +61,7 @@ class HardwareValorService {
     const valor = await hardwareValorRepository.findById(id);
 
     if (!valor) {
-      throw new AppError("Valor não encontrado.", 404);
+      throw new AppError("Valor de hardware não encontrado.", 404);
     }
 
     return valor;
@@ -69,7 +76,43 @@ class HardwareValorService {
   async update(id: number, data: AtualizarHardwareValorInput) {
     const dadosValidados = atualizarHardwareValorSchema.parse(data);
 
-    await this.findById(id);
+    const valorAtual = await this.findById(id);
+
+    const hardwareId = dadosValidados.hardwareId ?? valorAtual.hardwareId;
+
+    const campoHardwareId =
+      dadosValidados.campoHardwareId ?? valorAtual.campoHardwareId;
+
+    const hardware = await hardwareRepository.findById(hardwareId);
+
+    if (!hardware) {
+      throw new AppError("Hardware não encontrado.", 404);
+    }
+
+    const campo = await campoHardwareRepository.findById(campoHardwareId);
+
+    if (!campo) {
+      throw new AppError("Campo de hardware não encontrado.", 404);
+    }
+
+    if (campo.tipoHardwareId !== hardware.tipoHardwareId) {
+      throw new AppError(
+        "O campo informado não pertence ao tipo deste hardware.",
+        400,
+      );
+    }
+
+    const valorExistente = await hardwareValorRepository.findByHardwareECampo(
+      hardwareId,
+      campoHardwareId,
+    );
+
+    if (valorExistente && valorExistente.id !== id) {
+      throw new AppError(
+        "Este hardware já possui um valor para este campo.",
+        409,
+      );
+    }
 
     return hardwareValorRepository.update(id, dadosValidados);
   }
@@ -86,6 +129,8 @@ class HardwareValorService {
     if (!hardware) {
       throw new AppError("Hardware não encontrado.", 404);
     }
+
+    return hardware;
   }
 }
 
