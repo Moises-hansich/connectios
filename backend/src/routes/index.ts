@@ -9,6 +9,7 @@ import colaboradorRoutes from "./colaboradorRoutes";
 import tipoHardwareRoutes from "./tipoHardwareRoutes";
 import campoHardwareRoutes from "./campoHardwareRoutes";
 import hardwareRoutes from "./hardwareRoutes";
+import hardwareValorRoutes from "./hardwareValorRoutes";
 const routes = Router();
 
 routes.use("/auth", authRoutes);
@@ -20,4 +21,5 @@ routes.use("/colaboradores", colaboradorRoutes);
 routes.use("/tipos-hardware", tipoHardwareRoutes);
 routes.use("/campos-hardware", campoHardwareRoutes);
 routes.use("/hardwares", hardwareRoutes);
+routes.use("/hardware-valores", hardwareValorRoutes);
 export default routes;
