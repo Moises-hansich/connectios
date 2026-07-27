@@ -1,5 +1,5 @@
 import { Plus, FilterX } from "lucide-react";
-
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "../../layouts/MainLayout";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
@@ -14,6 +14,7 @@ import { Select } from "../../components/Select";
 import { useEquipamentos } from "../../hooks/useEquipamentos";
 
 export function EquipamentosPage() {
+  const navigate = useNavigate();
   const {
     equipamentosFiltrados,
 
@@ -57,7 +58,9 @@ export function EquipamentosPage() {
 
     finalizarCadastroOuEdicao,
   } = useEquipamentos();
-
+  function abrirHardware(equipamento: Equipamento) {
+    navigate(`/equipamentos/${equipamento.id}`);
+  }
   return (
     <MainLayout>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -158,6 +161,7 @@ export function EquipamentosPage() {
             equipamentos={equipamentosFiltrados}
             onEdit={abrirModalEdicao}
             onDelete={abrirModalExclusao}
+            onHardware={abrirHardware}
           />
         )}
       </Card>

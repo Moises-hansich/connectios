@@ -9,17 +9,7 @@ import { UsuariosPage } from "./pages/usuarios/UsuariosPage";
 import { PrivateRoute } from "./routes/PrivateRoute";
 import { LocalizacoesPage } from "./pages/Localizacao/LocalizacoesPage";
 import { EquipamentoDetalhesPage } from "./pages/EquipamentoDetalhes/EquipamentoDetalhesPage";
-function PaginaEmConstrucao({ titulo }: { titulo: string }) {
-  return (
-    <div className="rounded-xl bg-white p-6 shadow-sm">
-      <h1 className="text-2xl font-bold text-slate-900">{titulo}</h1>
-
-      <p className="mt-2 text-slate-500">
-        Esta página ainda está em desenvolvimento.
-      </p>
-    </div>
-  );
-}
+import { ConfiguracoesPage } from "./pages/Configuracoes/ConfiguracoesPage";
 
 export default function App() {
   return (
@@ -82,7 +72,7 @@ export default function App() {
           path="/configuracoes"
           element={
             <PrivateRoute>
-              <PaginaEmConstrucao titulo="Configurações" />
+              <ConfiguracoesPage />
             </PrivateRoute>
           }
         />

@@ -1,0 +1,1 @@
+export { TipoHardwareTable } from "./TipoHardwareTable";

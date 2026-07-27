@@ -1,18 +1,22 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Cpu } from "lucide-react";
 
 import { Badge } from "../Badge";
 import type { Equipamento } from "../../types/equipamento";
 
 interface EquipmentTableProps {
   equipamentos: Equipamento[];
-  onEdit?: (equipamento: Equipamento) => void;
-  onDelete?: (equipamento: Equipamento) => void;
-}
 
+  onEdit?: (equipamento: Equipamento) => void;
+
+  onDelete?: (equipamento: Equipamento) => void;
+
+  onHardware?: (equipamento: Equipamento) => void;
+}
 export function EquipmentTable({
   equipamentos,
   onEdit,
   onDelete,
+  onHardware,
 }: EquipmentTableProps) {
   if (equipamentos.length === 0) {
     return (
@@ -83,8 +87,17 @@ export function EquipmentTable({
             <div className="mt-4 flex flex-col gap-2 border-t border-gray-100 pt-4 min-[400px]:flex-row min-[400px]:justify-end">
               <button
                 type="button"
+                onClick={() => onHardware?.(equipamento)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 min-[400px]:w-auto"
+              >
+                <Cpu size={17} />
+                Hardware
+              </button>
+
+              <button
+                type="button"
                 onClick={() => onEdit?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50 min-[400px]:w-auto"
+                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 min-[400px]:w-auto"
               >
                 <Pencil size={17} />
                 Editar
@@ -93,7 +106,7 @@ export function EquipmentTable({
               <button
                 type="button"
                 onClick={() => onDelete?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-50 min-[400px]:w-auto"
+                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600 min-[400px]:w-auto"
               >
                 <Trash2 size={17} />
                 Excluir
@@ -152,6 +165,14 @@ export function EquipmentTable({
 
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onHardware?.(equipamento)}
+                      className="rounded-lg p-2 text-slate-800 transition-colors hover:bg-indigo-200"
+                      aria-label={`Hardware ${equipamento.nome}`}
+                    >
+                      <Cpu size={18} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => onEdit?.(equipamento)}
