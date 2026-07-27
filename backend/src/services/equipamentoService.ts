@@ -113,7 +113,19 @@ export class EquipamentoService {
 
     return equipamento;
   }
+  async buscarCompleto(id: number) {
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new AppError("ID do equipamento inválido", 400);
+    }
 
+    const equipamento = await this.repository.findCompleto(id);
+
+    if (!equipamento) {
+      throw new AppError("Equipamento não encontrado", 404);
+    }
+
+    return equipamento;
+  }
   async atualizar(id: number, data: Partial<CreateEquipamentoData>) {
     if (!Number.isInteger(id) || id <= 0) {
       throw new AppError("ID do equipamento inválido", 400);

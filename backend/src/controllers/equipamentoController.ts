@@ -66,6 +66,16 @@ export class EquipamentoController {
       data: equipamento,
     });
   }
+  async buscarCompleto(req: Request, res: Response) {
+    const id = Number(req.params.id);
+
+    const equipamento = await this.service.buscarCompleto(id);
+
+    return res.status(200).json({
+      success: true,
+      data: equipamento,
+    });
+  }
 
   async atualizar(req: Request, res: Response) {
     const id = Number(req.params.id);

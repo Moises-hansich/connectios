@@ -17,6 +17,11 @@ type ListarEquipamentosResponse = {
   };
 };
 
+type BuscarEquipamentoCompletoResponse = {
+  success: boolean;
+  data: Equipamento;
+};
+
 export const equipamentoService = {
   async listar(): Promise<Equipamento[]> {
     const response = await api.get<ListarEquipamentosResponse>(
@@ -30,6 +35,14 @@ export const equipamentoService = {
     );
 
     return Array.isArray(response.data.data) ? response.data.data : [];
+  },
+
+  async buscarCompleto(id: number): Promise<Equipamento> {
+    const response = await api.get<BuscarEquipamentoCompletoResponse>(
+      `/equipamentos/${id}/completo`,
+    );
+
+    return response.data.data;
   },
 
   async criar(dados: CriarEquipamentoData) {

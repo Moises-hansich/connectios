@@ -14,6 +14,10 @@ router.get(
   asyncHandler((req, res) => controller.listarTodos(req, res)),
 );
 router.get(
+  "/:id/completo",
+  asyncHandler((req, res) => controller.buscarCompleto(req, res)),
+);
+router.get(
   "/:id",
   asyncHandler((req, res) => controller.buscarPorId(req, res)),
 );

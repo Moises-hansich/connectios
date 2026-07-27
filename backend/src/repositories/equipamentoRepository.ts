@@ -80,6 +80,43 @@ export class EquipamentoRepository {
       },
     });
   }
+  async findCompleto(id: number) {
+    return prisma.equipamento.findUnique({
+      where: {
+        id,
+      },
+
+      include: {
+        localizacao: true,
+
+        responsavel: true,
+
+        hardware: {
+          include: {
+            tipoHardware: true,
+
+            valores: {
+              include: {
+                campoHardware: true,
+              },
+
+              orderBy: {
+                campoHardware: {
+                  ordem: "asc",
+                },
+              },
+            },
+          },
+
+          orderBy: {
+            tipoHardware: {
+              ordem: "asc",
+            },
+          },
+        },
+      },
+    });
+  }
 
   async update(id: number, data: Partial<CreateEquipamentoData>) {
     return prisma.equipamento.update({

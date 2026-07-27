@@ -1,12 +1,14 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
-import { ColaboradoresPage } from "./pages/Colaboradores/ColaboradoresPage";
+
+import { ColaboradoresPage } from "./pages/colaboradores/ColaboradoresPage";
 import { LoginPage } from "./pages/Login";
 import { DashboardPage } from "./pages/Dashboard/DashboardPage";
 import { EquipamentosPage } from "./pages/Equipamentos/EquipamentosPage";
 import { UsuariosPage } from "./pages/usuarios/UsuariosPage";
 import { PrivateRoute } from "./routes/PrivateRoute";
-import { LocalizacoesPage } from "./pages/localizacao/LocalizacoesPage";
+import { LocalizacoesPage } from "./pages/Localizacao/LocalizacoesPage";
+import { EquipamentoDetalhesPage } from "./pages/EquipamentoDetalhes/EquipamentoDetalhesPage";
 function PaginaEmConstrucao({ titulo }: { titulo: string }) {
   return (
     <div className="rounded-xl bg-white p-6 shadow-sm">
@@ -42,7 +44,14 @@ export default function App() {
             </PrivateRoute>
           }
         />
-
+        <Route
+          path="/equipamentos/:id"
+          element={
+            <PrivateRoute>
+              <EquipamentoDetalhesPage />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/localizacoes"
           element={
