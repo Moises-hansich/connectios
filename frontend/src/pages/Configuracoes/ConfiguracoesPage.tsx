@@ -1,98 +1,115 @@
 import { Plus } from "lucide-react";
 
-import { MainLayout } from "../../layouts";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { ConfirmModal } from "../../components/ConfirmModal";
+import { MainLayout } from "../../layouts/MainLayout";
 
 import {
   TipoHardwareModal,
   TipoHardwareTable,
 } from "../../components/TipoHardware";
 
+import {
+  CampoHardwareModal,
+  CampoHardwareTable,
+} from "../../components/CampoHardware";
+
 import { useTipoHardware } from "../../hooks/useTipoHardware";
+import { useCampoHardware } from "../../hooks/useCampoHardware";
+
 export function ConfiguracoesPage() {
   const {
     tiposHardware,
     carregando,
 
-    abrirModalCriacao,
-    abrirModalEdicao,
-    abrirModalExclusao,
-
-    // serão usados na próxima etapa
     modalAberto,
-    modalExcluirAberto,
     tipoSelecionado,
+
+    modalExcluirAberto,
     tipoExcluir,
+    excluindo,
+
+    abrirModalCadastro,
+    abrirModalEdicao,
     fecharModal,
+    finalizarCadastroOuEdicao,
+
+    abrirModalExclusao,
     fecharModalExclusao,
     confirmarExclusao,
-    finalizarCadastroOuEdicao,
-    excluindo,
   } = useTipoHardware();
+
+  const {
+    camposHardware,
+    carregando: carregandoCampos,
+
+    modalAberto: modalCampoAberto,
+    campoSelecionado,
+
+    modalExcluirAberto: modalExcluirCampoAberto,
+    campoExcluir,
+    excluindo: excluindoCampo,
+
+    abrirModalCadastro: abrirCadastroCampo,
+    abrirModalEdicao: abrirEdicaoCampo,
+    fecharModal: fecharModalCampo,
+    finalizarCadastroOuEdicao: finalizarCampo,
+
+    abrirModalExclusao: abrirExcluirCampo,
+    fecharModalExclusao: fecharExcluirCampo,
+    confirmarExclusao: confirmarExcluirCampo,
+  } = useCampoHardware();
 
   return (
     <MainLayout>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Configurações</h1>
+      <div className="space-y-6">
+        <header>
+          <h1 className="text-2xl font-bold text-slate-900">Configurações</h1>
 
-        <p className="text-sm text-gray-500">
-          Gerencie os tipos e campos de hardware do sistema.
-        </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Configure os tipos e os campos personalizados dos hardwares.
+          </p>
+        </header>
+
+        <Card
+          title="Tipos de Hardware"
+          description="Cadastre e organize os tipos de hardware disponíveis no sistema."
+        >
+          <div className="mb-6 flex justify-end">
+            <Button type="button" onClick={abrirModalCadastro}>
+              <Plus size={18} />
+              Novo Tipo
+            </Button>
+          </div>
+
+          <TipoHardwareTable
+            tipos={tiposHardware}
+            carregando={carregando}
+            onEditar={abrirModalEdicao}
+            onExcluir={abrirModalExclusao}
+          />
+        </Card>
+
+        <Card
+          title="Campos de Hardware"
+          description="Configure os campos que serão exibidos para cada tipo de hardware."
+        >
+          <div className="mb-6 flex justify-end">
+            <Button type="button" onClick={abrirCadastroCampo}>
+              <Plus size={18} />
+              Novo Campo
+            </Button>
+          </div>
+
+          <CampoHardwareTable
+            campos={camposHardware}
+            carregando={carregandoCampos}
+            onEditar={abrirEdicaoCampo}
+            onExcluir={abrirExcluirCampo}
+          />
+        </Card>
       </div>
-
-      <Card className="mb-6">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Tipos de Hardware</h2>
-
-            <p className="text-sm text-gray-500">
-              Cadastre os tipos de componentes que podem pertencer a um
-              equipamento.
-            </p>
-          </div>
-
-          <Button onClick={abrirModalCriacao}>
-            <Plus size={18} />
-            Novo tipo
-          </Button>
-        </div>
-
-        <TipoHardwareTable
-          tipos={tiposHardware}
-          carregando={carregando}
-          onEditar={abrirModalEdicao}
-          onExcluir={abrirModalExclusao}
-        />
-      </Card>
-
-      <Card>
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Campos de Hardware</h2>
-
-            <p className="text-sm text-gray-500">
-              Configure os campos personalizados de cada tipo de hardware.
-            </p>
-          </div>
-
-          <Button disabled>
-            <Plus size={18} />
-            Novo campo
-          </Button>
-        </div>
-
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-          <p className="font-medium text-gray-700">
-            O módulo de Campos de Hardware será implementado na próxima etapa.
-          </p>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Primeiro concluiremos o CRUD de Tipos de Hardware.
-          </p>
-        </div>
-      </Card>
 
       <TipoHardwareModal
         aberto={modalAberto}
@@ -110,6 +127,24 @@ export function ConfiguracoesPage() {
         carregando={excluindo}
         onCancel={fecharModalExclusao}
         onConfirm={confirmarExclusao}
+      />
+
+      <CampoHardwareModal
+        aberto={modalCampoAberto}
+        campoHardware={campoSelecionado}
+        onClose={fecharModalCampo}
+        onSuccess={finalizarCampo}
+      />
+
+      <ConfirmModal
+        aberto={modalExcluirCampoAberto}
+        titulo="Excluir Campo de Hardware"
+        mensagem={
+          campoExcluir ? `Deseja realmente excluir "${campoExcluir.nome}"?` : ""
+        }
+        carregando={excluindoCampo}
+        onCancel={fecharExcluirCampo}
+        onConfirm={confirmarExcluirCampo}
       />
     </MainLayout>
   );

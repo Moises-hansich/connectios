@@ -23,12 +23,14 @@ interface TipoHardwareFormProps {
 interface FormData {
   nome: string;
   descricao: string;
+  ordem: number;
 }
 
 function criarEstadoInicial(tipoHardware?: TipoHardware): FormData {
   return {
     nome: tipoHardware?.nome ?? "",
     descricao: tipoHardware?.descricao ?? "",
+    ordem: tipoHardware?.ordem ?? 0,
   };
 }
 
@@ -48,10 +50,19 @@ export function TipoHardwareForm({
     setFormData(criarEstadoInicial(tipoHardware));
   }, [tipoHardware]);
 
-  function handleChange(campo: keyof FormData, valor: string) {
+  function handleChange(campo: "nome" | "descricao", valor: string) {
     setFormData((dadosAtuais) => ({
       ...dadosAtuais,
       [campo]: valor,
+    }));
+  }
+
+  function handleOrdemChange(valor: string) {
+    const ordemConvertida = Number(valor);
+
+    setFormData((dadosAtuais) => ({
+      ...dadosAtuais,
+      ordem: Number.isNaN(ordemConvertida) ? 0 : ordemConvertida,
     }));
   }
 
@@ -64,9 +75,15 @@ export function TipoHardwareForm({
 
     const nome = formData.nome.trim();
     const descricao = formData.descricao.trim();
+    const ordem = Number(formData.ordem);
 
     if (!nome) {
       toast.error("Informe o nome do tipo de hardware.");
+      return;
+    }
+
+    if (Number.isNaN(ordem) || ordem < 0) {
+      toast.error("Informe uma ordem válida.");
       return;
     }
 
@@ -76,7 +93,8 @@ export function TipoHardwareForm({
       if (modo === "editar" && tipoHardware) {
         const dados: AtualizarTipoHardwareData = {
           nome,
-          descricao,
+          descricao: descricao || undefined,
+          ordem,
         };
 
         await tipoHardwareService.atualizar(tipoHardware.id, dados);
@@ -85,7 +103,8 @@ export function TipoHardwareForm({
       } else {
         const dados: CriarTipoHardwareData = {
           nome,
-          descricao,
+          descricao: descricao || undefined,
+          ordem,
         };
 
         await tipoHardwareService.criar(dados);
@@ -122,6 +141,16 @@ export function TipoHardwareForm({
         value={formData.descricao}
         disabled={salvando}
         onChange={(event) => handleChange("descricao", event.target.value)}
+      />
+
+      <Input
+        label="Ordem"
+        type="number"
+        min={0}
+        required
+        value={formData.ordem}
+        disabled={salvando}
+        onChange={(event) => handleOrdemChange(event.target.value)}
       />
 
       <div className="flex justify-end gap-3 pt-4">

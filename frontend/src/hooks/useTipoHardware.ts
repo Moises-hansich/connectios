@@ -40,7 +40,7 @@ export function useTipoHardware() {
     void carregarTiposHardware();
   }, [carregarTiposHardware]);
 
-  function abrirModalCriacao() {
+  function abrirModalCadastro() {
     setTipoSelecionado(null);
     setModalAberto(true);
   }
@@ -113,7 +113,7 @@ export function useTipoHardware() {
 
     carregarTiposHardware,
 
-    abrirModalCriacao,
+    abrirModalCadastro,
     abrirModalEdicao,
     fecharModal,
 
