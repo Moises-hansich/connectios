@@ -76,7 +76,19 @@ export class ColaboradorService {
 
     return colaborador;
   }
+  async buscarCompleto(id: number) {
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new AppError("ID do colaborador inválido", 400);
+    }
 
+    const colaborador = await this.repository.findCompleto(id);
+
+    if (!colaborador) {
+      throw new AppError("Colaborador não encontrado", 404);
+    }
+
+    return colaborador;
+  }
   async atualizar(id: number, data: Partial<CreateColaboradorData>) {
     if (!Number.isInteger(id) || id <= 0) {
       throw new AppError("ID do colaborador inválido", 400);

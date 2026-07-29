@@ -79,7 +79,51 @@ export class ColaboradorRepository {
       },
     });
   }
+  async findCompleto(id: number) {
+    return prisma.colaborador.findUnique({
+      where: {
+        id,
+      },
 
+      include: {
+        localizacao: true,
+
+        equipamentos: {
+          include: {
+            localizacao: true,
+
+            hardware: {
+              include: {
+                tipoHardware: true,
+
+                valores: {
+                  include: {
+                    campoHardware: true,
+                  },
+
+                  orderBy: {
+                    campoHardware: {
+                      ordem: "asc",
+                    },
+                  },
+                },
+              },
+
+              orderBy: {
+                tipoHardware: {
+                  ordem: "asc",
+                },
+              },
+            },
+          },
+
+          orderBy: {
+            nome: "asc",
+          },
+        },
+      },
+    });
+  }
   async update(id: number, data: Partial<CreateColaboradorData>) {
     return prisma.colaborador.update({
       where: {

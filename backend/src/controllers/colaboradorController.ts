@@ -69,7 +69,20 @@ export class ColaboradorController {
       data: colaborador,
     });
   }
+  async buscarCompleto(req: Request, res: Response) {
+    const id = Number(req.params.id);
 
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new AppError("ID inválido", 400);
+    }
+
+    const colaborador = await this.service.buscarCompleto(id);
+
+    return res.status(200).json({
+      success: true,
+      data: colaborador,
+    });
+  }
   async atualizar(req: Request, res: Response) {
     const id = Number(req.params.id);
 

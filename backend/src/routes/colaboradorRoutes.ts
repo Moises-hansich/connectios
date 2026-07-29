@@ -16,6 +16,13 @@ router.get(
   asyncHandler((req, res) => controller.listarTodos(req, res)),
 );
 
+// Retorna o colaborador com equipamentos e hardwares
+router.get(
+  "/:id/completo",
+  asyncHandler((req, res) => controller.buscarCompleto(req, res)),
+);
+
+// Retorna somente os dados básicos do colaborador
 router.get(
   "/:id",
   asyncHandler((req, res) => controller.buscarPorId(req, res)),

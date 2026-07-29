@@ -1,8 +1,12 @@
 import { api } from "./api";
+
 import type {
   Colaborador,
+  ColaboradorCompletoResponse,
   ColaboradorCreateData,
+  ColaboradorPorIdResponse,
   ColaboradorResponse,
+  ColaboradorUpdateData,
 } from "../types/colaborador";
 
 export const colaboradorService = {
@@ -21,10 +25,17 @@ export const colaboradorService = {
   },
 
   async buscarPorId(id: number) {
-    const response = await api.get<{
-      success: boolean;
-      data: Colaborador;
-    }>(`/colaboradores/${id}`);
+    const response = await api.get<ColaboradorPorIdResponse>(
+      `/colaboradores/${id}`,
+    );
+
+    return response.data;
+  },
+
+  async buscarCompleto(id: number) {
+    const response = await api.get<ColaboradorCompletoResponse>(
+      `/colaboradores/${id}/completo`,
+    );
 
     return response.data;
   },
@@ -39,7 +50,7 @@ export const colaboradorService = {
     return response.data;
   },
 
-  async atualizar(id: number, data: Partial<ColaboradorCreateData>) {
+  async atualizar(id: number, data: ColaboradorUpdateData) {
     const response = await api.put<{
       success: boolean;
       message: string;

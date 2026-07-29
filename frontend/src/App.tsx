@@ -10,7 +10,7 @@ import { PrivateRoute } from "./routes/PrivateRoute";
 import { LocalizacoesPage } from "./pages/Localizacao/LocalizacoesPage";
 import { EquipamentoDetalhesPage } from "./pages/EquipamentoDetalhes/EquipamentoDetalhesPage";
 import { ConfiguracoesPage } from "./pages/Configuracoes/ConfiguracoesPage";
-
+import { ColaboradorDetalhesPage } from "./pages/colaboradores/ColaboradorDetalhesPage";
 export default function App() {
   return (
     <>
@@ -58,7 +58,14 @@ export default function App() {
             </PrivateRoute>
           }
         />
-
+        <Route
+          path="/colaboradores/:id"
+          element={
+            <PrivateRoute>
+              <ColaboradorDetalhesPage />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/usuarios"
           element={

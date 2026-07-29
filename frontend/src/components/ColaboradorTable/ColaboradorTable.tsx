@@ -1,5 +1,5 @@
-import { Pencil, Trash2 } from "lucide-react";
-
+import { Pencil, Trash2, Monitor } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { Colaborador } from "../../types/colaborador";
 
 interface ColaboradorTableProps {
@@ -13,6 +13,7 @@ export function ColaboradorTable({
   onEdit,
   onDelete,
 }: ColaboradorTableProps) {
+  const navigate = useNavigate();
   if (colaboradores.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-500">
@@ -83,6 +84,14 @@ export function ColaboradorTable({
             </div>
 
             <div className="mt-4 flex flex-col gap-2 border-t border-gray-100 pt-4 min-[400px]:flex-row min-[400px]:justify-end">
+              <button
+                type="button"
+                onClick={() => navigate(`/colaboradores/${colaborador.id}`)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50 min-[400px]:w-auto"
+              >
+                <Monitor size={17} />
+                Visualizar
+              </button>
               <button
                 type="button"
                 onClick={() => onEdit?.(colaborador)}
@@ -157,6 +166,17 @@ export function ColaboradorTable({
 
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(`/colaboradores/${colaborador.id}`)
+                      }
+                      className="p-2 text-slate-600 transition hover:bg-blue-200 hover:text-slate-700"
+                      title="Visualizar equipamentos"
+                      aria-label={`Visualizar equipamentos de ${colaborador.nome}`}
+                    >
+                      <Monitor size={18} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => onEdit?.(colaborador)}

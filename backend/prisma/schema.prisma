@@ -24,7 +24,9 @@ model Equipamento {
   responsavelId Int?
   responsavel   Colaborador? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
 
-  hardware Hardware[]
+  hardware      Hardware[]
+  movimentacoes Movimentacao[]
+  manutencoes   Manutencao[]
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
@@ -50,20 +52,16 @@ model TipoHardware {
 model CampoHardware {
   id Int @id @default(autoincrement())
 
-  nome  String
-  chave String
-
+  nome     String
+  chave    String
   tipoDado String @default("texto")
 
-  unidade String?
-
+  unidade     String?
   placeholder String?
 
   obrigatorio Boolean @default(false)
-
-  ativo Boolean @default(true)
-
-  ordem Int @default(0)
+  ativo       Boolean @default(true)
+  ordem       Int     @default(0)
 
   tipoHardwareId Int
   tipoHardware   TipoHardware @relation(fields: [tipoHardwareId], references: [id], onDelete: Cascade)
@@ -80,8 +78,7 @@ model CampoHardware {
 model Hardware {
   id Int @id @default(autoincrement())
 
-  nome String
-
+  nome        String
   fabricante  String?
   modelo      String?
   numeroSerie String?
@@ -122,11 +119,16 @@ model HardwareValor {
 }
 
 model Localizacao {
-  id            Int           @id @default(autoincrement())
-  nome          String        @unique
-  descricao     String?
+  id        Int     @id @default(autoincrement())
+  nome      String  @unique
+  descricao String?
+
   equipamentos  Equipamento[]
   colaboradores Colaborador[]
+
+  movimentacoesOrigem  Movimentacao[] @relation("MovimentacaoLocalizacaoAnterior")
+  movimentacoesDestino Movimentacao[] @relation("MovimentacaoLocalizacaoNova")
+  manutencoesOrigem    Manutencao[]   @relation("ManutencaoLocalizacaoAnterior")
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
@@ -135,21 +137,20 @@ model Localizacao {
 model Colaborador {
   id Int @id @default(autoincrement())
 
-  nome String
-
-  email String? @unique
-
+  nome     String
+  email    String? @unique
   telefone String?
-
-  cargo String?
+  cargo    String?
+  ativo    Boolean @default(true)
 
   localizacaoId Int?
-
-  localizacao Localizacao? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
-
-  ativo Boolean @default(true)
+  localizacao   Localizacao? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
 
   equipamentos Equipamento[]
+
+  movimentacoesOrigem  Movimentacao[] @relation("MovimentacaoResponsavelAnterior")
+  movimentacoesDestino Movimentacao[] @relation("MovimentacaoResponsavelNovo")
+  manutencoesOrigem    Manutencao[]   @relation("ManutencaoResponsavelAnterior")
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
@@ -160,16 +161,101 @@ model Colaborador {
 model Usuario {
   id Int @id @default(autoincrement())
 
-  nome String
-
-  email String @unique
-
+  nome      String
+  email     String  @unique
   senhaHash String
+  perfil    String  @default("USUARIO")
+  ativo     Boolean @default(true)
 
-  perfil String @default("USUARIO")
-
-  ativo Boolean @default(true)
+  movimentacoes Movimentacao[] @relation("MovimentacaoUsuario")
+  manutencoes   Manutencao[]   @relation("ManutencaoUsuario")
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+}
+
+model Movimentacao {
+  id   Int    @id @default(autoincrement())
+  tipo String
+
+  equipamentoId Int
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Restrict)
+
+  responsavelAnteriorId Int?
+  responsavelAnterior   Colaborador? @relation("MovimentacaoResponsavelAnterior", fields: [responsavelAnteriorId], references: [id], onDelete: SetNull)
+
+  responsavelNovoId Int?
+  responsavelNovo   Colaborador? @relation("MovimentacaoResponsavelNovo", fields: [responsavelNovoId], references: [id], onDelete: SetNull)
+
+  localizacaoAnteriorId Int?
+  localizacaoAnterior   Localizacao? @relation("MovimentacaoLocalizacaoAnterior", fields: [localizacaoAnteriorId], references: [id], onDelete: SetNull)
+
+  localizacaoNovaId Int?
+  localizacaoNova   Localizacao? @relation("MovimentacaoLocalizacaoNova", fields: [localizacaoNovaId], references: [id], onDelete: SetNull)
+
+  manutencaoId Int?
+  manutencao   Manutencao? @relation(fields: [manutencaoId], references: [id], onDelete: SetNull)
+
+  usuarioId Int?
+  usuario   Usuario? @relation("MovimentacaoUsuario", fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  statusAnterior String?
+  statusNovo     String?
+  observacoes    String?
+
+  dataHora DateTime @default(now())
+  criadoEm DateTime @default(now())
+
+  @@index([equipamentoId, dataHora])
+  @@index([responsavelAnteriorId])
+  @@index([responsavelNovoId])
+  @@index([localizacaoAnteriorId])
+  @@index([localizacaoNovaId])
+  @@index([manutencaoId])
+  @@index([usuarioId])
+  @@index([tipo])
+}
+
+model Manutencao {
+  id Int @id @default(autoincrement())
+
+  equipamentoId Int
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Restrict)
+
+  problemaInformado  String
+  diagnostico        String?
+  solucao            String?
+  localManutencao    String?
+  empresaResponsavel String?
+
+  dataSaida       DateTime  @default(now())
+  previsaoRetorno DateTime?
+  dataRetorno     DateTime?
+
+  custo       Decimal?
+  status      String   @default("EM_ANDAMENTO")
+  observacoes String?
+
+  responsavelAnteriorId Int?
+  responsavelAnterior   Colaborador? @relation("ManutencaoResponsavelAnterior", fields: [responsavelAnteriorId], references: [id], onDelete: SetNull)
+
+  localizacaoAnteriorId Int?
+  localizacaoAnterior   Localizacao? @relation("ManutencaoLocalizacaoAnterior", fields: [localizacaoAnteriorId], references: [id], onDelete: SetNull)
+
+  statusAnterior String
+
+  registradoPorId Int?
+  registradoPor   Usuario? @relation("ManutencaoUsuario", fields: [registradoPorId], references: [id], onDelete: SetNull)
+
+  movimentacoes Movimentacao[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([equipamentoId])
+  @@index([responsavelAnteriorId])
+  @@index([localizacaoAnteriorId])
+  @@index([registradoPorId])
+  @@index([status])
+  @@index([dataSaida])
 }
