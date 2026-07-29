@@ -1,0 +1,204 @@
+import type { NextFunction, Request, Response } from "express";
+
+import { ManutencaoService } from "../services/manutencaoService";
+
+export class ManutencaoController {
+  private service: ManutencaoService;
+
+  constructor() {
+    this.service = new ManutencaoService();
+  }
+
+  listar = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const resultado = await this.service.buscarComFiltros({
+        equipamentoId: this.converterNumeroOpcional(req.query.equipamentoId),
+
+        status: this.converterTextoOpcional(req.query.status),
+
+        dataInicio: this.converterDataOpcional(req.query.dataInicio),
+
+        dataFim: this.converterDataOpcional(req.query.dataFim),
+
+        page: this.converterNumeroOpcional(req.query.page),
+
+        limit: this.converterNumeroOpcional(req.query.limit),
+      });
+
+      return res.status(200).json(resultado);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  buscarPorId = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+
+      const manutencao = await this.service.buscarPorId(id);
+
+      return res.status(200).json(manutencao);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  buscarPorEquipamento = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const equipamentoId = Number(req.params.equipamentoId);
+
+      const manutencoes =
+        await this.service.buscarPorEquipamento(equipamentoId);
+
+      return res.status(200).json(manutencoes);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  abrir = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const manutencao = await this.service.abrir({
+        equipamentoId: Number(req.body.equipamentoId),
+
+        problemaInformado: this.converterTextoObrigatorio(
+          req.body.problemaInformado,
+        ),
+
+        localManutencao: this.converterTextoNulavel(req.body.localManutencao),
+
+        empresaResponsavel: this.converterTextoNulavel(
+          req.body.empresaResponsavel,
+        ),
+
+        previsaoRetorno: this.converterDataNulavel(req.body.previsaoRetorno),
+
+        custo: this.converterNumeroNulavel(req.body.custo),
+
+        observacoes: this.converterTextoNulavel(req.body.observacoes),
+
+        registradoPorId: this.converterNumeroNulavel(req.body.registradoPorId),
+
+        dataSaida: this.converterDataOpcional(req.body.dataSaida),
+      });
+
+      return res.status(201).json({
+        mensagem: "Manutenção aberta com sucesso",
+        manutencao,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  finalizar = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+
+      const manutencao = await this.service.finalizar(id, {
+        diagnostico: this.converterTextoNulavel(req.body.diagnostico),
+
+        solucao: this.converterTextoObrigatorio(req.body.solucao),
+
+        custo: this.converterNumeroNulavel(req.body.custo),
+
+        observacoes: this.converterTextoNulavel(req.body.observacoes),
+
+        usuarioId: this.converterNumeroNulavel(req.body.usuarioId),
+
+        dataRetorno: this.converterDataOpcional(req.body.dataRetorno),
+      });
+
+      return res.status(200).json({
+        mensagem: "Manutenção finalizada com sucesso",
+        manutencao,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private obterValorUnico(valor: unknown) {
+    if (Array.isArray(valor)) {
+      return valor[0];
+    }
+
+    return valor;
+  }
+
+  private converterNumeroOpcional(valor: unknown): number | undefined {
+    const valorUnico = this.obterValorUnico(valor);
+
+    if (valorUnico === undefined || valorUnico === null || valorUnico === "") {
+      return undefined;
+    }
+
+    return Number(valorUnico);
+  }
+
+  private converterNumeroNulavel(valor: unknown): number | null | undefined {
+    if (valor === undefined) {
+      return undefined;
+    }
+
+    if (valor === null || valor === "") {
+      return null;
+    }
+
+    return Number(valor);
+  }
+
+  private converterTextoObrigatorio(valor: unknown): string {
+    return String(valor ?? "");
+  }
+
+  private converterTextoOpcional(valor: unknown): string | undefined {
+    const valorUnico = this.obterValorUnico(valor);
+
+    if (valorUnico === undefined || valorUnico === null || valorUnico === "") {
+      return undefined;
+    }
+
+    return String(valorUnico);
+  }
+
+  private converterTextoNulavel(valor: unknown): string | null | undefined {
+    if (valor === undefined) {
+      return undefined;
+    }
+
+    if (valor === null) {
+      return null;
+    }
+
+    return String(valor);
+  }
+
+  private converterDataOpcional(valor: unknown): Date | undefined {
+    const valorUnico = this.obterValorUnico(valor);
+
+    if (valorUnico === undefined || valorUnico === null || valorUnico === "") {
+      return undefined;
+    }
+
+    return new Date(String(valorUnico));
+  }
+
+  private converterDataNulavel(valor: unknown): Date | null | undefined {
+    if (valor === undefined) {
+      return undefined;
+    }
+
+    if (valor === null || valor === "") {
+      return null;
+    }
+
+    return new Date(String(valor));
+  }
+}
+
+export const manutencaoController = new ManutencaoController();

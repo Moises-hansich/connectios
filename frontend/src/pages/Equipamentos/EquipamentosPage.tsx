@@ -1,5 +1,8 @@
-import { Plus, FilterX } from "lucide-react";
+import { useState } from "react";
+import { FilterX, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
 import { MainLayout } from "../../layouts/MainLayout";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
@@ -10,11 +13,20 @@ import { Modal } from "../../components/Modal";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { SkeletonTable } from "../../components/Skeleton";
 import { Select } from "../../components/Select";
+import { AbrirManutencaoModal } from "../../components/Manutencoes";
 
 import { useEquipamentos } from "../../hooks/useEquipamentos";
 
+import type { Equipamento } from "../../types/equipamento";
+
 export function EquipamentosPage() {
   const navigate = useNavigate();
+
+  const [modalManutencaoAberto, setModalManutencaoAberto] = useState(false);
+
+  const [equipamentoManutencao, setEquipamentoManutencao] =
+    useState<Equipamento | null>(null);
+
   const {
     equipamentosFiltrados,
 
@@ -26,8 +38,10 @@ export function EquipamentosPage() {
 
     localizacaoSelecionada,
     setLocalizacaoSelecionada,
+
     responsavelSelecionado,
     setResponsavelSelecionado,
+
     statusSelecionado,
     setStatusSelecionado,
 
@@ -58,14 +72,48 @@ export function EquipamentosPage() {
 
     finalizarCadastroOuEdicao,
   } = useEquipamentos();
+
   function abrirHardware(equipamento: Equipamento) {
     navigate(`/equipamentos/${equipamento.id}`);
   }
+
+  function estaEmManutencao(equipamento: Equipamento) {
+    const statusNormalizado = equipamento.status
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[\s-]+/g, "_");
+
+    return statusNormalizado === "EM_MANUTENCAO";
+  }
+
+  function abrirModalManutencao(equipamento: Equipamento) {
+    if (estaEmManutencao(equipamento)) {
+      toast.info("Este equipamento já está em manutenção.");
+
+      return;
+    }
+
+    setEquipamentoManutencao(equipamento);
+    setModalManutencaoAberto(true);
+  }
+
+  function fecharModalManutencao() {
+    setModalManutencaoAberto(false);
+    setEquipamentoManutencao(null);
+  }
+
+  async function finalizarAberturaManutencao() {
+    await finalizarCadastroOuEdicao();
+  }
+
   return (
     <MainLayout>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Equipamentos</h1>
+
           <p className="text-sm text-gray-500">
             Total encontrado: {equipamentosFiltrados.length}
           </p>
@@ -88,7 +136,7 @@ export function EquipamentosPage() {
           <Select
             label="Categoria"
             value={categoriaSelecionada}
-            onChange={(e) => setCategoriaSelecionada(e.target.value)}
+            onChange={(event) => setCategoriaSelecionada(event.target.value)}
           >
             <option value="">Todas</option>
 
@@ -102,7 +150,7 @@ export function EquipamentosPage() {
           <Select
             label="Localização"
             value={localizacaoSelecionada}
-            onChange={(e) => setLocalizacaoSelecionada(e.target.value)}
+            onChange={(event) => setLocalizacaoSelecionada(event.target.value)}
           >
             <option value="">Todas</option>
 
@@ -112,10 +160,11 @@ export function EquipamentosPage() {
               </option>
             ))}
           </Select>
+
           <Select
             label="Responsável"
             value={responsavelSelecionado}
-            onChange={(e) => setResponsavelSelecionado(e.target.value)}
+            onChange={(event) => setResponsavelSelecionado(event.target.value)}
           >
             <option value="">Todos</option>
 
@@ -125,10 +174,11 @@ export function EquipamentosPage() {
               </option>
             ))}
           </Select>
+
           <Select
             label="Status"
             value={statusSelecionado}
-            onChange={(e) => setStatusSelecionado(e.target.value)}
+            onChange={(event) => setStatusSelecionado(event.target.value)}
           >
             <option value="">Todos</option>
 
@@ -162,6 +212,7 @@ export function EquipamentosPage() {
             onEdit={abrirModalEdicao}
             onDelete={abrirModalExclusao}
             onHardware={abrirHardware}
+            onMaintenance={abrirModalManutencao}
           />
         )}
       </Card>
@@ -192,6 +243,13 @@ export function EquipamentosPage() {
         carregando={excluindo}
         onCancel={fecharModalExclusao}
         onConfirm={confirmarExclusao}
+      />
+
+      <AbrirManutencaoModal
+        aberto={modalManutencaoAberto}
+        equipamento={equipamentoManutencao}
+        onFechar={fecharModalManutencao}
+        onSucesso={finalizarAberturaManutencao}
       />
     </MainLayout>
   );

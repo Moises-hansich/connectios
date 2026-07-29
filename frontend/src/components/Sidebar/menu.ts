@@ -5,7 +5,9 @@ import {
   Settings,
   UserCog2Icon,
   Users,
+  Wrench,
 } from "lucide-react";
+import type { title } from "process";
 
 export const menuItems = [
   {
@@ -37,5 +39,10 @@ export const menuItems = [
     title: "Configurações",
     icon: Settings,
     path: "/configuracoes",
+  },
+  {
+    title: "Manutenções",
+    icon: Wrench,
+    path: "/manutencoes",
   },
 ];

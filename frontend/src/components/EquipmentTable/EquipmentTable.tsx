@@ -1,22 +1,22 @@
-import { Pencil, Trash2, Cpu } from "lucide-react";
+import { Cpu, Pencil, Trash2, Wrench } from "lucide-react";
 
 import { Badge } from "../Badge";
 import type { Equipamento } from "../../types/equipamento";
 
 interface EquipmentTableProps {
   equipamentos: Equipamento[];
-
   onEdit?: (equipamento: Equipamento) => void;
-
   onDelete?: (equipamento: Equipamento) => void;
-
   onHardware?: (equipamento: Equipamento) => void;
+  onMaintenance?: (equipamento: Equipamento) => void;
 }
+
 export function EquipmentTable({
   equipamentos,
   onEdit,
   onDelete,
   onHardware,
+  onMaintenance,
 }: EquipmentTableProps) {
   if (equipamentos.length === 0) {
     return (
@@ -28,7 +28,7 @@ export function EquipmentTable({
 
   return (
     <>
-      {/* Cards: celular */}
+      {/* Visualização para celular */}
       <div className="space-y-4 md:hidden">
         {equipamentos.map((equipamento) => (
           <article
@@ -84,51 +84,68 @@ export function EquipmentTable({
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col gap-2 border-t border-gray-100 pt-4 min-[400px]:flex-row min-[400px]:justify-end">
+            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-gray-100 pt-4 sm:grid-cols-4">
               <button
                 type="button"
                 onClick={() => onHardware?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 min-[400px]:w-auto"
+                className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
               >
-                <Cpu size={17} />
-                Hardware
+                <Cpu size={17} className="shrink-0" />
+                <span className="truncate">Hardware</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onMaintenance?.(equipamento)}
+                className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-amber-50 hover:text-amber-700"
+              >
+                <Wrench size={17} className="shrink-0" />
+                <span className="truncate">Manutenção</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onEdit?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 min-[400px]:w-auto"
+                className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600"
               >
-                <Pencil size={17} />
-                Editar
+                <Pencil size={17} className="shrink-0" />
+                <span className="truncate">Editar</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onDelete?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600 min-[400px]:w-auto"
+                className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
               >
-                <Trash2 size={17} />
-                Excluir
+                <Trash2 size={17} className="shrink-0" />
+                <span className="truncate">Excluir</span>
               </button>
             </div>
           </article>
         ))}
       </div>
 
-      {/* Tabela: computador */}
+      {/* Visualização para computador */}
       <div className="hidden w-full overflow-x-auto rounded-xl border border-gray-200 bg-white md:block">
         <table className="w-full min-w-[1050px]">
           <thead className="bg-gray-50">
             <tr className="text-left text-sm text-gray-600">
               <th className="px-4 py-3 font-medium">Nome</th>
+
               <th className="px-4 py-3 font-medium">Categoria</th>
+
               <th className="px-4 py-3 font-medium">Fabricante</th>
+
               <th className="px-4 py-3 font-medium">Modelo</th>
+
               <th className="px-4 py-3 font-medium">Patrimônio</th>
+
               <th className="px-4 py-3 font-medium">Responsável</th>
+
               <th className="px-4 py-3 font-medium">Status</th>
+
               <th className="px-4 py-3 font-medium">Localização</th>
+
               <th className="px-4 py-3 text-right font-medium">Ações</th>
             </tr>
           </thead>
@@ -169,15 +186,28 @@ export function EquipmentTable({
                       type="button"
                       onClick={() => onHardware?.(equipamento)}
                       className="rounded-lg p-2 text-slate-800 transition-colors hover:bg-indigo-200"
-                      aria-label={`Hardware ${equipamento.nome}`}
+                      aria-label={`Hardware de ${equipamento.nome}`}
+                      title="Visualizar hardware"
                     >
                       <Cpu size={18} />
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onMaintenance?.(equipamento)}
+                      className="rounded-lg p-2 text-slate-800 transition-colors hover:bg-amber-200"
+                      aria-label={`Enviar ${equipamento.nome} para manutenção`}
+                      title="Enviar para manutenção"
+                    >
+                      <Wrench size={18} />
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => onEdit?.(equipamento)}
                       className="rounded-lg p-2 text-slate-800 transition-colors hover:bg-blue-200"
                       aria-label={`Editar ${equipamento.nome}`}
+                      title="Editar equipamento"
                     >
                       <Pencil size={18} />
                     </button>
@@ -187,6 +217,7 @@ export function EquipmentTable({
                       onClick={() => onDelete?.(equipamento)}
                       className="rounded-lg p-2 text-slate-800 transition-colors hover:bg-red-200"
                       aria-label={`Excluir ${equipamento.nome}`}
+                      title="Excluir equipamento"
                     >
                       <Trash2 size={18} />
                     </button>

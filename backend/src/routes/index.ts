@@ -10,6 +10,10 @@ import tipoHardwareRoutes from "./tipoHardwareRoutes";
 import campoHardwareRoutes from "./campoHardwareRoutes";
 import hardwareRoutes from "./hardwareRoutes";
 import hardwareValorRoutes from "./hardwareValorRoutes";
+
+import { movimentacaoRoutes } from "./movimentacaoRoutes";
+import { manutencaoRoutes } from "./manutencaoRoutes";
+
 const routes = Router();
 
 routes.use("/auth", authRoutes);
@@ -22,4 +26,7 @@ routes.use("/tipos-hardware", tipoHardwareRoutes);
 routes.use("/campos-hardware", campoHardwareRoutes);
 routes.use("/hardwares", hardwareRoutes);
 routes.use("/hardware-valores", hardwareValorRoutes);
+routes.use("/movimentacoes", movimentacaoRoutes);
+routes.use("/manutencoes", manutencaoRoutes);
+
 export default routes;
