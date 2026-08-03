@@ -18,21 +18,47 @@ model Equipamento {
   status      String
   observacoes String?
 
+  setorId Int?
+  setor   Setor? @relation(fields: [setorId], references: [id], onDelete: SetNull)
+
   localizacaoId Int?
   localizacao   Localizacao? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
 
   responsavelId Int?
   responsavel   Colaborador? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
 
-  hardware      Hardware[]
-  movimentacoes Movimentacao[]
-  manutencoes   Manutencao[]
+  hardware    Hardware[]
+  manutencoes Manutencao[]
+  fotos       FotoEquipamento[]
+
+  movimentacoes             Movimentacao[] @relation("MovimentacaoEquipamentoPrincipal")
+  movimentacoesRelacionadas Movimentacao[] @relation("MovimentacaoEquipamentoRelacionado")
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
+  @@index([setorId])
   @@index([localizacaoId])
   @@index([responsavelId])
+}
+
+model FotoEquipamento {
+  id Int @id @default(autoincrement())
+
+  nomeArquivo  String  @unique
+  nomeOriginal String
+  tipoMime     String
+  tamanho      Int
+  principal    Boolean @default(false)
+
+  equipamentoId Int
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([equipamentoId])
+  @@index([equipamentoId, principal])
 }
 
 model TipoHardware {
@@ -118,6 +144,23 @@ model HardwareValor {
   @@index([campoHardwareId])
 }
 
+model Setor {
+  id        Int     @id @default(autoincrement())
+  nome      String  @unique
+  descricao String?
+  ativo     Boolean @default(true)
+
+  equipamentos  Equipamento[]
+  colaboradores Colaborador[]
+
+  movimentacoesOrigem  Movimentacao[] @relation("MovimentacaoSetorAnterior")
+  movimentacoesDestino Movimentacao[] @relation("MovimentacaoSetorNovo")
+  manutencoesOrigem    Manutencao[]   @relation("ManutencaoSetorAnterior")
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
 model Localizacao {
   id        Int     @id @default(autoincrement())
   nome      String  @unique
@@ -143,6 +186,9 @@ model Colaborador {
   cargo    String?
   ativo    Boolean @default(true)
 
+  setorId Int?
+  setor   Setor? @relation(fields: [setorId], references: [id], onDelete: SetNull)
+
   localizacaoId Int?
   localizacao   Localizacao? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
 
@@ -155,6 +201,7 @@ model Colaborador {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
+  @@index([setorId])
   @@index([localizacaoId])
 }
 
@@ -179,13 +226,22 @@ model Movimentacao {
   tipo String
 
   equipamentoId Int
-  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Restrict)
+  equipamento   Equipamento @relation("MovimentacaoEquipamentoPrincipal", fields: [equipamentoId], references: [id], onDelete: Restrict)
+
+  equipamentoRelacionadoId Int?
+  equipamentoRelacionado   Equipamento? @relation("MovimentacaoEquipamentoRelacionado", fields: [equipamentoRelacionadoId], references: [id], onDelete: Restrict)
 
   responsavelAnteriorId Int?
   responsavelAnterior   Colaborador? @relation("MovimentacaoResponsavelAnterior", fields: [responsavelAnteriorId], references: [id], onDelete: SetNull)
 
   responsavelNovoId Int?
   responsavelNovo   Colaborador? @relation("MovimentacaoResponsavelNovo", fields: [responsavelNovoId], references: [id], onDelete: SetNull)
+
+  setorAnteriorId Int?
+  setorAnterior   Setor? @relation("MovimentacaoSetorAnterior", fields: [setorAnteriorId], references: [id], onDelete: SetNull)
+
+  setorNovoId Int?
+  setorNovo   Setor? @relation("MovimentacaoSetorNovo", fields: [setorNovoId], references: [id], onDelete: SetNull)
 
   localizacaoAnteriorId Int?
   localizacaoAnterior   Localizacao? @relation("MovimentacaoLocalizacaoAnterior", fields: [localizacaoAnteriorId], references: [id], onDelete: SetNull)
@@ -207,13 +263,17 @@ model Movimentacao {
   criadoEm DateTime @default(now())
 
   @@index([equipamentoId, dataHora])
+  @@index([equipamentoRelacionadoId])
   @@index([responsavelAnteriorId])
   @@index([responsavelNovoId])
+  @@index([setorAnteriorId])
+  @@index([setorNovoId])
   @@index([localizacaoAnteriorId])
   @@index([localizacaoNovaId])
   @@index([manutencaoId])
   @@index([usuarioId])
   @@index([tipo])
+  @@index([dataHora])
 }
 
 model Manutencao {
@@ -239,6 +299,9 @@ model Manutencao {
   responsavelAnteriorId Int?
   responsavelAnterior   Colaborador? @relation("ManutencaoResponsavelAnterior", fields: [responsavelAnteriorId], references: [id], onDelete: SetNull)
 
+  setorAnteriorId Int?
+  setorAnterior   Setor? @relation("ManutencaoSetorAnterior", fields: [setorAnteriorId], references: [id], onDelete: SetNull)
+
   localizacaoAnteriorId Int?
   localizacaoAnterior   Localizacao? @relation("ManutencaoLocalizacaoAnterior", fields: [localizacaoAnteriorId], references: [id], onDelete: SetNull)
 
@@ -254,6 +317,7 @@ model Manutencao {
 
   @@index([equipamentoId])
   @@index([responsavelAnteriorId])
+  @@index([setorAnteriorId])
   @@index([localizacaoAnteriorId])
   @@index([registradoPorId])
   @@index([status])

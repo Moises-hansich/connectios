@@ -28,7 +28,24 @@ export class EquipamentoRepository {
       include: {
         localizacao: true,
         responsavel: true,
+
+        fotos: {
+          where: {
+            principal: true,
+          },
+          orderBy: {
+            criadoEm: "desc",
+          },
+          take: 1,
+          select: {
+            id: true,
+            nomeArquivo: true,
+            nomeOriginal: true,
+            principal: true,
+          },
+        },
       },
+
       orderBy: {
         criadoEm: "desc",
       },
@@ -213,13 +230,32 @@ export class EquipamentoRepository {
     const [equipamentos, total] = await Promise.all([
       prisma.equipamento.findMany({
         where,
+
         include: {
           localizacao: true,
           responsavel: true,
+
+          fotos: {
+            where: {
+              principal: true,
+            },
+            orderBy: {
+              criadoEm: "desc",
+            },
+            take: 1,
+            select: {
+              id: true,
+              nomeArquivo: true,
+              nomeOriginal: true,
+              principal: true,
+            },
+          },
         },
+
         orderBy: {
           criadoEm: "desc",
         },
+
         skip,
         take: limit,
       }),

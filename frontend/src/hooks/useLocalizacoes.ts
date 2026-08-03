@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const API_URL = "http://localhost:3000/api/localizacoes";
+import { api } from "../services/api";
+
+const API_URL = "/localizacoes";
 
 export interface Localizacao {
   id: number;
@@ -33,15 +35,9 @@ export function useLocalizacoes() {
     try {
       setCarregando(true);
 
-      const resposta = await fetch(API_URL);
+      const resposta = await api.get<Localizacao[]>(API_URL);
 
-      if (!resposta.ok) {
-        throw new Error("Não foi possível carregar as localizações.");
-      }
-
-      const dados: Localizacao[] = await resposta.json();
-
-      setLocalizacoes(dados);
+      setLocalizacoes(Array.isArray(resposta.data) ? resposta.data : []);
     } finally {
       setCarregando(false);
     }
@@ -56,25 +52,8 @@ export function useLocalizacoes() {
   async function criarLocalizacao(
     dados: LocalizacaoFormData,
   ): Promise<Localizacao> {
-    const resposta = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(dados),
-    });
-
-    if (!resposta.ok) {
-      const erro = await resposta.json().catch(() => null);
-
-      throw new Error(
-        erro?.message ??
-          erro?.erro ??
-          "Não foi possível cadastrar a localização.",
-      );
-    }
-
-    const novaLocalizacao: Localizacao = await resposta.json();
+    const resposta = await api.post<Localizacao>(API_URL, dados);
+    const novaLocalizacao = resposta.data;
 
     setLocalizacoes((localizacoesAtuais) => [
       novaLocalizacao,
@@ -88,25 +67,8 @@ export function useLocalizacoes() {
     id: number,
     dados: LocalizacaoFormData,
   ): Promise<Localizacao> {
-    const resposta = await fetch(`${API_URL}/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(dados),
-    });
-
-    if (!resposta.ok) {
-      const erro = await resposta.json().catch(() => null);
-
-      throw new Error(
-        erro?.message ??
-          erro?.erro ??
-          "Não foi possível atualizar a localização.",
-      );
-    }
-
-    const localizacaoAtualizada: Localizacao = await resposta.json();
+    const resposta = await api.put<Localizacao>(`${API_URL}/${id}`, dados);
+    const localizacaoAtualizada = resposta.data;
 
     setLocalizacoes((localizacoesAtuais) =>
       localizacoesAtuais.map((localizacao) =>
@@ -118,19 +80,7 @@ export function useLocalizacoes() {
   }
 
   async function excluirLocalizacao(id: number): Promise<void> {
-    const resposta = await fetch(`${API_URL}/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!resposta.ok) {
-      const erro = await resposta.json().catch(() => null);
-
-      throw new Error(
-        erro?.message ??
-          erro?.erro ??
-          "Não foi possível excluir a localização.",
-      );
-    }
+    await api.delete(`${API_URL}/${id}`);
 
     setLocalizacoes((localizacoesAtuais) =>
       localizacoesAtuais.filter((localizacao) => localizacao.id !== id),

@@ -1,8 +1,12 @@
 import { Router } from "express";
 
 import { movimentacaoController } from "../controllers/movimentacaoController";
+import { authMiddleware } from "../middlewares/authMiddleware";
+import { adminMiddleware } from "../middlewares/adminMiddleware";
 
 export const movimentacaoRoutes = Router();
+
+movimentacaoRoutes.use(authMiddleware);
 
 movimentacaoRoutes.get("/", movimentacaoController.listar);
 
@@ -13,4 +17,4 @@ movimentacaoRoutes.get(
 
 movimentacaoRoutes.get("/:id", movimentacaoController.buscarPorId);
 
-movimentacaoRoutes.post("/", movimentacaoController.registrar);
+movimentacaoRoutes.post("/", adminMiddleware, movimentacaoController.registrar);

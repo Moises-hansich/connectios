@@ -1,21 +1,34 @@
 import { Router } from "express";
 import { hardwareValorController } from "../controllers/hardwareValorController";
+import { authMiddleware } from "../middlewares/authMiddleware";
+import { adminMiddleware } from "../middlewares/adminMiddleware";
 
 const hardwareValorRoutes = Router();
 
-hardwareValorRoutes.post("/", hardwareValorController.create);
+hardwareValorRoutes.use(authMiddleware);
 
-hardwareValorRoutes.get("/", hardwareValorController.findAll);
-
-hardwareValorRoutes.get("/:id", hardwareValorController.findById);
-
-hardwareValorRoutes.get(
-  "/hardware/:hardwareId",
-  hardwareValorController.findByHardware,
+hardwareValorRoutes.get("/", (req, res) =>
+  hardwareValorController.findAll(req, res),
 );
 
-hardwareValorRoutes.put("/:id", hardwareValorController.update);
+hardwareValorRoutes.get("/:id", (req, res) =>
+  hardwareValorController.findById(req, res),
+);
 
-hardwareValorRoutes.delete("/:id", hardwareValorController.delete);
+hardwareValorRoutes.get("/hardware/:hardwareId", (req, res) =>
+  hardwareValorController.findByHardware(req, res),
+);
+
+hardwareValorRoutes.post("/", adminMiddleware, (req, res) =>
+  hardwareValorController.create(req, res),
+);
+
+hardwareValorRoutes.put("/:id", adminMiddleware, (req, res) =>
+  hardwareValorController.update(req, res),
+);
+
+hardwareValorRoutes.delete("/:id", adminMiddleware, (req, res) =>
+  hardwareValorController.delete(req, res),
+);
 
 export default hardwareValorRoutes;

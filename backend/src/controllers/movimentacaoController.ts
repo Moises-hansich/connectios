@@ -1,31 +1,72 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { MovimentacaoService } from "../services/movimentacaoService";
+import type {
+  CreateMovimentacaoData,
+  MovimentacaoFilters,
+} from "../repositories/movimentacaoRepository";
+import { movimentacaoService } from "../services/movimentacaoService";
 
-export class MovimentacaoController {
-  private service: MovimentacaoService;
+class MovimentacaoController {
+  private readonly service = movimentacaoService;
 
-  constructor() {
-    this.service = new MovimentacaoService();
-  }
-
-  listar = async (req: Request, res: Response, next: NextFunction) => {
+  listar = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
-      const resultado = await this.service.buscarComFiltros({
-        equipamentoId: this.converterNumeroOpcional(req.query.equipamentoId),
+      const filters: MovimentacaoFilters = {};
 
-        tipo: this.converterTextoOpcional(req.query.tipo),
+      const equipamentoId = this.converterNumeroOpcional(
+        req.query.equipamentoId,
+      );
 
-        usuarioId: this.converterNumeroOpcional(req.query.usuarioId),
+      const tipo = this.converterTextoOpcional(req.query.tipo);
 
-        dataInicio: this.converterDataOpcional(req.query.dataInicio),
+      const usuarioId = this.converterNumeroOpcional(
+        req.query.usuarioId,
+      );
 
-        dataFim: this.converterDataOpcional(req.query.dataFim),
+      const dataInicio = this.converterDataOpcional(
+        req.query.dataInicio,
+      );
 
-        page: this.converterNumeroOpcional(req.query.page),
+      const dataFim = this.converterDataOpcional(req.query.dataFim);
 
-        limit: this.converterNumeroOpcional(req.query.limit),
-      });
+      const page = this.converterNumeroOpcional(req.query.page);
+
+      const limit = this.converterNumeroOpcional(req.query.limit);
+
+      if (equipamentoId !== undefined) {
+        filters.equipamentoId = equipamentoId;
+      }
+
+      if (tipo !== undefined) {
+        filters.tipo = tipo;
+      }
+
+      if (usuarioId !== undefined) {
+        filters.usuarioId = usuarioId;
+      }
+
+      if (dataInicio !== undefined) {
+        filters.dataInicio = dataInicio;
+      }
+
+      if (dataFim !== undefined) {
+        filters.dataFim = dataFim;
+      }
+
+      if (page !== undefined) {
+        filters.page = page;
+      }
+
+      if (limit !== undefined) {
+        filters.limit = limit;
+      }
+
+      const resultado =
+        await this.service.buscarComFiltros(filters);
 
       return res.status(200).json(resultado);
     } catch (error) {
@@ -33,7 +74,11 @@ export class MovimentacaoController {
     }
   };
 
-  buscarPorId = async (req: Request, res: Response, next: NextFunction) => {
+  buscarPorId = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const id = Number(req.params.id);
 
@@ -62,41 +107,96 @@ export class MovimentacaoController {
     }
   };
 
-  registrar = async (req: Request, res: Response, next: NextFunction) => {
+  registrar = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
-      const movimentacao = await this.service.registrar({
+      const data: CreateMovimentacaoData = {
         tipo: this.converterTextoObrigatorio(req.body.tipo),
-
         equipamentoId: Number(req.body.equipamentoId),
+      };
 
-        responsavelAnteriorId: this.converterNumeroNulavel(
-          req.body.responsavelAnteriorId,
-        ),
+      this.adicionarNumeroNulavel(
+        data,
+        "equipamentoRelacionadoId",
+        req.body.equipamentoRelacionadoId,
+      );
 
-        responsavelNovoId: this.converterNumeroNulavel(
-          req.body.responsavelNovoId,
-        ),
+      this.adicionarNumeroNulavel(
+        data,
+        "responsavelAnteriorId",
+        req.body.responsavelAnteriorId,
+      );
 
-        localizacaoAnteriorId: this.converterNumeroNulavel(
-          req.body.localizacaoAnteriorId,
-        ),
+      this.adicionarNumeroNulavel(
+        data,
+        "responsavelNovoId",
+        req.body.responsavelNovoId,
+      );
 
-        localizacaoNovaId: this.converterNumeroNulavel(
-          req.body.localizacaoNovaId,
-        ),
+      this.adicionarNumeroNulavel(
+        data,
+        "setorAnteriorId",
+        req.body.setorAnteriorId,
+      );
 
-        manutencaoId: this.converterNumeroNulavel(req.body.manutencaoId),
+      this.adicionarNumeroNulavel(
+        data,
+        "setorNovoId",
+        req.body.setorNovoId,
+      );
 
-        usuarioId: this.converterNumeroNulavel(req.body.usuarioId),
+      this.adicionarNumeroNulavel(
+        data,
+        "localizacaoAnteriorId",
+        req.body.localizacaoAnteriorId,
+      );
 
-        statusAnterior: this.converterTextoNulavel(req.body.statusAnterior),
+      this.adicionarNumeroNulavel(
+        data,
+        "localizacaoNovaId",
+        req.body.localizacaoNovaId,
+      );
 
-        statusNovo: this.converterTextoNulavel(req.body.statusNovo),
+      this.adicionarNumeroNulavel(
+        data,
+        "manutencaoId",
+        req.body.manutencaoId,
+      );
 
-        observacoes: this.converterTextoNulavel(req.body.observacoes),
+      this.adicionarNumeroNulavel(
+        data,
+        "usuarioId",
+        req.body.usuarioId,
+      );
 
-        dataHora: this.converterDataOpcional(req.body.dataHora),
-      });
+      this.adicionarTextoNulavel(
+        data,
+        "statusAnterior",
+        req.body.statusAnterior,
+      );
+
+      this.adicionarTextoNulavel(
+        data,
+        "statusNovo",
+        req.body.statusNovo,
+      );
+
+      this.adicionarTextoNulavel(
+        data,
+        "observacoes",
+        req.body.observacoes,
+      );
+
+      const dataHora = this.converterDataOpcional(req.body.dataHora);
+
+      if (dataHora !== undefined) {
+        data.dataHora = dataHora;
+      }
+
+      const movimentacao = await this.service.registrar(data);
 
       return res.status(201).json({
         mensagem: "Movimentação registrada com sucesso",
@@ -115,62 +215,114 @@ export class MovimentacaoController {
     return valor;
   }
 
-  private converterNumeroOpcional(valor: unknown): number | undefined {
+  private converterNumeroOpcional(
+    valor: unknown,
+  ): number | undefined {
     const valorUnico = this.obterValorUnico(valor);
 
-    if (valorUnico === undefined || valorUnico === null || valorUnico === "") {
+    if (
+      valorUnico === undefined ||
+      valorUnico === null ||
+      valorUnico === ""
+    ) {
       return undefined;
     }
 
     return Number(valorUnico);
   }
 
-  private converterNumeroNulavel(valor: unknown): number | null | undefined {
-    if (valor === undefined) {
+  private converterNumeroNulavel(
+    valor: unknown,
+  ): number | null | undefined {
+    const valorUnico = this.obterValorUnico(valor);
+
+    if (valorUnico === undefined) {
       return undefined;
     }
 
-    if (valor === null || valor === "") {
+    if (valorUnico === null || valorUnico === "") {
       return null;
     }
 
-    return Number(valor);
+    return Number(valorUnico);
   }
 
-  private converterTextoObrigatorio(valor: unknown) {
+  private converterTextoObrigatorio(valor: unknown): string {
     return String(valor ?? "");
   }
 
-  private converterTextoOpcional(valor: unknown): string | undefined {
+  private converterTextoOpcional(
+    valor: unknown,
+  ): string | undefined {
     const valorUnico = this.obterValorUnico(valor);
 
-    if (valorUnico === undefined || valorUnico === null || valorUnico === "") {
+    if (
+      valorUnico === undefined ||
+      valorUnico === null ||
+      valorUnico === ""
+    ) {
       return undefined;
     }
 
     return String(valorUnico);
   }
 
-  private converterTextoNulavel(valor: unknown): string | null | undefined {
-    if (valor === undefined) {
+  private converterTextoNulavel(
+    valor: unknown,
+  ): string | null | undefined {
+    const valorUnico = this.obterValorUnico(valor);
+
+    if (valorUnico === undefined) {
       return undefined;
     }
 
-    if (valor === null) {
+    if (valorUnico === null) {
       return null;
     }
 
-    return String(valor);
+    return String(valorUnico);
   }
 
   private converterDataOpcional(valor: unknown): Date | undefined {
     const valorUnico = this.obterValorUnico(valor);
 
-    if (valorUnico === undefined || valorUnico === null || valorUnico === "") {
+    if (
+      valorUnico === undefined ||
+      valorUnico === null ||
+      valorUnico === ""
+    ) {
       return undefined;
     }
 
     return new Date(String(valorUnico));
+  }
+
+  private adicionarNumeroNulavel<
+    K extends keyof CreateMovimentacaoData,
+  >(
+    destino: CreateMovimentacaoData,
+    campo: K,
+    valor: unknown,
+  ) {
+    const convertido = this.converterNumeroNulavel(valor);
+
+    if (convertido !== undefined) {
+      destino[campo] = convertido as CreateMovimentacaoData[K];
+    }
+  }
+
+  private adicionarTextoNulavel<
+    K extends keyof CreateMovimentacaoData,
+  >(
+    destino: CreateMovimentacaoData,
+    campo: K,
+    valor: unknown,
+  ) {
+    const convertido = this.converterTextoNulavel(valor);
+
+    if (convertido !== undefined) {
+      destino[campo] = convertido as CreateMovimentacaoData[K];
+    }
   }
 }
 

@@ -6,8 +6,9 @@ import {
   UserCog2Icon,
   Users,
   Wrench,
+  ArrowLeftRight,
+  Icon,
 } from "lucide-react";
-import type { title } from "process";
 
 export const menuItems = [
   {
@@ -44,5 +45,10 @@ export const menuItems = [
     title: "Manutenções",
     icon: Wrench,
     path: "/manutencoes",
+  },
+  {
+    title: "Historico",
+    icon: ArrowLeftRight,
+    path: "/movimentacoes",
   },
 ];

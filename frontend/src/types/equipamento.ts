@@ -71,6 +71,12 @@ export interface Hardware {
 
   valores: HardwareValor[];
 }
+export interface FotoEquipamentoResumo {
+  id: number;
+  nomeArquivo: string;
+  nomeOriginal: string;
+  principal: boolean;
+}
 export interface Equipamento {
   id: number;
   nome: string;
@@ -90,7 +96,7 @@ export interface Equipamento {
   observacoes: string | null;
 
   hardware?: Hardware[];
-
+  fotos?: FotoEquipamentoResumo[];
   criadoEm: string;
   atualizadoEm: string;
 }

@@ -1,6 +1,8 @@
-import { Menu, X } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { useContext } from "react";
+import { LogOut, Menu, X } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
 
+import { AuthContext } from "../../contexts/AuthContext";
 import { menuItems } from "./menu";
 
 interface SidebarProps {
@@ -16,6 +18,22 @@ export function Sidebar({
   onAlternar,
   onFecharMobile,
 }: SidebarProps) {
+  const auth = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const itensVisiveis = menuItems.filter((item) => {
+    const itemSomenteAdmin =
+      item.path === "/usuarios" || item.path === "/configuracoes";
+
+    return !itemSomenteAdmin || auth?.usuario?.perfil === "ADMIN";
+  });
+
+  function handleLogout() {
+    auth?.logout();
+    onFecharMobile();
+    navigate("/login", { replace: true });
+  }
+
   return (
     <>
       {mobileAberta && (
@@ -76,7 +94,7 @@ export function Sidebar({
         </div>
 
         <nav className="flex-1 space-y-2 p-3">
-          {menuItems.map((item) => {
+          {itensVisiveis.map((item) => {
             const Icone = item.icon;
 
             return (
@@ -114,12 +132,36 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="hidden border-t border-slate-800 p-3 md:block">
+        <div className="space-y-2 border-t border-slate-800 p-3">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={`
+              flex w-full items-center gap-3 rounded-lg px-3 py-3
+              text-red-300 transition-colors
+              hover:bg-red-500/10 hover:text-red-200
+
+              ${aberta ? "" : "md:justify-center md:gap-0"}
+            `}
+            title="Sair"
+          >
+            <LogOut size={21} className="shrink-0" />
+
+            <span
+              className={`
+                whitespace-nowrap
+                ${aberta ? "" : "md:hidden"}
+              `}
+            >
+              Sair
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={onAlternar}
             className={`
-              flex w-full items-center rounded-lg px-3 py-3
+              hidden w-full items-center rounded-lg px-3 py-3 md:flex
               text-slate-300 transition-colors
               hover:bg-slate-800 hover:text-white
 

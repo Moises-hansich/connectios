@@ -7,7 +7,7 @@ import {
   ManutencaoRepository,
 } from "../repositories/manutencaoRepository";
 
-import { MovimentacaoRepository } from "../repositories/movimentacaoRepository";
+import { movimentacaoRepository } from "../repositories/movimentacaoRepository";
 import { EquipamentoRepository } from "../repositories/equipamentoRepository";
 
 export const STATUS_MANUTENCAO = ["EM_ANDAMENTO", "FINALIZADA"] as const;
@@ -37,13 +37,11 @@ export interface FinalizarManutencaoData {
 
 export class ManutencaoService {
   private manutencaoRepository: ManutencaoRepository;
-  private movimentacaoRepository: MovimentacaoRepository;
+  private readonly movimentacaoRepository = movimentacaoRepository;
   private equipamentoRepository: EquipamentoRepository;
 
   constructor() {
     this.manutencaoRepository = new ManutencaoRepository();
-
-    this.movimentacaoRepository = new MovimentacaoRepository();
 
     this.equipamentoRepository = new EquipamentoRepository();
   }
@@ -130,7 +128,7 @@ export class ManutencaoService {
         );
       }
 
-      if (equipamento.status.trim().toUpperCase() === "Em manutenção") {
+      if (equipamento.status.trim().toUpperCase() === "EM MANUTENÇÃO") {
         throw new AppError(
           "O equipamento já está marcado como em manutenção",
           409,

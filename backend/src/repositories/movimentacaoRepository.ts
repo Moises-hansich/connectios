@@ -14,8 +14,11 @@ export interface MovimentacaoFilters {
 export interface CreateMovimentacaoData {
   tipo: string;
   equipamentoId: number;
+  equipamentoRelacionadoId?: number | null;
   responsavelAnteriorId?: number | null;
   responsavelNovoId?: number | null;
+  setorAnteriorId?: number | null;
+  setorNovoId?: number | null;
   localizacaoAnteriorId?: number | null;
   localizacaoNovaId?: number | null;
   manutencaoId?: number | null;
@@ -34,6 +37,21 @@ const movimentacaoInclude = {
       id: true,
       nome: true,
       categoria: true,
+      fabricante: true,
+      modelo: true,
+      patrimonio: true,
+      numeroSerie: true,
+      status: true,
+    },
+  },
+
+  equipamentoRelacionado: {
+    select: {
+      id: true,
+      nome: true,
+      categoria: true,
+      fabricante: true,
+      modelo: true,
       patrimonio: true,
       numeroSerie: true,
       status: true,
@@ -43,6 +61,9 @@ const movimentacaoInclude = {
   responsavelAnterior: true,
   responsavelNovo: true,
 
+  setorAnterior: true,
+  setorNovo: true,
+
   localizacaoAnterior: true,
   localizacaoNova: true,
 
@@ -50,6 +71,8 @@ const movimentacaoInclude = {
     select: {
       id: true,
       problemaInformado: true,
+      diagnostico: true,
+      solucao: true,
       status: true,
       dataSaida: true,
       dataRetorno: true,
@@ -64,7 +87,7 @@ const movimentacaoInclude = {
       perfil: true,
     },
   },
-} as const;
+} satisfies Prisma.MovimentacaoInclude;
 
 export class MovimentacaoRepository {
   async findAll() {
@@ -81,8 +104,8 @@ export class MovimentacaoRepository {
     });
   }
 
-  async findById(id: number) {
-    return prisma.movimentacao.findUnique({
+  async findById(id: number, bancoDados: BancoDados = prisma) {
+    return bancoDados.movimentacao.findUnique({
       where: {
         id,
       },
@@ -93,7 +116,14 @@ export class MovimentacaoRepository {
   async findByEquipamentoId(equipamentoId: number) {
     return prisma.movimentacao.findMany({
       where: {
-        equipamentoId,
+        OR: [
+          {
+            equipamentoId,
+          },
+          {
+            equipamentoRelacionadoId: equipamentoId,
+          },
+        ],
       },
       include: movimentacaoInclude,
       orderBy: [
@@ -107,7 +137,10 @@ export class MovimentacaoRepository {
     });
   }
 
-  async create(data: CreateMovimentacaoData, bancoDados: BancoDados = prisma) {
+  async create(
+    data: CreateMovimentacaoData,
+    bancoDados: BancoDados = prisma,
+  ) {
     return bancoDados.movimentacao.create({
       data,
       include: movimentacaoInclude,
@@ -119,9 +152,16 @@ export class MovimentacaoRepository {
     const limit = filters.limit ?? 10;
     const skip = (page - 1) * limit;
 
-    const where = {
+    const where: Prisma.MovimentacaoWhereInput = {
       ...(filters.equipamentoId !== undefined && {
-        equipamentoId: filters.equipamentoId,
+        OR: [
+          {
+            equipamentoId: filters.equipamentoId,
+          },
+          {
+            equipamentoRelacionadoId: filters.equipamentoId,
+          },
+        ],
       }),
 
       ...(filters.tipo && {
@@ -137,7 +177,6 @@ export class MovimentacaoRepository {
           ...(filters.dataInicio && {
             gte: filters.dataInicio,
           }),
-
           ...(filters.dataFim && {
             lte: filters.dataFim,
           }),

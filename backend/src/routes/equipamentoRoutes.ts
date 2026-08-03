@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { EquipamentoController } from "../controllers/equipamentoController";
 import { asyncHandler } from "../utils/asyncHandler";
+import { authMiddleware } from "../middlewares/authMiddleware";
+import { adminMiddleware } from "../middlewares/adminMiddleware";
 import { validateBody } from "../middlewares/validationMiddleware";
 import {
   criarEquipamentoSchema,
@@ -8,6 +10,8 @@ import {
 } from "../validators/equipamentoValidator";
 const router = Router();
 const controller = new EquipamentoController();
+
+router.use(authMiddleware);
 
 router.get(
   "/",
@@ -23,16 +27,19 @@ router.get(
 );
 router.post(
   "/",
+  adminMiddleware,
   validateBody(criarEquipamentoSchema),
   asyncHandler((req, res) => controller.criar(req, res)),
 );
 router.put(
   "/:id",
+  adminMiddleware,
   validateBody(atualizarEquipamentoSchema),
   asyncHandler((req, res) => controller.atualizar(req, res)),
 );
 router.delete(
   "/:id",
+  adminMiddleware,
   asyncHandler((req, res) => controller.deletar(req, res)),
 );
 export default router;
