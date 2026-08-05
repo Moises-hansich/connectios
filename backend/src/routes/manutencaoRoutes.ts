@@ -11,6 +11,11 @@ manutencaoRoutes.use(authMiddleware);
 manutencaoRoutes.get("/", manutencaoController.listar);
 
 manutencaoRoutes.get(
+  "/equipamento/:equipamentoId/garantia",
+  manutencaoController.consultarGarantia,
+);
+
+manutencaoRoutes.get(
   "/equipamento/:equipamentoId",
   manutencaoController.buscarPorEquipamento,
 );

@@ -9,11 +9,7 @@ import { movimentacaoService } from "../services/movimentacaoService";
 class MovimentacaoController {
   private readonly service = movimentacaoService;
 
-  listar = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  listar = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const filters: MovimentacaoFilters = {};
 
@@ -23,13 +19,9 @@ class MovimentacaoController {
 
       const tipo = this.converterTextoOpcional(req.query.tipo);
 
-      const usuarioId = this.converterNumeroOpcional(
-        req.query.usuarioId,
-      );
+      const usuarioId = this.converterNumeroOpcional(req.query.usuarioId);
 
-      const dataInicio = this.converterDataOpcional(
-        req.query.dataInicio,
-      );
+      const dataInicio = this.converterDataOpcional(req.query.dataInicio);
 
       const dataFim = this.converterDataOpcional(req.query.dataFim);
 
@@ -65,8 +57,7 @@ class MovimentacaoController {
         filters.limit = limit;
       }
 
-      const resultado =
-        await this.service.buscarComFiltros(filters);
+      const resultado = await this.service.buscarComFiltros(filters);
 
       return res.status(200).json(resultado);
     } catch (error) {
@@ -74,11 +65,7 @@ class MovimentacaoController {
     }
   };
 
-  buscarPorId = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  buscarPorId = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
 
@@ -107,11 +94,7 @@ class MovimentacaoController {
     }
   };
 
-  registrar = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  registrar = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data: CreateMovimentacaoData = {
         tipo: this.converterTextoObrigatorio(req.body.tipo),
@@ -142,11 +125,7 @@ class MovimentacaoController {
         req.body.setorAnteriorId,
       );
 
-      this.adicionarNumeroNulavel(
-        data,
-        "setorNovoId",
-        req.body.setorNovoId,
-      );
+      this.adicionarNumeroNulavel(data, "setorNovoId", req.body.setorNovoId);
 
       this.adicionarNumeroNulavel(
         data,
@@ -160,17 +139,9 @@ class MovimentacaoController {
         req.body.localizacaoNovaId,
       );
 
-      this.adicionarNumeroNulavel(
-        data,
-        "manutencaoId",
-        req.body.manutencaoId,
-      );
+      this.adicionarNumeroNulavel(data, "manutencaoId", req.body.manutencaoId);
 
-      this.adicionarNumeroNulavel(
-        data,
-        "usuarioId",
-        req.body.usuarioId,
-      );
+      this.adicionarNumeroNulavel(data, "usuarioId", req.body.usuarioId);
 
       this.adicionarTextoNulavel(
         data,
@@ -178,17 +149,9 @@ class MovimentacaoController {
         req.body.statusAnterior,
       );
 
-      this.adicionarTextoNulavel(
-        data,
-        "statusNovo",
-        req.body.statusNovo,
-      );
+      this.adicionarTextoNulavel(data, "statusNovo", req.body.statusNovo);
 
-      this.adicionarTextoNulavel(
-        data,
-        "observacoes",
-        req.body.observacoes,
-      );
+      this.adicionarTextoNulavel(data, "observacoes", req.body.observacoes);
 
       const dataHora = this.converterDataOpcional(req.body.dataHora);
 
@@ -215,25 +178,17 @@ class MovimentacaoController {
     return valor;
   }
 
-  private converterNumeroOpcional(
-    valor: unknown,
-  ): number | undefined {
+  private converterNumeroOpcional(valor: unknown): number | undefined {
     const valorUnico = this.obterValorUnico(valor);
 
-    if (
-      valorUnico === undefined ||
-      valorUnico === null ||
-      valorUnico === ""
-    ) {
+    if (valorUnico === undefined || valorUnico === null || valorUnico === "") {
       return undefined;
     }
 
     return Number(valorUnico);
   }
 
-  private converterNumeroNulavel(
-    valor: unknown,
-  ): number | null | undefined {
+  private converterNumeroNulavel(valor: unknown): number | null | undefined {
     const valorUnico = this.obterValorUnico(valor);
 
     if (valorUnico === undefined) {
@@ -251,25 +206,17 @@ class MovimentacaoController {
     return String(valor ?? "");
   }
 
-  private converterTextoOpcional(
-    valor: unknown,
-  ): string | undefined {
+  private converterTextoOpcional(valor: unknown): string | undefined {
     const valorUnico = this.obterValorUnico(valor);
 
-    if (
-      valorUnico === undefined ||
-      valorUnico === null ||
-      valorUnico === ""
-    ) {
+    if (valorUnico === undefined || valorUnico === null || valorUnico === "") {
       return undefined;
     }
 
     return String(valorUnico);
   }
 
-  private converterTextoNulavel(
-    valor: unknown,
-  ): string | null | undefined {
+  private converterTextoNulavel(valor: unknown): string | null | undefined {
     const valorUnico = this.obterValorUnico(valor);
 
     if (valorUnico === undefined) {
@@ -286,20 +233,14 @@ class MovimentacaoController {
   private converterDataOpcional(valor: unknown): Date | undefined {
     const valorUnico = this.obterValorUnico(valor);
 
-    if (
-      valorUnico === undefined ||
-      valorUnico === null ||
-      valorUnico === ""
-    ) {
+    if (valorUnico === undefined || valorUnico === null || valorUnico === "") {
       return undefined;
     }
 
     return new Date(String(valorUnico));
   }
 
-  private adicionarNumeroNulavel<
-    K extends keyof CreateMovimentacaoData,
-  >(
+  private adicionarNumeroNulavel<K extends keyof CreateMovimentacaoData>(
     destino: CreateMovimentacaoData,
     campo: K,
     valor: unknown,
@@ -311,9 +252,7 @@ class MovimentacaoController {
     }
   }
 
-  private adicionarTextoNulavel<
-    K extends keyof CreateMovimentacaoData,
-  >(
+  private adicionarTextoNulavel<K extends keyof CreateMovimentacaoData>(
     destino: CreateMovimentacaoData,
     campo: K,
     valor: unknown,

@@ -71,8 +71,8 @@ export class ManutencaoController {
 
         localManutencao: this.converterTextoNulavel(req.body.localManutencao),
 
-        empresaResponsavel: this.converterTextoNulavel(
-          req.body.empresaResponsavel,
+        empresaResponsavelId: this.converterNumeroNulavel(
+          req.body.empresaResponsavelId,
         ),
 
         previsaoRetorno: this.converterDataNulavel(req.body.previsaoRetorno),
@@ -94,7 +94,22 @@ export class ManutencaoController {
       next(error);
     }
   };
+  consultarGarantia = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const equipamentoId = Number(req.params.equipamentoId);
 
+      const garantia =
+        await this.service.consultarGarantiaEquipamento(equipamentoId);
+
+      return res.status(200).json(garantia);
+    } catch (error) {
+      next(error);
+    }
+  };
   finalizar = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);

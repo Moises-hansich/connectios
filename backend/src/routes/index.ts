@@ -10,10 +10,11 @@ import tipoHardwareRoutes from "./tipoHardwareRoutes";
 import campoHardwareRoutes from "./campoHardwareRoutes";
 import hardwareRoutes from "./hardwareRoutes";
 import hardwareValorRoutes from "./hardwareValorRoutes";
-
+import categoriaRoutes from "./categoriaRoutes";
 import { fotoEquipamentoRoutes } from "./fotoEquipamentoRoutes";
 import { movimentacaoRoutes } from "./movimentacaoRoutes";
 import { manutencaoRoutes } from "./manutencaoRoutes";
+import empresaRoutes from "./empresaRoutes";
 
 const routes = Router();
 
@@ -21,6 +22,8 @@ routes.use("/auth", authRoutes);
 routes.use("/dashboard", dashboardRoutes);
 routes.use("/equipamentos", equipamentoRoutes);
 routes.use("/equipamentos", fotoEquipamentoRoutes);
+routes.use("/empresas", empresaRoutes);
+routes.use("/categorias", categoriaRoutes);
 routes.use("/usuarios", usuarioRoutes);
 routes.use("/localizacoes", localizacaoRoutes);
 routes.use("/colaboradores", colaboradorRoutes);

@@ -9,6 +9,7 @@ import {
 
 import { movimentacaoRepository } from "../repositories/movimentacaoRepository";
 import { EquipamentoRepository } from "../repositories/equipamentoRepository";
+import { empresaRepository } from "../repositories/empresaRepository";
 
 export const STATUS_MANUTENCAO = ["EM_ANDAMENTO", "FINALIZADA"] as const;
 
@@ -18,7 +19,7 @@ export interface AbrirManutencaoData {
   equipamentoId: number;
   problemaInformado: string;
   localManutencao?: string | null;
-  empresaResponsavel?: string | null;
+  empresaResponsavelId?: number | null;
   previsaoRetorno?: Date | null;
   custo?: number | null;
   observacoes?: string | null;
@@ -109,6 +110,23 @@ export class ManutencaoService {
         where: {
           id: data.equipamentoId,
         },
+
+        select: {
+          id: true,
+          status: true,
+          responsavelId: true,
+          localizacaoId: true,
+          garantiaAte: true,
+          fornecedorId: true,
+
+          fornecedor: {
+            select: {
+              id: true,
+              nome: true,
+              ativo: true,
+            },
+          },
+        },
       });
 
       if (!equipamento) {
@@ -117,7 +135,7 @@ export class ManutencaoService {
 
       const manutencaoEmAndamento =
         await this.manutencaoRepository.findEmAndamentoByEquipamentoId(
-          data.equipamentoId,
+          equipamento.id,
           tx,
         );
 
@@ -135,6 +153,54 @@ export class ManutencaoService {
         );
       }
 
+      const garantiaAtiva = this.garantiaEstaAtiva(
+        equipamento.garantiaAte,
+        dataSaida,
+      );
+
+      let empresaResponsavelId = data.empresaResponsavelId ?? null;
+
+      if (garantiaAtiva) {
+        if (!equipamento.fornecedorId || !equipamento.fornecedor) {
+          throw new AppError(
+            "O equipamento está na garantia, mas não possui fornecedor cadastrado",
+            400,
+          );
+        }
+
+        if (!equipamento.fornecedor.ativo) {
+          throw new AppError(
+            "O fornecedor responsável pela garantia está inativo. Regularize o cadastro da empresa antes de abrir a manutenção",
+            400,
+          );
+        }
+
+        // Durante a garantia, ignora a empresa
+        // enviada pelo frontend.
+        empresaResponsavelId = equipamento.fornecedorId;
+      } else if (empresaResponsavelId !== null) {
+        this.validarId(empresaResponsavelId, "ID da empresa responsável");
+
+        const empresa = await tx.empresa.findUnique({
+          where: {
+            id: empresaResponsavelId,
+          },
+
+          select: {
+            id: true,
+            ativo: true,
+          },
+        });
+
+        if (!empresa) {
+          throw new AppError("Empresa responsável não encontrada", 404);
+        }
+
+        if (!empresa.ativo) {
+          throw new AppError("A empresa responsável está inativa", 400);
+        }
+      }
+
       const manutencao = await this.manutencaoRepository.create(
         {
           equipamentoId: equipamento.id,
@@ -143,7 +209,9 @@ export class ManutencaoService {
 
           localManutencao: data.localManutencao?.trim() || null,
 
-          empresaResponsavel: data.empresaResponsavel?.trim() || null,
+          empresaResponsavelId,
+
+          empresaResponsavelTexto: null,
 
           dataSaida,
 
@@ -180,6 +248,11 @@ export class ManutencaoService {
         },
       });
 
+      const observacaoMovimentacao =
+        garantiaAtiva && equipamento.fornecedor
+          ? `Entrada em manutenção pela garantia. Fornecedor: ${equipamento.fornecedor.nome}. Problema: ${data.problemaInformado.trim()}`
+          : `Entrada em manutenção: ${data.problemaInformado.trim()}`;
+
       await this.movimentacaoRepository.create(
         {
           tipo: "ENTRADA_MANUTENCAO",
@@ -202,7 +275,7 @@ export class ManutencaoService {
 
           statusNovo: "Em manutenção",
 
-          observacoes: `Entrada em manutenção: ${data.problemaInformado.trim()}`,
+          observacoes: observacaoMovimentacao,
 
           dataHora: dataSaida,
         },
@@ -235,6 +308,10 @@ export class ManutencaoService {
     const dataRetorno = data.dataRetorno ?? new Date();
 
     this.validarData(dataRetorno, "Data de retorno");
+
+    if (dataRetorno > new Date()) {
+      throw new AppError("A data de retorno não pode estar no futuro", 400);
+    }
 
     this.validarCusto(data.custo);
 
@@ -324,7 +401,7 @@ export class ManutencaoService {
 
           statusNovo: manutencao.statusAnterior,
 
-          observacoes: `Retorno da manutenção: ${data.solucao.trim()}`,
+          observacoes: `Retorno da manutenção: ` + data.solucao.trim(),
 
           dataHora: dataRetorno,
         },
@@ -334,7 +411,66 @@ export class ManutencaoService {
       return this.manutencaoRepository.findById(manutencao.id, tx);
     });
   }
+  async consultarGarantiaEquipamento(equipamentoId: number) {
+    this.validarId(equipamentoId, "ID do equipamento");
 
+    const equipamento = await prisma.equipamento.findUnique({
+      where: {
+        id: equipamentoId,
+      },
+
+      select: {
+        id: true,
+        nome: true,
+        patrimonio: true,
+        garantiaAte: true,
+        fornecedorId: true,
+
+        fornecedor: {
+          select: {
+            id: true,
+            nome: true,
+            cnpj: true,
+            telefone: true,
+            email: true,
+            ativo: true,
+          },
+        },
+      },
+    });
+
+    if (!equipamento) {
+      throw new AppError("Equipamento não encontrado", 404);
+    }
+
+    const agora = new Date();
+
+    const garantiaAtiva = this.garantiaEstaAtiva(
+      equipamento.garantiaAte,
+      agora,
+    );
+
+    return {
+      equipamento: {
+        id: equipamento.id,
+        nome: equipamento.nome,
+        patrimonio: equipamento.patrimonio,
+      },
+
+      possuiGarantia: equipamento.garantiaAte !== null,
+
+      garantiaAtiva,
+
+      garantiaAte: equipamento.garantiaAte,
+
+      diasRestantes:
+        garantiaAtiva && equipamento.garantiaAte
+          ? this.calcularDiasRestantes(equipamento.garantiaAte, agora)
+          : null,
+
+      fornecedor: equipamento.fornecedor,
+    };
+  }
   async buscarComFiltros(filters: ManutencaoFilters) {
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 10;
@@ -419,6 +555,80 @@ export class ManutencaoService {
     }
   }
 
+  private async validarEmpresaResponsavel(
+    empresaId: number | null | undefined,
+  ) {
+    if (empresaId === undefined || empresaId === null) {
+      return;
+    }
+
+    this.validarId(empresaId, "ID da empresa responsável");
+
+    const empresa = await empresaRepository.findById(empresaId);
+
+    if (!empresa) {
+      throw new AppError("Empresa responsável não encontrada", 404);
+    }
+
+    if (!empresa.ativo) {
+      throw new AppError("A empresa responsável está inativa", 400);
+    }
+  }
+  private obterDataCalendarioBrasil(data: Date): Date {
+    const partes = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(data);
+
+    const ano = Number(partes.find((parte) => parte.type === "year")?.value);
+
+    const mes = Number(partes.find((parte) => parte.type === "month")?.value);
+
+    const dia = Number(partes.find((parte) => parte.type === "day")?.value);
+
+    return new Date(Date.UTC(ano, mes - 1, dia));
+  }
+
+  private obterDataGarantia(data: Date): Date {
+    return new Date(
+      Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate()),
+    );
+  }
+
+  private garantiaEstaAtiva(
+    garantiaAte: Date | null,
+    dataReferencia: Date,
+  ): boolean {
+    if (!garantiaAte) {
+      return false;
+    }
+
+    const dataGarantia = this.obterDataGarantia(garantiaAte);
+
+    const dataAtual = this.obterDataCalendarioBrasil(dataReferencia);
+
+    return dataGarantia.getTime() >= dataAtual.getTime();
+  }
+
+  private calcularDiasRestantes(
+    garantiaAte: Date,
+    dataReferencia: Date,
+  ): number {
+    const dataGarantia = this.obterDataGarantia(garantiaAte);
+
+    const dataAtual = this.obterDataCalendarioBrasil(dataReferencia);
+
+    const milissegundosDia = 24 * 60 * 60 * 1000;
+
+    return Math.max(
+      0,
+      Math.round(
+        (dataGarantia.getTime() - dataAtual.getTime()) / milissegundosDia,
+      ),
+    );
+  }
   private async validarUsuario(usuarioId: number | null | undefined) {
     if (usuarioId === undefined || usuarioId === null) {
       return;

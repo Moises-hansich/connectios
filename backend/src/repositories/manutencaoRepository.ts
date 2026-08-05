@@ -28,6 +28,17 @@ const manutencaoInclude = {
     },
   },
 
+  empresaResponsavel: {
+    select: {
+      id: true,
+      nome: true,
+      cnpj: true,
+      telefone: true,
+      email: true,
+      ativo: true,
+    },
+  },
+
   responsavelAnterior: true,
   localizacaoAnterior: true,
 

@@ -24,11 +24,15 @@ export const TIPOS_MOVIMENTACAO = [
 
 export type TipoMovimentacao = (typeof TIPOS_MOVIMENTACAO)[number];
 
-class MovimentacaoService {
+export class MovimentacaoService {
   private readonly repository = movimentacaoRepository;
+
   private readonly equipamentoRepository = new EquipamentoRepository();
+
   private readonly localizacaoRepository = new LocalizacaoRepository();
+
   private readonly colaboradorRepository = new ColaboradorRepository();
+
   private readonly setorRepository = new SetorRepository();
 
   async listarTodos() {
@@ -91,10 +95,7 @@ class MovimentacaoService {
       "Responsável anterior",
     );
 
-    await this.validarColaborador(
-      data.responsavelNovoId,
-      "Novo responsável",
-    );
+    await this.validarColaborador(data.responsavelNovoId, "Novo responsável");
 
     await this.validarSetor(data.setorAnteriorId, "Setor anterior");
 
@@ -105,10 +106,7 @@ class MovimentacaoService {
       "Localização anterior",
     );
 
-    await this.validarLocalizacao(
-      data.localizacaoNovaId,
-      "Nova localização",
-    );
+    await this.validarLocalizacao(data.localizacaoNovaId, "Nova localização");
 
     this.validarIdOpcional(data.manutencaoId, "ID da manutenção");
 
@@ -123,18 +121,31 @@ class MovimentacaoService {
     const movimentacaoLimpa: CreateMovimentacaoData = {
       tipo,
       equipamentoId: data.equipamentoId,
+
       equipamentoRelacionadoId: data.equipamentoRelacionadoId ?? null,
+
       responsavelAnteriorId: data.responsavelAnteriorId ?? null,
+
       responsavelNovoId: data.responsavelNovoId ?? null,
+
       setorAnteriorId: data.setorAnteriorId ?? null,
+
       setorNovoId: data.setorNovoId ?? null,
+
       localizacaoAnteriorId: data.localizacaoAnteriorId ?? null,
+
       localizacaoNovaId: data.localizacaoNovaId ?? null,
+
       manutencaoId: data.manutencaoId ?? null,
+
       usuarioId: data.usuarioId ?? null,
+
       statusAnterior: data.statusAnterior?.trim() || null,
+
       statusNovo: data.statusNovo?.trim() || null,
+
       observacoes: data.observacoes?.trim() || null,
+
       dataHora: data.dataHora ?? new Date(),
     };
 
@@ -144,6 +155,7 @@ class MovimentacaoService {
   async buscarComFiltros(filters: MovimentacaoFilters) {
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 10;
+
     const filtrosNormalizados: MovimentacaoFilters = {
       page,
       limit,
@@ -159,18 +171,18 @@ class MovimentacaoService {
 
     if (filters.equipamentoId !== undefined) {
       this.validarId(filters.equipamentoId, "ID do equipamento");
+
       filtrosNormalizados.equipamentoId = filters.equipamentoId;
     }
 
     if (filters.usuarioId !== undefined) {
       this.validarId(filters.usuarioId, "ID do usuário");
+
       filtrosNormalizados.usuarioId = filters.usuarioId;
     }
 
-    let tipo: TipoMovimentacao | undefined;
-
     if (filters.tipo?.trim()) {
-      tipo = filters.tipo.trim().toUpperCase() as TipoMovimentacao;
+      const tipo = filters.tipo.trim().toUpperCase() as TipoMovimentacao;
 
       if (!this.tipoPermitido(tipo)) {
         throw new AppError("Tipo de movimentação inválido", 400);
@@ -181,11 +193,13 @@ class MovimentacaoService {
 
     if (filters.dataInicio !== undefined) {
       this.validarData(filters.dataInicio, "Data inicial");
+
       filtrosNormalizados.dataInicio = filters.dataInicio;
     }
 
     if (filters.dataFim !== undefined) {
       this.validarData(filters.dataFim, "Data final");
+
       filtrosNormalizados.dataFim = filters.dataFim;
     }
 
@@ -204,9 +218,7 @@ class MovimentacaoService {
   }
 
   private tipoPermitido(tipo: string): tipo is TipoMovimentacao {
-    return TIPOS_MOVIMENTACAO.some(
-      (tipoPermitido) => tipoPermitido === tipo,
-    );
+    return TIPOS_MOVIMENTACAO.some((tipoPermitido) => tipoPermitido === tipo);
   }
 
   private validarId(id: number, campo: string) {
@@ -215,10 +227,7 @@ class MovimentacaoService {
     }
   }
 
-  private validarIdOpcional(
-    id: number | null | undefined,
-    campo: string,
-  ) {
+  private validarIdOpcional(id: number | null | undefined, campo: string) {
     if (id !== undefined && id !== null) {
       this.validarId(id, campo);
     }
@@ -241,10 +250,7 @@ class MovimentacaoService {
       return;
     }
 
-    this.validarId(
-      equipamentoRelacionadoId,
-      "ID do equipamento relacionado",
-    );
+    this.validarId(equipamentoRelacionadoId, "ID do equipamento relacionado");
 
     if (equipamentoRelacionadoId === equipamentoId) {
       throw new AppError(
@@ -253,8 +259,9 @@ class MovimentacaoService {
       );
     }
 
-    const equipamentoRelacionado =
-      await this.equipamentoRepository.findById(equipamentoRelacionadoId);
+    const equipamentoRelacionado = await this.equipamentoRepository.findById(
+      equipamentoRelacionadoId,
+    );
 
     if (!equipamentoRelacionado) {
       throw new AppError("Equipamento relacionado não encontrado", 404);
@@ -369,10 +376,7 @@ class MovimentacaoService {
 
     if (tipo === "MUDANCA_LOCALIZACAO") {
       if (!data.localizacaoNovaId) {
-        throw new AppError(
-          "A mudança deve possuir uma nova localização",
-          400,
-        );
+        throw new AppError("A mudança deve possuir uma nova localização", 400);
       }
 
       if (
@@ -388,8 +392,7 @@ class MovimentacaoService {
     }
 
     if (
-      (tipo === "ENTRADA_MANUTENCAO" ||
-        tipo === "RETORNO_MANUTENCAO") &&
+      (tipo === "ENTRADA_MANUTENCAO" || tipo === "RETORNO_MANUTENCAO") &&
       !data.manutencaoId
     ) {
       throw new AppError(
@@ -402,10 +405,7 @@ class MovimentacaoService {
       tipo === "BAIXA" &&
       data.statusNovo?.trim().toUpperCase() !== "BAIXADO"
     ) {
-      throw new AppError(
-        'A baixa deve possuir o novo status "BAIXADO"',
-        400,
-      );
+      throw new AppError('A baixa deve possuir o novo status "BAIXADO"', 400);
     }
   }
 }

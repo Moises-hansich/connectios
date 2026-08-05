@@ -1,8 +1,10 @@
+import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../prisma";
 
 export interface EquipamentoFilters {
   search?: string;
   categoria?: string;
+  categoriaId?: number;
   status?: string;
   localizacaoId?: number;
   page?: number;
@@ -11,32 +13,44 @@ export interface EquipamentoFilters {
 
 export interface CreateEquipamentoData {
   nome: string;
-  categoria: string;
-  fabricante?: string;
-  modelo?: string;
-  numeroSerie?: string;
-  patrimonio?: string;
+  categoriaId: number;
+  fabricante?: string | null;
+  modelo?: string | null;
+  numeroSerie?: string | null;
+  patrimonio?: string | null;
   status: string;
+  setorId?: number | null;
   localizacaoId?: number | null;
   responsavelId?: number | null;
-  observacoes?: string;
+  fornecedorId?: number | null;
+  observacoes?: string | null;
+  dataCompra?: Date | null;
+  garantiaAte?: Date | null;
 }
+
+type BancoDados = typeof prisma | Prisma.TransactionClient;
 
 export class EquipamentoRepository {
   async findAll() {
     return prisma.equipamento.findMany({
       include: {
+        categoria: true,
+        setor: true,
         localizacao: true,
         responsavel: true,
+        fornecedor: true,
 
         fotos: {
           where: {
             principal: true,
           },
+
           orderBy: {
             criadoEm: "desc",
           },
+
           take: 1,
+
           select: {
             id: true,
             nomeArquivo: true,
@@ -57,9 +71,13 @@ export class EquipamentoRepository {
       where: {
         numeroSerie,
       },
+
       include: {
+        categoria: true,
+        setor: true,
         localizacao: true,
         responsavel: true,
+        fornecedor: true,
       },
     });
   }
@@ -69,34 +87,47 @@ export class EquipamentoRepository {
       where: {
         patrimonio,
       },
+
       include: {
+        categoria: true,
+        setor: true,
         localizacao: true,
         responsavel: true,
+        fornecedor: true,
       },
     });
   }
 
-  async create(data: CreateEquipamentoData) {
-    return prisma.equipamento.create({
+  async create(data: CreateEquipamentoData, bancoDados: BancoDados = prisma) {
+    return bancoDados.equipamento.create({
       data,
+
       include: {
+        categoria: true,
+        setor: true,
         localizacao: true,
         responsavel: true,
+        fornecedor: true,
       },
     });
   }
 
-  async findById(id: number) {
-    return prisma.equipamento.findUnique({
+  async findById(id: number, bancoDados: BancoDados = prisma) {
+    return bancoDados.equipamento.findUnique({
       where: {
         id,
       },
+
       include: {
+        categoria: true,
+        setor: true,
         localizacao: true,
         responsavel: true,
+        fornecedor: true,
       },
     });
   }
+
   async findCompleto(id: number) {
     return prisma.equipamento.findUnique({
       where: {
@@ -104,9 +135,11 @@ export class EquipamentoRepository {
       },
 
       include: {
+        categoria: true,
+        setor: true,
         localizacao: true,
-
         responsavel: true,
+        fornecedor: true,
 
         hardware: {
           include: {
@@ -135,15 +168,24 @@ export class EquipamentoRepository {
     });
   }
 
-  async update(id: number, data: Partial<CreateEquipamentoData>) {
-    return prisma.equipamento.update({
+  async update(
+    id: number,
+    data: Partial<CreateEquipamentoData>,
+    bancoDados: BancoDados = prisma,
+  ) {
+    return bancoDados.equipamento.update({
       where: {
         id,
       },
+
       data,
+
       include: {
+        categoria: true,
+        setor: true,
         localizacao: true,
         responsavel: true,
+        fornecedor: true,
       },
     });
   }
@@ -153,9 +195,13 @@ export class EquipamentoRepository {
       where: {
         id,
       },
+
       include: {
+        categoria: true,
+        setor: true,
         localizacao: true,
         responsavel: true,
+        fornecedor: true,
       },
     });
   }
@@ -165,9 +211,17 @@ export class EquipamentoRepository {
     const limit = filters.limit ?? 10;
     const skip = (page - 1) * limit;
 
-    const where = {
+    const where: Prisma.EquipamentoWhereInput = {
+      ...(filters.categoriaId !== undefined && {
+        categoriaId: filters.categoriaId,
+      }),
+
       ...(filters.categoria && {
-        categoria: filters.categoria,
+        categoria: {
+          is: {
+            nome: filters.categoria,
+          },
+        },
       }),
 
       ...(filters.status && {
@@ -185,26 +239,41 @@ export class EquipamentoRepository {
               contains: filters.search,
             },
           },
+
           {
             fabricante: {
               contains: filters.search,
             },
           },
+
           {
             modelo: {
               contains: filters.search,
             },
           },
+
           {
             numeroSerie: {
               contains: filters.search,
             },
           },
+
           {
             patrimonio: {
               contains: filters.search,
             },
           },
+
+          {
+            categoria: {
+              is: {
+                nome: {
+                  contains: filters.search,
+                },
+              },
+            },
+          },
+
           {
             localizacao: {
               is: {
@@ -214,8 +283,19 @@ export class EquipamentoRepository {
               },
             },
           },
+
           {
             responsavel: {
+              is: {
+                nome: {
+                  contains: filters.search,
+                },
+              },
+            },
+          },
+
+          {
+            fornecedor: {
               is: {
                 nome: {
                   contains: filters.search,
@@ -232,17 +312,23 @@ export class EquipamentoRepository {
         where,
 
         include: {
+          categoria: true,
+          setor: true,
           localizacao: true,
           responsavel: true,
+          fornecedor: true,
 
           fotos: {
             where: {
               principal: true,
             },
+
             orderBy: {
               criadoEm: "desc",
             },
+
             take: 1,
+
             select: {
               id: true,
               nomeArquivo: true,
@@ -274,4 +360,5 @@ export class EquipamentoRepository {
     };
   }
 }
+
 export const equipamentoRepository = new EquipamentoRepository();
