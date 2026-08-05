@@ -13,6 +13,7 @@ import { ConfiguracoesPage } from "./pages/Configuracoes/ConfiguracoesPage";
 import { ColaboradorDetalhesPage } from "./pages/colaboradores/ColaboradorDetalhesPage";
 import { ManutencoesPage } from "./pages/Manutencoes/ManutencoesPage";
 import { MovimentacoesPage } from "./pages/Movimentacoes/MovimentacoesPage";
+import { EmpresasPage } from "./pages/EmpresasPage/EmpresasPage";
 export default function App() {
   return (
     <>
@@ -90,6 +91,15 @@ export default function App() {
           element={
             <PrivateRoute>
               <MovimentacoesPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/empresas"
+          element={
+            <PrivateRoute>
+              <EmpresasPage />
             </PrivateRoute>
           }
         />

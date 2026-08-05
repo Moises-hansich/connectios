@@ -46,78 +46,74 @@ export function useEquipamentos() {
   }, [carregarEquipamentos]);
 
   const categorias = useMemo(() => {
-    return Array.from(
-      new Set(
-        equipamentos
-          .map((equipamento) => equipamento.categoria?.trim())
-          .filter((categoria): categoria is string => Boolean(categoria)),
-      ),
-    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const nomes = equipamentos
+      .map((equipamento) => equipamento.categoria?.nome?.trim())
+      .filter((nome): nome is string => Boolean(nome));
+
+    return [...new Set(nomes)].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [equipamentos]);
 
   const localizacoes = useMemo(() => {
-    return Array.from(
-      new Set(
-        equipamentos
-          .map((equipamento) => equipamento.localizacao?.nome?.trim())
-          .filter((localizacao): localizacao is string => Boolean(localizacao)),
-      ),
-    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const nomes = equipamentos
+      .map((equipamento) => equipamento.localizacao?.nome?.trim())
+      .filter((nome): nome is string => Boolean(nome));
+
+    return [...new Set(nomes)].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [equipamentos]);
 
   const statusDisponiveis = useMemo(() => {
-    return Array.from(
-      new Set(
-        equipamentos
-          .map((equipamento) => equipamento.status?.trim())
-          .filter((status): status is string => Boolean(status)),
-      ),
-    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const nomes = equipamentos
+      .map((equipamento) => equipamento.status?.trim())
+      .filter((nome): nome is string => Boolean(nome));
+
+    return [...new Set(nomes)].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [equipamentos]);
 
   const responsaveis = useMemo(() => {
-    return Array.from(
-      new Set(
-        equipamentos
-          .map((equipamento) => equipamento.responsavel?.nome?.trim())
-          .filter((nome): nome is string => Boolean(nome)),
-      ),
-    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const nomes = equipamentos
+      .map((equipamento) => equipamento.responsavel?.nome?.trim())
+      .filter((nome): nome is string => Boolean(nome));
+
+    return [...new Set(nomes)].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [equipamentos]);
 
   const equipamentosFiltrados = useMemo(() => {
-    const termo = pesquisa.trim().toLowerCase();
+    const termo = pesquisa.trim().toLocaleLowerCase("pt-BR");
 
     return equipamentos.filter((equipamento) => {
       const correspondePesquisa =
         !termo ||
         [
           equipamento.nome,
-          equipamento.categoria,
+          equipamento.categoria?.nome,
           equipamento.fabricante,
           equipamento.modelo,
           equipamento.numeroSerie,
           equipamento.patrimonio,
           equipamento.status,
           equipamento.localizacao?.nome,
+          equipamento.responsavel?.nome,
           equipamento.observacoes,
         ].some((valor) =>
           String(valor ?? "")
-            .toLowerCase()
+            .toLocaleLowerCase("pt-BR")
             .includes(termo),
         );
 
       const correspondeCategoria =
-        !categoriaSelecionada || equipamento.categoria === categoriaSelecionada;
+        !categoriaSelecionada ||
+        equipamento.categoria?.nome?.trim() === categoriaSelecionada;
 
       const correspondeLocalizacao =
         !localizacaoSelecionada ||
-        equipamento.localizacao?.nome === localizacaoSelecionada;
+        equipamento.localizacao?.nome?.trim() === localizacaoSelecionada;
+
       const correspondeResponsavel =
         !responsavelSelecionado ||
-        equipamento.responsavel?.nome === responsavelSelecionado;
+        equipamento.responsavel?.nome?.trim() === responsavelSelecionado;
+
       const correspondeStatus =
-        !statusSelecionado || equipamento.status === statusSelecionado;
+        !statusSelecionado || equipamento.status?.trim() === statusSelecionado;
 
       return (
         correspondePesquisa &&
@@ -227,6 +223,7 @@ export function useEquipamentos() {
 
     localizacaoSelecionada,
     setLocalizacaoSelecionada,
+
     responsavelSelecionado,
     setResponsavelSelecionado,
 

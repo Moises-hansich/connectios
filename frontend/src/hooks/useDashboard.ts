@@ -1,23 +1,9 @@
-import { useEffect, useState } from "react";
-import { buscarDashboard } from "../services/dashboardService";
-import type { Equipamento } from "../types/equipamento";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
-type GraficoItem = {
-  name: string;
-  value: number;
-};
+import { dashboardService } from "../services/dashboardService";
 
-type DashboardData = {
-  cards: {
-    total: number;
-    emUso: number;
-    manutencao: number;
-    disponivel: number;
-  };
-  categorias: GraficoItem[];
-  status: GraficoItem[];
-  ultimos: Equipamento[];
-};
+import type { DashboardData } from "../types/dashboard";
 
 const dashboardInicial: DashboardData = {
   cards: {
@@ -26,9 +12,16 @@ const dashboardInicial: DashboardData = {
     manutencao: 0,
     disponivel: 0,
   },
+
   categorias: [],
   status: [],
   ultimos: [],
+
+  garantias: {
+    diasAviso: 30,
+    total: 0,
+    itens: [],
+  },
 };
 
 export function useDashboard() {
@@ -36,23 +29,31 @@ export function useDashboard() {
 
   const [carregando, setCarregando] = useState(true);
 
-  useEffect(() => {
-    async function carregarDashboard() {
-      try {
-        const dados = await buscarDashboard();
-        setDashboard(dados);
-      } catch (error) {
-        console.error("Erro ao carregar dashboard:", error);
-      } finally {
-        setCarregando(false);
-      }
-    }
+  const carregarDashboard = useCallback(async () => {
+    try {
+      setCarregando(true);
 
-    carregarDashboard();
+      const dados = await dashboardService.buscar();
+
+      setDashboard(dados);
+    } catch (error) {
+      console.error("Erro ao carregar dashboard:", error);
+
+      toast.error("Não foi possível carregar o dashboard.");
+
+      setDashboard(dashboardInicial);
+    } finally {
+      setCarregando(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void carregarDashboard();
+  }, [carregarDashboard]);
 
   return {
     dashboard,
     carregando,
+    carregarDashboard,
   };
 }

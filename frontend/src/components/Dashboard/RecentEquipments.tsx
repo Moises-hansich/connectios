@@ -34,7 +34,7 @@ export function RecentEquipments({ equipamentos }: Props) {
               <tr key={equipamento.id} className="border-b last:border-0">
                 <td className="py-3">{equipamento.nome}</td>
 
-                <td>{equipamento.categoria}</td>
+                <td>{equipamento.categoria?.nome ?? "Sem categoria"}</td>
 
                 <td>{equipamento.status}</td>
               </tr>

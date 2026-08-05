@@ -6,6 +6,7 @@ import { CategoryChart } from "../../components/Dashboard/CategoryChart";
 import { StatusChart } from "../../components/Dashboard/StatusChart";
 import { RecentEquipments } from "../../components/Dashboard/RecentEquipments";
 import { AlertsCard } from "../../components/Dashboard/AlertsCard";
+import { GarantiasVencendoCard } from "../../components/Dashboard/GarantiasVencendoCard";
 import { useDashboard } from "../../hooks/useDashboard";
 
 export function DashboardPage() {
@@ -59,6 +60,7 @@ export function DashboardPage() {
 
           <div className="mt-6 grid gap-6 xl:grid-cols-2">
             <CategoryChart dados={dashboard.categorias} />
+
             <StatusChart dados={dashboard.status} />
           </div>
 
@@ -69,6 +71,10 @@ export function DashboardPage() {
               manutencao={dashboard.cards.manutencao}
               disponiveis={dashboard.cards.disponivel}
             />
+          </div>
+
+          <div className="mt-6">
+            <GarantiasVencendoCard dados={dashboard.garantias} />
           </div>
         </>
       )}

@@ -22,7 +22,7 @@ export function EquipmentInfoCard({ equipamento }: EquipmentInfoCardProps) {
         <InfoItem
           icon={<Cpu size={18} />}
           titulo="Categoria"
-          valor={equipamento.categoria}
+          valor={equipamento.categoria?.nome ?? "Não informado"}
         />
 
         <InfoItem

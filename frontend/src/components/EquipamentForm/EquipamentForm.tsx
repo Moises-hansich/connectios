@@ -1,26 +1,36 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
 
 import { Select } from "../Select";
 import { Button } from "../Button";
 import { Input } from "../Input";
 
+import { categoriaService } from "../../services/categoriaService";
 import { equipamentoService } from "../../services/equipamentoService";
 import { localizacaoService } from "../../services/localizacaoService";
 import { colaboradorService } from "../../services/colaboradorService";
+import { empresaService } from "../../services/empresaService";
 
 import type {
+  Categoria,
   CriarEquipamentoData,
   Equipamento,
-  Localizacao,
 } from "../../types/equipamento";
+
+import type { Empresa } from "../../types/empresa";
 
 interface EquipmentFormProps {
   onSuccess: () => void;
   onCancel: () => void;
   modo: "criar" | "editar";
   equipamento?: Equipamento;
+}
+
+interface LocalizacaoOption {
+  id: number;
+  nome: string;
 }
 
 interface ColaboradorOption {
@@ -31,7 +41,7 @@ interface ColaboradorOption {
 
 interface FormData {
   nome: string;
-  categoria: string;
+  categoriaId: string;
   fabricante: string;
   modelo: string;
   numeroSerie: string;
@@ -39,22 +49,71 @@ interface FormData {
   status: string;
   localizacaoId: string;
   responsavelId: string;
+  fornecedorId: string;
+  dataCompra: string;
+  garantiaAte: string;
   observacoes: string;
+}
+
+interface ApiErrorResponse {
+  message?: string;
+  mensagem?: string;
+  errors?: Array<{
+    campo?: string;
+    mensagem?: string;
+    message?: string;
+  }>;
+}
+
+function formatarDataParaInput(valor: string | null | undefined): string {
+  if (!valor) {
+    return "";
+  }
+
+  return valor.slice(0, 10);
 }
 
 function criarEstadoInicial(equipamento?: Equipamento): FormData {
   return {
     nome: equipamento?.nome ?? "",
-    categoria: equipamento?.categoria ?? "",
+
+    categoriaId: equipamento?.categoriaId?.toString() ?? "",
+
     fabricante: equipamento?.fabricante ?? "",
     modelo: equipamento?.modelo ?? "",
     numeroSerie: equipamento?.numeroSerie ?? "",
     patrimonio: equipamento?.patrimonio ?? "",
     status: equipamento?.status ?? "Disponível",
+
     localizacaoId: equipamento?.localizacaoId?.toString() ?? "",
+
     responsavelId: equipamento?.responsavelId?.toString() ?? "",
+
+    fornecedorId: equipamento?.fornecedorId?.toString() ?? "",
+
+    dataCompra: formatarDataParaInput(equipamento?.dataCompra),
+
+    garantiaAte: formatarDataParaInput(equipamento?.garantiaAte),
+
     observacoes: equipamento?.observacoes ?? "",
   };
+}
+
+function obterMensagemErro(error: unknown, mensagemPadrao: string): string {
+  if (!isAxiosError<ApiErrorResponse>(error)) {
+    return mensagemPadrao;
+  }
+
+  const resposta = error.response?.data;
+  const primeiroErro = resposta?.errors?.[0];
+
+  return (
+    primeiroErro?.mensagem ??
+    primeiroErro?.message ??
+    resposta?.message ??
+    resposta?.mensagem ??
+    mensagemPadrao
+  );
 }
 
 export function EquipmentForm({
@@ -67,11 +126,22 @@ export function EquipmentForm({
     criarEstadoInicial(equipamento),
   );
 
-  const [localizacoes, setLocalizacoes] = useState<Localizacao[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+
+  const [localizacoes, setLocalizacoes] = useState<LocalizacaoOption[]>([]);
+
   const [colaboradores, setColaboradores] = useState<ColaboradorOption[]>([]);
 
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+
+  const [carregandoCategorias, setCarregandoCategorias] = useState(true);
+
   const [carregandoLocalizacoes, setCarregandoLocalizacoes] = useState(true);
+
   const [carregandoColaboradores, setCarregandoColaboradores] = useState(true);
+
+  const [carregandoEmpresas, setCarregandoEmpresas] = useState(true);
+
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
@@ -79,21 +149,55 @@ export function EquipmentForm({
   }, [equipamento]);
 
   useEffect(() => {
+    async function carregarCategorias() {
+      try {
+        setCarregandoCategorias(true);
+
+        const dados = await categoriaService.listarAtivas();
+
+        setCategorias(Array.isArray(dados) ? dados : []);
+      } catch (error) {
+        console.error("Erro ao carregar categorias:", error);
+
+        setCategorias([]);
+
+        toast.error(
+          obterMensagemErro(error, "Não foi possível carregar as categorias."),
+        );
+      } finally {
+        setCarregandoCategorias(false);
+      }
+    }
+
+    void carregarCategorias();
+  }, []);
+
+  useEffect(() => {
     async function carregarLocalizacoes() {
       try {
         setCarregandoLocalizacoes(true);
 
-        const dadosLocalizacoes = await localizacaoService.listar();
+        const dados = await localizacaoService.listar();
+
+        const lista = Array.isArray(dados) ? dados : [];
 
         setLocalizacoes(
-          Array.isArray(dadosLocalizacoes) ? dadosLocalizacoes : [],
+          lista.map((localizacao) => ({
+            id: localizacao.id,
+            nome: localizacao.nome,
+          })),
         );
       } catch (error) {
         console.error("Erro ao carregar localizações:", error);
 
         setLocalizacoes([]);
 
-        toast.error("Não foi possível carregar as localizações.");
+        toast.error(
+          obterMensagemErro(
+            error,
+            "Não foi possível carregar as localizações.",
+          ),
+        );
       } finally {
         setCarregandoLocalizacoes(false);
       }
@@ -107,11 +211,9 @@ export function EquipmentForm({
       try {
         setCarregandoColaboradores(true);
 
-        const dadosColaboradores = await colaboradorService.listar();
+        const dados = await colaboradorService.listar();
 
-        const lista = Array.isArray(dadosColaboradores)
-          ? dadosColaboradores
-          : [];
+        const lista = Array.isArray(dados) ? dados : [];
 
         setColaboradores(
           lista
@@ -127,13 +229,45 @@ export function EquipmentForm({
 
         setColaboradores([]);
 
-        toast.error("Não foi possível carregar os colaboradores.");
+        toast.error(
+          obterMensagemErro(
+            error,
+            "Não foi possível carregar os colaboradores.",
+          ),
+        );
       } finally {
         setCarregandoColaboradores(false);
       }
     }
 
     void carregarColaboradores();
+  }, []);
+
+  useEffect(() => {
+    async function carregarEmpresas() {
+      try {
+        setCarregandoEmpresas(true);
+
+        const dados = await empresaService.listarAtivas();
+
+        setEmpresas(Array.isArray(dados) ? dados : []);
+      } catch (error) {
+        console.error("Erro ao carregar fornecedores:", error);
+
+        setEmpresas([]);
+
+        toast.error(
+          obterMensagemErro(
+            error,
+            "Não foi possível carregar os fornecedores.",
+          ),
+        );
+      } finally {
+        setCarregandoEmpresas(false);
+      }
+    }
+
+    void carregarEmpresas();
   }, []);
 
   function handleChange(campo: keyof FormData, valor: string) {
@@ -150,6 +284,20 @@ export function EquipmentForm({
       return;
     }
 
+    if (formData.nome.trim().length < 3) {
+      toast.error("O nome deve possuir pelo menos 3 caracteres.");
+
+      return;
+    }
+
+    const categoriaId = Number.parseInt(formData.categoriaId, 10);
+
+    if (!Number.isInteger(categoriaId) || categoriaId <= 0) {
+      toast.error("Selecione uma categoria válida.");
+
+      return;
+    }
+
     const localizacaoId =
       formData.localizacaoId === ""
         ? null
@@ -160,11 +308,17 @@ export function EquipmentForm({
         ? null
         : Number.parseInt(formData.responsavelId, 10);
 
+    const fornecedorId =
+      formData.fornecedorId === ""
+        ? null
+        : Number.parseInt(formData.fornecedorId, 10);
+
     if (
       localizacaoId !== null &&
       (!Number.isInteger(localizacaoId) || localizacaoId <= 0)
     ) {
       toast.error("Selecione uma localização válida.");
+
       return;
     }
 
@@ -173,20 +327,57 @@ export function EquipmentForm({
       (!Number.isInteger(responsavelId) || responsavelId <= 0)
     ) {
       toast.error("Selecione um responsável válido.");
+
+      return;
+    }
+
+    if (
+      fornecedorId !== null &&
+      (!Number.isInteger(fornecedorId) || fornecedorId <= 0)
+    ) {
+      toast.error("Selecione um fornecedor válido.");
+
+      return;
+    }
+
+    if (
+      formData.dataCompra &&
+      formData.garantiaAte &&
+      formData.garantiaAte < formData.dataCompra
+    ) {
+      toast.error("A data da garantia não pode ser anterior à data da compra.");
+
+      return;
+    }
+
+    if (formData.garantiaAte && fornecedorId === null) {
+      toast.error("Selecione o fornecedor responsável pela garantia.");
+
       return;
     }
 
     const dados: CriarEquipamentoData = {
       nome: formData.nome.trim(),
-      categoria: formData.categoria.trim(),
-      fabricante: formData.fabricante.trim(),
-      modelo: formData.modelo.trim(),
-      numeroSerie: formData.numeroSerie.trim(),
-      patrimonio: formData.patrimonio.trim(),
-      status: formData.status,
+      categoriaId,
+
+      fabricante: formData.fabricante.trim() || null,
+
+      modelo: formData.modelo.trim() || null,
+
+      numeroSerie: formData.numeroSerie.trim() || null,
+
+      patrimonio: formData.patrimonio.trim() || null,
+
+      status: formData.status.trim(),
       localizacaoId,
       responsavelId,
-      observacoes: formData.observacoes.trim(),
+      fornecedorId,
+
+      dataCompra: formData.dataCompra || null,
+
+      garantiaAte: formData.garantiaAte || null,
+
+      observacoes: formData.observacoes.trim() || null,
     };
 
     try {
@@ -207,16 +398,40 @@ export function EquipmentForm({
       console.error("Erro ao salvar equipamento:", error);
 
       toast.error(
-        modo === "editar"
-          ? "Não foi possível atualizar o equipamento."
-          : "Não foi possível cadastrar o equipamento.",
+        obterMensagemErro(
+          error,
+          modo === "editar"
+            ? "Não foi possível atualizar o equipamento."
+            : "Não foi possível cadastrar o equipamento.",
+        ),
       );
     } finally {
       setSalvando(false);
     }
   }
 
-  const carregandoDados = carregandoLocalizacoes || carregandoColaboradores;
+  const categoriasDisponiveis =
+    equipamento?.categoria &&
+    !categorias.some((categoria) => categoria.id === equipamento.categoria?.id)
+      ? [equipamento.categoria, ...categorias]
+      : categorias;
+
+  /*
+   * Caso a empresa tenha sido desativada depois de
+   * ser vinculada ao equipamento, ela continua
+   * aparecendo durante a edição.
+   */
+  const empresasDisponiveis =
+    equipamento?.fornecedor &&
+    !empresas.some((empresa) => empresa.id === equipamento.fornecedor?.id)
+      ? [equipamento.fornecedor, ...empresas]
+      : empresas;
+
+  const carregandoDados =
+    carregandoCategorias ||
+    carregandoLocalizacoes ||
+    carregandoColaboradores ||
+    carregandoEmpresas;
 
   const formularioDesabilitado = salvando || carregandoDados;
 
@@ -230,13 +445,26 @@ export function EquipmentForm({
         onChange={(event) => handleChange("nome", event.target.value)}
       />
 
-      <Input
+      <Select
         label="Categoria"
         required
-        value={formData.categoria}
+        value={formData.categoriaId}
         disabled={formularioDesabilitado}
-        onChange={(event) => handleChange("categoria", event.target.value)}
-      />
+        onChange={(event) => handleChange("categoriaId", event.target.value)}
+      >
+        <option value="">
+          {carregandoCategorias
+            ? "Carregando categorias..."
+            : "Selecione uma categoria"}
+        </option>
+
+        {categoriasDisponiveis.map((categoria) => (
+          <option key={categoria.id} value={String(categoria.id)}>
+            {categoria.nome}
+            {!categoria.ativo ? " (desativada)" : ""}
+          </option>
+        ))}
+      </Select>
 
       <Input
         label="Fabricante"
@@ -274,10 +502,49 @@ export function EquipmentForm({
         onChange={(event) => handleChange("status", event.target.value)}
       >
         <option value="Disponível">Disponível</option>
+
         <option value="Em uso">Em uso</option>
+
         <option value="Em manutenção">Em manutenção</option>
+
         <option value="Reservado">Reservado</option>
+
         <option value="Baixado">Baixado</option>
+      </Select>
+
+      <Input
+        label="Data da compra"
+        type="date"
+        value={formData.dataCompra}
+        disabled={formularioDesabilitado}
+        onChange={(event) => handleChange("dataCompra", event.target.value)}
+      />
+
+      <Input
+        label="Garantia até"
+        type="date"
+        value={formData.garantiaAte}
+        min={formData.dataCompra || undefined}
+        disabled={formularioDesabilitado}
+        onChange={(event) => handleChange("garantiaAte", event.target.value)}
+      />
+
+      <Select
+        label="Fornecedor da garantia"
+        value={formData.fornecedorId}
+        disabled={formularioDesabilitado}
+        onChange={(event) => handleChange("fornecedorId", event.target.value)}
+      >
+        <option value="">
+          {carregandoEmpresas ? "Carregando fornecedores..." : "Sem fornecedor"}
+        </option>
+
+        {empresasDisponiveis.map((empresa) => (
+          <option key={empresa.id} value={String(empresa.id)}>
+            {empresa.nome}
+            {!empresa.ativo ? " (desativada)" : ""}
+          </option>
+        ))}
       </Select>
 
       <Select
@@ -335,7 +602,11 @@ export function EquipmentForm({
           Cancelar
         </Button>
 
-        <Button type="submit" loading={salvando} disabled={carregandoDados}>
+        <Button
+          type="submit"
+          loading={salvando}
+          disabled={formularioDesabilitado}
+        >
           {modo === "editar" ? "Atualizar" : "Salvar"}
         </Button>
       </div>

@@ -1,79 +1,95 @@
-import { CheckCircle2, Eye, Wrench } from "lucide-react";
+import { CheckCircle2, Wrench } from "lucide-react";
 
 import type { Manutencao, StatusManutencao } from "../../types/manutencao";
 
 interface ManutencaoTableProps {
   manutencoes: Manutencao[];
-  onVerDetalhes?: (manutencao: Manutencao) => void;
   onFinalizar?: (manutencao: Manutencao) => void;
 }
 
-function formatarData(data: string | null) {
-  if (!data) {
+function formatarData(valor: string | null): string {
+  if (!valor) {
     return "Não informado";
   }
 
-  const dataFormatada = new Date(data);
+  const data = new Date(valor);
 
-  if (Number.isNaN(dataFormatada.getTime())) {
+  if (Number.isNaN(data.getTime())) {
     return "Data inválida";
   }
 
-  return dataFormatada.toLocaleString("pt-BR", {
+  return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
-  });
+  }).format(data);
 }
 
-function formatarCusto(custo: string | null) {
-  if (custo === null) {
+function formatarCusto(custo: string | number | null): string {
+  if (custo === null || custo === undefined || custo === "") {
     return "Não informado";
   }
 
   const valor = Number(custo);
 
   if (!Number.isFinite(valor)) {
-    return "Valor inválido";
+    return "Não informado";
   }
 
-  return valor.toLocaleString("pt-BR", {
+  return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-  });
+  }).format(valor);
 }
 
-function textoStatus(status: StatusManutencao) {
-  return status === "EM_ANDAMENTO" ? "Em andamento" : "Finalizada";
+function textoStatus(status: StatusManutencao): string {
+  const textos: Record<StatusManutencao, string> = {
+    EM_ANDAMENTO: "Em andamento",
+    FINALIZADA: "Finalizada",
+  };
+
+  return textos[status];
 }
 
-function classeStatus(status: StatusManutencao) {
-  if (status === "EM_ANDAMENTO") {
-    return "bg-amber-100 text-amber-700";
+function classeStatus(status: StatusManutencao): string {
+  if (status === "FINALIZADA") {
+    return "bg-emerald-100 text-emerald-700";
   }
 
-  return "bg-emerald-100 text-emerald-700";
+  return "bg-amber-100 text-amber-700";
 }
 
-function previsaoOuRetorno(manutencao: Manutencao) {
-  return manutencao.dataRetorno ?? manutencao.previsaoRetorno;
+function empresaOuLocal(manutencao: Manutencao): string {
+  return (
+    manutencao.empresaResponsavel?.nome ||
+    manutencao.empresaResponsavelTexto ||
+    manutencao.localManutencao ||
+    "Responsável não informado"
+  );
+}
+
+function previsaoOuRetorno(manutencao: Manutencao): string {
+  if (manutencao.status === "FINALIZADA") {
+    return `Retorno: ${formatarData(manutencao.dataRetorno)}`;
+  }
+
+  return `Previsão: ${formatarData(manutencao.previsaoRetorno)}`;
 }
 
 export function ManutencaoTable({
   manutencoes,
-  onVerDetalhes,
   onFinalizar,
 }: ManutencaoTableProps) {
   if (manutencoes.length === 0) {
     return (
-      <div className="px-5 py-16 text-center">
-        <Wrench size={42} className="mx-auto mb-3 text-slate-300" />
+      <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+        <Wrench size={36} className="mx-auto text-slate-400" />
 
-        <h3 className="font-semibold text-slate-700">
+        <h3 className="mt-3 font-semibold text-slate-800">
           Nenhuma manutenção encontrada
         </h3>
 
         <p className="mt-1 text-sm text-slate-500">
-          Altere os filtros ou registre uma nova manutenção.
+          As manutenções cadastradas serão exibidas aqui.
         </p>
       </div>
     );
@@ -81,26 +97,25 @@ export function ManutencaoTable({
 
   return (
     <>
-      {/* Visualização para celular */}
-      <div className="space-y-4 p-4 md:hidden">
+      <div className="space-y-3 md:hidden">
         {manutencoes.map((manutencao) => (
           <article
             key={manutencao.id}
             className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="truncate font-semibold text-slate-900">
+              <div>
+                <h3 className="font-semibold text-slate-900">
                   {manutencao.equipamento.nome}
                 </h3>
 
-                <p className="text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-500">
                   {manutencao.equipamento.patrimonio || "Sem patrimônio"}
                 </p>
               </div>
 
               <span
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${classeStatus(
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${classeStatus(
                   manutencao.status,
                 )}`}
               >
@@ -108,197 +123,133 @@ export function ManutencaoTable({
               </span>
             </div>
 
-            <div className="mt-4 space-y-3 text-sm">
-              <div>
-                <p className="font-medium text-slate-700">Problema informado</p>
-
-                <p className="break-words text-slate-600">
+            <div className="mt-4 space-y-2 text-sm">
+              <p>
+                <span className="font-medium text-slate-700">Problema:</span>{" "}
+                <span className="text-slate-600">
                   {manutencao.problemaInformado}
-                </p>
+                </span>
+              </p>
 
-                <p className="mt-1 text-xs text-slate-500">
-                  {manutencao.empresaResponsavel ||
-                    manutencao.localManutencao ||
-                    "Responsável não informado"}
-                </p>
-              </div>
+              <p>
+                <span className="font-medium text-slate-700">
+                  Empresa/local:
+                </span>{" "}
+                <span className="text-slate-600">
+                  {empresaOuLocal(manutencao)}
+                </span>
+              </p>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="font-medium text-slate-700">Saída</p>
-                  <p className="text-slate-600">
-                    {formatarData(manutencao.dataSaida)}
-                  </p>
-                </div>
+              <p className="text-slate-600">
+                Saída: {formatarData(manutencao.dataSaida)}
+              </p>
 
-                <div>
-                  <p className="font-medium text-slate-700">
-                    {manutencao.dataRetorno ? "Retorno" : "Previsão"}
-                  </p>
-                  <p className="text-slate-600">
-                    {formatarData(previsaoOuRetorno(manutencao))}
-                  </p>
-                </div>
-              </div>
+              <p className="text-slate-600">{previsaoOuRetorno(manutencao)}</p>
 
-              <div>
-                <p className="font-medium text-slate-700">Custo</p>
-                <p className="text-slate-600">
-                  {formatarCusto(manutencao.custo)}
-                </p>
-              </div>
+              <p className="text-slate-600">
+                Custo: {formatarCusto(manutencao.custo)}
+              </p>
             </div>
 
-            {(onVerDetalhes ||
-              (manutencao.status === "EM_ANDAMENTO" && onFinalizar)) && (
-              <div
-                className={`mt-4 grid gap-2 border-t border-slate-100 pt-4 ${
-                  onVerDetalhes &&
-                  manutencao.status === "EM_ANDAMENTO" &&
-                  onFinalizar
-                    ? "grid-cols-2"
-                    : "grid-cols-1"
-                }`}
+            {manutencao.status === "EM_ANDAMENTO" && onFinalizar && (
+              <button
+                type="button"
+                onClick={() => onFinalizar(manutencao)}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
               >
-                {onVerDetalhes && (
-                  <button
-                    type="button"
-                    onClick={() => onVerDetalhes(manutencao)}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    aria-label={`Ver detalhes da manutenção de ${manutencao.equipamento.nome}`}
-                  >
-                    <Eye size={18} />
-                    Detalhes
-                  </button>
-                )}
-
-                {manutencao.status === "EM_ANDAMENTO" && onFinalizar && (
-                  <button
-                    type="button"
-                    onClick={() => onFinalizar(manutencao)}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                    aria-label={`Finalizar manutenção de ${manutencao.equipamento.nome}`}
-                  >
-                    <CheckCircle2 size={18} />
-                    Finalizar
-                  </button>
-                )}
-              </div>
+                <CheckCircle2 size={17} />
+                Finalizar manutenção
+              </button>
             )}
           </article>
         ))}
       </div>
 
-      {/* Visualização para computador */}
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[1080px]">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-5 py-3">Equipamento</th>
-              <th className="px-5 py-3">Problema</th>
-              <th className="px-5 py-3">Saída</th>
-              <th className="px-5 py-3">Previsão/retorno</th>
-              <th className="px-5 py-3">Custo</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3 text-right">Ações</th>
-            </tr>
-          </thead>
+      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[950px] text-left">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-600">
+              <tr>
+                <th className="px-4 py-3">Equipamento</th>
 
-          <tbody className="divide-y divide-slate-100">
-            {manutencoes.map((manutencao) => (
-              <tr
-                key={manutencao.id}
-                className="transition-colors hover:bg-slate-50"
-              >
-                <td className="px-5 py-4">
-                  <p className="font-medium text-slate-900">
-                    {manutencao.equipamento.nome}
-                  </p>
+                <th className="px-4 py-3">Problema</th>
 
-                  <p className="text-xs text-slate-500">
-                    {manutencao.equipamento.patrimonio || "Sem patrimônio"}
-                  </p>
-                </td>
+                <th className="px-4 py-3">Empresa/local</th>
 
-                <td className="max-w-xs px-5 py-4">
-                  <p
-                    className="truncate text-sm text-slate-700"
-                    title={manutencao.problemaInformado}
-                  >
-                    {manutencao.problemaInformado}
-                  </p>
+                <th className="px-4 py-3">Saída</th>
 
-                  <p className="text-xs text-slate-500">
-                    {manutencao.empresaResponsavel ||
-                      manutencao.localManutencao ||
-                      "Responsável não informado"}
-                  </p>
-                </td>
+                <th className="px-4 py-3">Previsão/retorno</th>
 
-                <td className="px-5 py-4 text-sm text-slate-600">
-                  {formatarData(manutencao.dataSaida)}
-                </td>
+                <th className="px-4 py-3">Custo</th>
 
-                <td className="px-5 py-4 text-sm text-slate-600">
-                  {formatarData(previsaoOuRetorno(manutencao))}
-                </td>
+                <th className="px-4 py-3">Status</th>
 
-                <td className="px-5 py-4 text-sm font-medium text-slate-700">
-                  {formatarCusto(manutencao.custo)}
-                </td>
+                <th className="px-4 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
 
-                <td className="px-5 py-4">
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${classeStatus(
-                      manutencao.status,
-                    )}`}
-                  >
-                    {textoStatus(manutencao.status)}
-                  </span>
-                </td>
+            <tbody className="divide-y divide-slate-200">
+              {manutencoes.map((manutencao) => (
+                <tr key={manutencao.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-slate-900">
+                      {manutencao.equipamento.nome}
+                    </p>
 
-                <td className="px-5 py-4">
-                  <div className="flex items-center justify-end gap-1">
-                    {onVerDetalhes && (
-                      <button
-                        type="button"
-                        onClick={() => onVerDetalhes(manutencao)}
-                        className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                        aria-label={`Ver detalhes da manutenção de ${manutencao.equipamento.nome}`}
-                        title="Ver detalhes"
-                      >
-                        <Eye size={18} />
-                        Detalhes
-                      </button>
-                    )}
+                    <p className="text-xs text-slate-500">
+                      {manutencao.equipamento.patrimonio || "Sem patrimônio"}
+                    </p>
+                  </td>
 
-                    {manutencao.status === "EM_ANDAMENTO" && onFinalizar && (
+                  <td className="max-w-[240px] px-4 py-3 text-sm text-slate-600">
+                    <p className="truncate">{manutencao.problemaInformado}</p>
+                  </td>
+
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {empresaOuLocal(manutencao)}
+                  </td>
+
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {formatarData(manutencao.dataSaida)}
+                  </td>
+
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {previsaoOuRetorno(manutencao)}
+                  </td>
+
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {formatarCusto(manutencao.custo)}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${classeStatus(
+                        manutencao.status,
+                      )}`}
+                    >
+                      {textoStatus(manutencao.status)}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3 text-right">
+                    {manutencao.status === "EM_ANDAMENTO" && onFinalizar ? (
                       <button
                         type="button"
                         onClick={() => onFinalizar(manutencao)}
-                        className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                        aria-label={`Finalizar manutenção de ${manutencao.equipamento.nome}`}
-                        title="Finalizar manutenção"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
                       >
-                        <CheckCircle2 size={18} />
+                        <CheckCircle2 size={16} />
                         Finalizar
                       </button>
+                    ) : (
+                      <span className="text-sm text-slate-400">—</span>
                     )}
-
-                    {!onVerDetalhes &&
-                      !(
-                        manutencao.status === "EM_ANDAMENTO" && onFinalizar
-                      ) && (
-                        <span className="text-sm text-slate-400">
-                          Sem ações
-                        </span>
-                      )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );

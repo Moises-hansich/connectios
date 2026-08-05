@@ -103,7 +103,7 @@ export function EquipmentTable({
                   </h3>
 
                   <p className="text-sm text-gray-500">
-                    {equipamento.categoria}
+                    {equipamento.categoria?.nome ?? "Sem categoria"}
                   </p>
                 </div>
 
@@ -225,7 +225,9 @@ export function EquipmentTable({
                   {equipamento.nome}
                 </td>
 
-                <td className="px-4 py-3">{equipamento.categoria}</td>
+                <td className="px-4 py-3">
+                  {equipamento.categoria?.nome ?? "Sem categoria"}
+                </td>
 
                 <td className="px-4 py-3">{equipamento.fabricante || "-"}</td>
 

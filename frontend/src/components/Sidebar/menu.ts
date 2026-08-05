@@ -8,6 +8,7 @@ import {
   Wrench,
   ArrowLeftRight,
   Icon,
+  Building2,
 } from "lucide-react";
 
 export const menuItems = [
@@ -50,5 +51,11 @@ export const menuItems = [
     title: "Historico",
     icon: ArrowLeftRight,
     path: "/movimentacoes",
+  },
+
+  {
+    title: "Empresas",
+    icon: Building2,
+    path: "/empresas",
   },
 ];
