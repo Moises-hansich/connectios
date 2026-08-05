@@ -1,7 +1,11 @@
 import { api } from "./api";
 
-export async function buscarDashboard() {
-  const response = await api.get("/dashboard");
+import type { DashboardData, DashboardResponse } from "../types/dashboard";
 
-  return response.data.data;
-}
+export const dashboardService = {
+  async buscar(): Promise<DashboardData> {
+    const response = await api.get<DashboardResponse>("/dashboard");
+
+    return response.data.data;
+  },
+};

@@ -22,6 +22,12 @@ type BuscarEquipamentoCompletoResponse = {
   data: Equipamento;
 };
 
+type SalvarEquipamentoResponse = {
+  success: boolean;
+  message: string;
+  data: Equipamento;
+};
+
 export const equipamentoService = {
   async listar(): Promise<Equipamento[]> {
     const response = await api.get<ListarEquipamentosResponse>(
@@ -45,19 +51,28 @@ export const equipamentoService = {
     return response.data.data;
   },
 
-  async criar(dados: CriarEquipamentoData) {
-    const response = await api.post("/equipamentos", dados);
+  async criar(dados: CriarEquipamentoData): Promise<Equipamento> {
+    const response = await api.post<SalvarEquipamentoResponse>(
+      "/equipamentos",
+      dados,
+    );
 
-    return response.data;
+    return response.data.data;
   },
 
-  async atualizar(id: number, dados: AtualizarEquipamentoData) {
-    const response = await api.put(`/equipamentos/${id}`, dados);
+  async atualizar(
+    id: number,
+    dados: AtualizarEquipamentoData,
+  ): Promise<Equipamento> {
+    const response = await api.put<SalvarEquipamentoResponse>(
+      `/equipamentos/${id}`,
+      dados,
+    );
 
-    return response.data;
+    return response.data.data;
   },
 
-  async excluir(id: number) {
+  async excluir(id: number): Promise<void> {
     await api.delete(`/equipamentos/${id}`);
   },
 };

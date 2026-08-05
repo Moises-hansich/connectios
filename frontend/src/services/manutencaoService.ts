@@ -3,6 +3,7 @@ import { api } from "./api";
 import type {
   AbrirManutencaoData,
   FinalizarManutencaoData,
+  GarantiaEquipamento,
   Manutencao,
   ManutencaoFiltros,
   ManutencaoResponse,
@@ -27,6 +28,14 @@ export const manutencaoService = {
   async buscarPorEquipamento(equipamentoId: number): Promise<Manutencao[]> {
     const response = await api.get<Manutencao[]>(
       `/manutencoes/equipamento/${equipamentoId}`,
+    );
+
+    return response.data;
+  },
+
+  async consultarGarantia(equipamentoId: number): Promise<GarantiaEquipamento> {
+    const response = await api.get<GarantiaEquipamento>(
+      `/manutencoes/equipamento/${equipamentoId}/garantia`,
     );
 
     return response.data;
