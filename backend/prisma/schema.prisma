@@ -10,13 +10,21 @@ datasource db {
 model Equipamento {
   id          Int     @id @default(autoincrement())
   nome        String
-  categoria   String
   fabricante  String?
   modelo      String?
   numeroSerie String? @unique
   patrimonio  String? @unique
   status      String
   observacoes String?
+
+  dataCompra  DateTime?
+  garantiaAte DateTime?
+
+  fornecedorId Int?
+  fornecedor   Empresa? @relation("FornecedorEquipamento", fields: [fornecedorId], references: [id], onDelete: SetNull)
+
+  categoriaId Int
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
 
   setorId Int?
   setor   Setor? @relation(fields: [setorId], references: [id], onDelete: SetNull)
@@ -37,9 +45,44 @@ model Equipamento {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
+  @@index([categoriaId])
   @@index([setorId])
   @@index([localizacaoId])
   @@index([responsavelId])
+  @@index([fornecedorId])
+}
+
+model Categoria {
+  id        Int     @id @default(autoincrement())
+  nome      String  @unique
+  descricao String?
+  ativo     Boolean @default(true)
+
+  equipamentos Equipamento[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model Empresa {
+  id Int @id @default(autoincrement())
+
+  nome        String
+  cnpj        String? @unique
+  telefone    String?
+  email       String?
+  endereco    String?
+  observacoes String?
+  ativo       Boolean @default(true)
+
+  equipamentosFornecidos Equipamento[] @relation("FornecedorEquipamento")
+  manutencoesRealizadas  Manutencao[]  @relation("EmpresaManutencao")
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([nome])
+  @@index([ativo])
 }
 
 model FotoEquipamento {
@@ -282,11 +325,16 @@ model Manutencao {
   equipamentoId Int
   equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Restrict)
 
-  problemaInformado  String
-  diagnostico        String?
-  solucao            String?
-  localManutencao    String?
-  empresaResponsavel String?
+  problemaInformado String
+  diagnostico       String?
+  solucao           String?
+  localManutencao   String?
+
+  // Mantém os nomes registrados nas manutenções antigas.
+  empresaResponsavelTexto String? @map("empresaResponsavel")
+
+  empresaResponsavelId Int?
+  empresaResponsavel   Empresa? @relation("EmpresaManutencao", fields: [empresaResponsavelId], references: [id], onDelete: SetNull)
 
   dataSaida       DateTime  @default(now())
   previsaoRetorno DateTime?
@@ -322,4 +370,5 @@ model Manutencao {
   @@index([registradoPorId])
   @@index([status])
   @@index([dataSaida])
+  @@index([empresaResponsavelId])
 }
