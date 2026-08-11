@@ -7,12 +7,14 @@ import { Input } from "../Input";
 import { Select } from "../Select";
 
 import { colaboradorService } from "../../services/colaboradorService";
-import { localizacaoService } from "../../services/localizacaoService";
+import {
+  localizacaoService,
+  type Localizacao,
+} from "../../services/localizacaoService";
 
 import type {
   Colaborador,
   ColaboradorCreateData,
-  Localizacao,
 } from "../../types/colaborador";
 
 interface ColaboradorFormProps {

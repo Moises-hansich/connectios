@@ -41,15 +41,15 @@ function formatarData(data: string | null) {
   });
 }
 
-function formatarCusto(custo: string | null) {
-  if (custo === null || custo.trim() === "") {
+function formatarCusto(custo: string | number | null) {
+  if (custo === null || String(custo).trim() === "") {
     return "Não informado";
   }
 
   const valor = Number(custo);
 
-  if (!Number.isFinite(valor)) {
-    return "Valor inválido";
+  if (Number.isNaN(valor)) {
+    return "Não informado";
   }
 
   return valor.toLocaleString("pt-BR", {
@@ -184,7 +184,11 @@ export function DetalhesManutencaoModal({
 
                   <CampoTexto
                     titulo="Empresa responsável"
-                    valor={manutencao.empresaResponsavel}
+                    valor={
+                      manutencao.empresaResponsavel?.nome ||
+                      manutencao.empresaResponsavelTexto ||
+                      null
+                    }
                   />
                 </div>
 

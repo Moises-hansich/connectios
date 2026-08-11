@@ -15,8 +15,11 @@ import {
   CampoHardwareTable,
 } from "../../components/CampoHardware";
 
+import { CategoriaModal, CategoriaTable } from "../../components/Categoria";
+
 import { useTipoHardware } from "../../hooks/useTipoHardware";
 import { useCampoHardware } from "../../hooks/useCampoHardware";
+import { useCategorias } from "../../hooks/useCategorias";
 
 export function ConfiguracoesPage() {
   const {
@@ -61,6 +64,28 @@ export function ConfiguracoesPage() {
     confirmarExclusao: confirmarExcluirCampo,
   } = useCampoHardware();
 
+  const {
+    categorias,
+    carregando: carregandoCategorias,
+    excluindo: excluindoCategoria,
+
+    modalAberto: modalCategoriaAberto,
+    modalExcluirAberto: modalExcluirCategoriaAberto,
+
+    categoriaSelecionada,
+    categoriaExcluir,
+
+    abrirModalCadastro: abrirCadastroCategoria,
+    abrirModalEdicao: abrirEdicaoCategoria,
+    fecharModal: fecharModalCategoria,
+
+    abrirModalExclusao: abrirExcluirCategoria,
+    fecharModalExclusao: fecharExcluirCategoria,
+    confirmarExclusao: confirmarExcluirCategoria,
+
+    finalizarCadastroOuEdicao: finalizarCategoria,
+  } = useCategorias();
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -68,9 +93,28 @@ export function ConfiguracoesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Configurações</h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            Configure os tipos e os campos personalizados dos hardwares.
+            Configure categorias, tipos e campos personalizados do sistema.
           </p>
         </header>
+
+        <Card
+          title="Categorias de Equipamentos"
+          description="Cadastre e organize as categorias usadas nos equipamentos."
+        >
+          <div className="mb-6 flex justify-end">
+            <Button type="button" onClick={abrirCadastroCategoria}>
+              <Plus size={18} />
+              Nova Categoria
+            </Button>
+          </div>
+
+          <CategoriaTable
+            categorias={categorias}
+            carregando={carregandoCategorias}
+            onEditar={abrirEdicaoCategoria}
+            onExcluir={abrirExcluirCategoria}
+          />
+        </Card>
 
         <Card
           title="Tipos de Hardware"
@@ -93,7 +137,7 @@ export function ConfiguracoesPage() {
 
         <Card
           title="Campos de Hardware"
-          description="Configure os campos que serão exibidos para cada tipo de hardware."
+          description="Configure os campos exibidos para cada tipo de hardware."
         >
           <div className="mb-6 flex justify-end">
             <Button type="button" onClick={abrirCadastroCampo}>
@@ -110,6 +154,26 @@ export function ConfiguracoesPage() {
           />
         </Card>
       </div>
+
+      <CategoriaModal
+        aberto={modalCategoriaAberto}
+        categoria={categoriaSelecionada}
+        onClose={fecharModalCategoria}
+        onSuccess={finalizarCategoria}
+      />
+
+      <ConfirmModal
+        aberto={modalExcluirCategoriaAberto}
+        titulo="Excluir Categoria"
+        mensagem={
+          categoriaExcluir
+            ? `Deseja realmente excluir "${categoriaExcluir.nome}"?`
+            : ""
+        }
+        carregando={excluindoCategoria}
+        onCancel={fecharExcluirCategoria}
+        onConfirm={confirmarExcluirCategoria}
+      />
 
       <TipoHardwareModal
         aberto={modalAberto}

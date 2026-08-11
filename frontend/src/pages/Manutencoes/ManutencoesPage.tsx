@@ -52,6 +52,7 @@ export function ManutencoesPage() {
     useState<Manutencao | null>(null);
   const carregarManutencoes = useCallback(async () => {
     try {
+      await Promise.resolve();
       setCarregando(true);
 
       const resultado = await manutencaoService.listar({
@@ -114,51 +115,6 @@ export function ManutencoesPage() {
     setFiltrosAplicados(filtrosIniciais);
   }
 
-  function formatarData(data: string | null) {
-    if (!data) {
-      return "Não informado";
-    }
-
-    const dataFormatada = new Date(data);
-
-    if (Number.isNaN(dataFormatada.getTime())) {
-      return "Data inválida";
-    }
-
-    return dataFormatada.toLocaleString("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
-  }
-
-  function formatarCusto(custo: string | null) {
-    if (custo === null) {
-      return "Não informado";
-    }
-
-    const valor = Number(custo);
-
-    if (!Number.isFinite(valor)) {
-      return "Valor inválido";
-    }
-
-    return valor.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-  }
-
-  function textoStatus(status: StatusManutencao) {
-    return status === "EM_ANDAMENTO" ? "Em andamento" : "Finalizada";
-  }
-
-  function classeStatus(status: StatusManutencao) {
-    if (status === "EM_ANDAMENTO") {
-      return "bg-amber-100 text-amber-700";
-    }
-
-    return "bg-emerald-100 text-emerald-700";
-  }
   function abrirModalFinalizacao(manutencao: Manutencao) {
     setManutencaoFinalizacao(manutencao);
   }
@@ -299,7 +255,7 @@ export function ManutencoesPage() {
         ) : (
           <ManutencaoTable
             manutencoes={manutencoes}
-            onVerDetalhes={abrirModalDetalhes}
+            onDetalhes={abrirModalDetalhes}
             onFinalizar={abrirModalFinalizacao}
           />
         )}
@@ -338,12 +294,14 @@ export function ManutencoesPage() {
           </div>
         )}
       </Card>
+
       <FinalizarManutencaoModal
         aberto={manutencaoFinalizacao !== null}
         manutencao={manutencaoFinalizacao}
         onFechar={fecharModalFinalizacao}
         onSucesso={carregarManutencoes}
       />
+
       <DetalhesManutencaoModal
         aberto={manutencaoDetalhes !== null}
         manutencao={manutencaoDetalhes}

@@ -55,7 +55,13 @@ export const empresaService = {
 
     return response.data;
   },
+  async alterarStatus(empresa: Empresa): Promise<Empresa> {
+    const response = await api.put<Empresa>(`/empresas/${empresa.id}`, {
+      ativo: !empresa.ativo,
+    });
 
+    return response.data;
+  },
   async excluir(id: number): Promise<void> {
     await api.delete(`/empresas/${id}`);
   },

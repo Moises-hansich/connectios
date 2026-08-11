@@ -71,7 +71,7 @@ export function FinalizarManutencaoModal({
 
     setDiagnostico(manutencao.diagnostico ?? "");
     setSolucao(manutencao.solucao ?? "");
-    setCusto(manutencao.custo ?? "");
+    setCusto(String(manutencao.custo ?? ""));
     setObservacoes(manutencao.observacoes ?? "");
     setDataRetorno(formatarParaInputDataHora(new Date()));
     setSalvando(false);

@@ -1,6 +1,6 @@
 import { Edit, MapPin, Trash2 } from "lucide-react";
 
-import type { Localizacao } from "../hooks/useLocalizacoes";
+import type { Localizacao } from "../../services/localizacaoService";
 
 interface LocalizacaoTableProps {
   localizacoes: Localizacao[];

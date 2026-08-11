@@ -148,41 +148,41 @@ export function EquipmentTable({
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col gap-2 border-t border-gray-100 pt-4 min-[400px]:flex-row min-[400px]:justify-end">
+            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-gray-100 pt-4 sm:flex sm:flex-wrap sm:justify-end">
               <button
                 type="button"
                 onClick={() => onHardware?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 min-[400px]:w-auto"
+                className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
               >
-                <Cpu size={17} />
-                Hardware
+                <Cpu size={17} className="shrink-0" />
+                <span>Hardware</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onMaintenance?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-amber-50 hover:text-amber-700 min-[400px]:w-auto"
+                className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-amber-50 hover:text-amber-700"
               >
-                <Wrench size={17} />
-                Manutenção
+                <Wrench size={17} className="shrink-0" />
+                <span>Manutenção</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onEdit?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 min-[400px]:w-auto"
+                className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600"
               >
-                <Pencil size={17} />
-                Editar
+                <Pencil size={17} className="shrink-0" />
+                <span>Editar</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onDelete?.(equipamento)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600 min-[400px]:w-auto"
+                className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
               >
-                <Trash2 size={17} />
-                Excluir
+                <Trash2 size={17} className="shrink-0" />
+                <span>Excluir</span>
               </button>
             </div>
           </article>

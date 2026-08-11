@@ -7,7 +7,6 @@ import {
   Users,
   Wrench,
   ArrowLeftRight,
-  Icon,
   Building2,
 } from "lucide-react";
 

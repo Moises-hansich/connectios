@@ -8,7 +8,6 @@ import { Button } from "../Button";
 import { Input } from "../Input";
 
 import type {
-  AtualizarCampoHardwareData,
   CampoHardware,
   CriarCampoHardwareData,
   TipoHardware,
@@ -137,9 +136,7 @@ export function CampoHardwareForm({
       setSalvando(true);
 
       const dados: CriarCampoHardwareData = {
-        nome: formulario.nome.trim(),
-
-        chave: formulario.nome
+        nome: formulario.nome
           .trim()
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
@@ -147,19 +144,13 @@ export function CampoHardwareForm({
           .replace(/[^a-z0-9]+/g, "_")
           .replace(/^_+|_+$/g, ""),
 
-        tipoDado: formulario.tipo,
+        tipo: formulario.tipo,
 
         obrigatorio: formulario.obrigatorio,
 
         ordem: Number(formulario.ordem),
 
         tipoHardwareId: Number(formulario.tipoHardwareId),
-
-        ativo: true,
-
-        placeholder: null,
-
-        unidade: null,
       };
       console.log("Modo:", modo);
       console.log("CampoHardware:", campoHardware);

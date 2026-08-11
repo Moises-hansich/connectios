@@ -6,10 +6,15 @@ import { Input } from "../Input";
 
 import type { Localizacao } from "../../hooks/useLocalizacoes";
 
+interface LocalizacaoFormData {
+  nome: string;
+  descricao?: string;
+}
+
 interface LocalizacaoFormProps {
   localizacao?: Localizacao | null;
   onCancelar: () => void;
-  onSalvar: (dados: Omit<Localizacao, "id">) => Promise<void>;
+  onSalvar: (dados: LocalizacaoFormData) => Promise<void>;
 }
 
 interface FormData {

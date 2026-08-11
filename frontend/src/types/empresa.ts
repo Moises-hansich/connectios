@@ -15,3 +15,12 @@ export interface Empresa {
     manutencoesRealizadas: number;
   };
 }
+export interface CriarEmpresaData {
+  nome: string;
+  cnpj?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  endereco?: string | null;
+  observacoes?: string | null;
+  ativo?: boolean;
+}

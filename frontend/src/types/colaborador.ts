@@ -73,7 +73,7 @@ export interface EquipamentoColaborador {
   localizacao: Localizacao | null;
   hardware: Hardware[];
 }
-
+export type EquipamentoResumo = Omit<EquipamentoColaborador, "hardware">;
 export interface Colaborador {
   id: number;
   nome: string;
@@ -85,9 +85,10 @@ export interface Colaborador {
   criadoEm: string;
   atualizadoEm: string;
   localizacao: Localizacao | null;
+  equipamentos: EquipamentoResumo[];
 }
 
-export interface ColaboradorCompleto extends Colaborador {
+export interface ColaboradorCompleto extends Omit<Colaborador, "equipamentos"> {
   equipamentos: EquipamentoColaborador[];
 }
 

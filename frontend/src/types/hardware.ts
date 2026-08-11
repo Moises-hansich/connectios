@@ -2,6 +2,7 @@ export interface TipoHardware {
   id: number;
   nome: string;
   descricao?: string | null;
+  ativo: boolean;
   ordem: number;
   criadoEm?: string;
   atualizadoEm?: string;
