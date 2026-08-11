@@ -2,11 +2,12 @@ import type { Request, Response } from "express";
 
 import { usuarioService } from "../services/usuarioService";
 
-function converterId(valor: string) {
-  const id = Number(valor);
+function converterId(valor: string | string[]): number {
+  const valorUnico = Array.isArray(valor) ? valor[0] : valor;
+  const id = Number(valorUnico);
 
   if (!Number.isInteger(id) || id <= 0) {
-    throw new Error("ID do usuário inválido.");
+    throw new Error("ID inválido");
   }
 
   return id;

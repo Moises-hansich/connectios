@@ -116,7 +116,7 @@ export class EquipamentoService {
     await this.validarResponsavel(responsavelId);
     await this.validarFornecedor(fornecedorId);
 
-    this.validarFornecedorDaGarantia(garantiaAte, fornecedorId);
+    this.validarFornecedorDaGarantia(garantiaAte, fornecedorId ?? null);
 
     const equipamentoLimpo: CreateEquipamentoData = {
       nome: data.nome.trim(),

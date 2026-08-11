@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx src/server.ts"
+    "dev": "tsx src/server.ts",
+    "build": "tsc --noEmit",
+    "start": "tsx src/server.ts"
   },
   "keywords": [],
   "author": "",

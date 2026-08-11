@@ -61,16 +61,9 @@ const manutencaoInclude = {
       dataHora: true,
     },
 
-    orderBy: [
-      {
-        dataHora: "desc",
-      },
-      {
-        id: "desc",
-      },
-    ],
+    orderBy: [{ dataHora: "desc" as const }, { id: "desc" as const }],
   },
-} as const;
+};
 
 export class ManutencaoRepository {
   async findAll() {
