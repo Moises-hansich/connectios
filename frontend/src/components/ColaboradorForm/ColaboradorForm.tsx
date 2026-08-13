@@ -17,6 +17,7 @@ import type {
   ColaboradorCreateData,
 } from "../../types/colaborador";
 
+import { formatarTelefone, telefoneValido } from "../../utils/telefone";
 interface ColaboradorFormProps {
   onSuccess: () => void;
   onCancel: () => void;
@@ -37,7 +38,9 @@ function criarEstadoInicial(colaborador?: Colaborador): FormData {
   return {
     nome: colaborador?.nome ?? "",
     email: colaborador?.email ?? "",
-    telefone: colaborador?.telefone ?? "",
+    telefone: colaborador?.telefone
+      ? formatarTelefone(colaborador.telefone)
+      : "",
     cargo: colaborador?.cargo ?? "",
     localizacaoId: colaborador?.localizacaoId?.toString() ?? "",
     ativo: colaborador?.ativo ?? true,
@@ -104,7 +107,10 @@ export function ColaboradorForm({
       toast.error("O nome é obrigatório.");
       return;
     }
-
+    if (formData.telefone && !telefoneValido(formData.telefone)) {
+      toast.error("Informe um telefone válido com DDD.");
+      return;
+    }
     const localizacaoId =
       formData.localizacaoId === ""
         ? null
@@ -173,8 +179,14 @@ export function ColaboradorForm({
 
       <Input
         label="Telefone"
+        type="tel"
+        inputMode="numeric"
+        maxLength={15}
+        placeholder="(54) 99310-8848"
         value={formData.telefone}
-        onChange={(event) => handleChange("telefone", event.target.value)}
+        onChange={(event) =>
+          handleChange("telefone", formatarTelefone(event.target.value))
+        }
         disabled={formularioDesabilitado}
       />
 

@@ -1,7 +1,7 @@
 import { Building2, Mail, Pencil, Phone, Power, Trash2 } from "lucide-react";
 
 import type { Empresa } from "../../types/empresa";
-
+import { formatarTelefone } from "../../utils/telefone";
 interface EmpresaTableProps {
   empresas: Empresa[];
   carregando: boolean;
@@ -116,7 +116,7 @@ export function EmpresaTable({
                     {empresa.telefone && (
                       <p className="mt-1 flex items-center gap-1.5">
                         <Phone size={15} />
-                        {empresa.telefone}
+                        {formatarTelefone(empresa.telefone)}
                       </p>
                     )}
 

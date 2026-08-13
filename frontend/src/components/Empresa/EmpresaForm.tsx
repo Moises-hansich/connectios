@@ -7,6 +7,8 @@ import { empresaService } from "../../services/empresaService";
 
 import type { CriarEmpresaData, Empresa } from "../../types/empresa";
 
+import { formatarTelefone, telefoneValido } from "../../utils/telefone";
+
 interface EmpresaFormProps {
   aberto: boolean;
   empresa: Empresa | null;
@@ -89,7 +91,7 @@ export function EmpresaForm({
       setFormulario({
         nome: empresa.nome,
         cnpj: empresa.cnpj ?? "",
-        telefone: empresa.telefone ?? "",
+        telefone: empresa.telefone ? formatarTelefone(empresa.telefone) : "",
         email: empresa.email ?? "",
         endereco: empresa.endereco ?? "",
         observacoes: empresa.observacoes ?? "",
@@ -166,6 +168,10 @@ export function EmpresaForm({
       return;
     }
 
+    if (formulario.telefone && !telefoneValido(formulario.telefone)) {
+      toast.error("Informe um telefone válido com DDD.");
+      return;
+    }
     const dados: CriarEmpresaData = {
       nome,
 
@@ -318,13 +324,14 @@ export function EmpresaForm({
               <input
                 id="empresaTelefone"
                 type="tel"
-                maxLength={30}
+                inputMode="numeric"
+                maxLength={15}
                 disabled={salvando}
                 value={formulario.telefone}
                 onChange={(event) =>
-                  alterarCampo("telefone", event.target.value)
+                  alterarCampo("telefone", formatarTelefone(event.target.value))
                 }
-                placeholder="(00) 00000-0000"
+                placeholder="(54) 99310-8848"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
               />
             </div>

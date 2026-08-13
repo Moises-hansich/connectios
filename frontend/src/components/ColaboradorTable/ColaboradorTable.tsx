@@ -1,7 +1,7 @@
 import { Pencil, Trash2, Monitor } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Colaborador } from "../../types/colaborador";
-
+import { formatarTelefone } from "../../utils/telefone";
 interface ColaboradorTableProps {
   colaboradores: Colaborador[];
   onEdit?: (colaborador: Colaborador) => void;
@@ -64,7 +64,9 @@ export function ColaboradorTable({
               <div>
                 <span className="font-medium text-gray-700">Telefone:</span>{" "}
                 <span className="text-gray-600">
-                  {colaborador.telefone || "Não informado"}
+                  {colaborador.telefone
+                    ? formatarTelefone(colaborador.telefone)
+                    : "Não informado"}
                 </span>
               </div>
 

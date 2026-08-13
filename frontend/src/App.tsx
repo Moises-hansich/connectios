@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
-
 import { ColaboradoresPage } from "./pages/colaboradores/ColaboradoresPage";
 import { LoginPage } from "./pages/Login";
 import { DashboardPage } from "./pages/Dashboard/DashboardPage";
