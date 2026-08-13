@@ -90,7 +90,7 @@ export class EquipamentoService {
 
     const numeroSerie = data.numeroSerie?.trim() || null;
 
-    const patrimonio = data.patrimonio?.trim() || null;
+    const patrimonio = await this.gerarProximoPatrimonio();
 
     if (numeroSerie) {
       const equipamentoComMesmoSerial =
@@ -98,15 +98,6 @@ export class EquipamentoService {
 
       if (equipamentoComMesmoSerial) {
         throw new AppError("Número de série já cadastrado", 409);
-      }
-    }
-
-    if (patrimonio) {
-      const equipamentoComMesmoPatrimonio =
-        await this.repository.findByPatrimonio(patrimonio);
-
-      if (equipamentoComMesmoPatrimonio) {
-        throw new AppError("Patrimônio já cadastrado", 409);
       }
     }
 
@@ -703,5 +694,34 @@ export class EquipamentoService {
     return (
       statusNormalizado === "BAIXADO" || statusNormalizado === "DESCARTADO"
     );
+  }
+  private async gerarProximoPatrimonio(): Promise<string> {
+    const equipamentos = await this.repository.findPatrimoniosAutomaticos();
+
+    let maiorNumero = 0;
+
+    for (const equipamento of equipamentos) {
+      const patrimonio = equipamento.patrimonio?.trim().toUpperCase();
+
+      if (!patrimonio) {
+        continue;
+      }
+
+      const resultado = /^PAT(\d+)$/.exec(patrimonio);
+
+      if (!resultado) {
+        continue;
+      }
+
+      const numero = Number(resultado[1]);
+
+      if (Number.isInteger(numero) && numero > maiorNumero) {
+        maiorNumero = numero;
+      }
+    }
+
+    const proximoNumero = maiorNumero + 1;
+
+    return `PAT${String(proximoNumero).padStart(3, "0")}`;
   }
 }

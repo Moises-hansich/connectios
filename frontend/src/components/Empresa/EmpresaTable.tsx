@@ -149,7 +149,7 @@ export function EmpresaTable({
                         onClick={() => onEditar(empresa)}
                         title="Editar"
                         aria-label={`Editar ${empresa.nome}`}
-                        className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 disabled:opacity-50"
+                        className="rounded-lg p-2 text-slate-800 transition hover:bg-blue-50 disabled:opacity-50"
                       >
                         <Pencil size={18} />
                       </button>
@@ -179,7 +179,7 @@ export function EmpresaTable({
                         onClick={() => void onExcluir(empresa)}
                         title="Excluir"
                         aria-label={`Excluir ${empresa.nome}`}
-                        className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                        className="rounded-lg p-2 text-slate-800 transition hover:bg-red-50 disabled:opacity-50"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -242,7 +242,7 @@ export function EmpresaTable({
                   type="button"
                   disabled={processando}
                   onClick={() => onEditar(empresa)}
-                  className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-slate-800 disabled:opacity-50"
                 >
                   <Pencil size={16} />
                   Editar
@@ -262,7 +262,7 @@ export function EmpresaTable({
                   type="button"
                   disabled={processando}
                   onClick={() => void onExcluir(empresa)}
-                  className="rounded-lg bg-red-50 p-2 text-red-700 disabled:opacity-50"
+                  className="rounded-lg bg-red-50 p-2 text-slate-800 disabled:opacity-50"
                   aria-label="Excluir"
                 >
                   <Trash2 size={17} />

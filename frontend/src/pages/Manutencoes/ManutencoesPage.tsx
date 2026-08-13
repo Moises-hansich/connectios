@@ -134,7 +134,7 @@ export function ManutencoesPage() {
     <MainLayout>
       <div className="mb-6">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-blue-100 p-3 text-blue-600">
+          <div className="rounded-lg bg-blue-100 p-3 text-slate-800">
             <Wrench size={24} />
           </div>
 

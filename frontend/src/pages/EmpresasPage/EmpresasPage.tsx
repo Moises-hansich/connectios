@@ -192,7 +192,7 @@ export function EmpresasPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-blue-100 p-2.5 text-blue-700">
+            <div className="rounded-xl bg-blue-100 p-2.5 text-slate-800">
               <Building2 size={25} />
             </div>
 
@@ -211,7 +211,7 @@ export function EmpresasPage() {
         <button
           type="button"
           onClick={abrirCadastro}
-          className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
+          className="flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
         >
           <Plus size={18} />
           Nova empresa

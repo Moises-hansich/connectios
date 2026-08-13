@@ -91,7 +91,7 @@ export function TipoHardwareTable({
                     <button
                       type="button"
                       onClick={() => onEditar(tipo)}
-                      className="rounded-md p-2 text-blue-600 transition hover:bg-blue-50"
+                      className="rounded-md p-2 text-slate-800 transition hover:bg-blue-50"
                       title="Editar tipo de hardware"
                     >
                       <Edit size={18} />
@@ -100,7 +100,7 @@ export function TipoHardwareTable({
                     <button
                       type="button"
                       onClick={() => onExcluir(tipo)}
-                      className="rounded-md p-2 text-red-600 transition hover:bg-red-50"
+                      className="rounded-md p-2 text-slate-800 hover:bg-red-50"
                       title="Excluir tipo de hardware"
                     >
                       <Trash2 size={18} />

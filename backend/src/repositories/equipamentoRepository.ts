@@ -98,6 +98,18 @@ export class EquipamentoRepository {
     });
   }
 
+  async findPatrimoniosAutomaticos() {
+    return prisma.equipamento.findMany({
+      where: {
+        patrimonio: {
+          startsWith: "PAT",
+        },
+      },
+      select: {
+        patrimonio: true,
+      },
+    });
+  }
   async create(data: CreateEquipamentoData, bancoDados: BancoDados = prisma) {
     return bancoDados.equipamento.create({
       data,

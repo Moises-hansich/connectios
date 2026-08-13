@@ -11,9 +11,12 @@ export interface TipoHardware {
 export interface CampoHardware {
   id: number;
   nome: string;
-  descricao?: string | null;
-  tipo: string;
+  chave: string;
+  tipoDado: string;
+  unidade?: string | null;
+  placeholder?: string | null;
   obrigatorio: boolean;
+  ativo: boolean;
   ordem: number;
   tipoHardwareId: number;
   criadoEm?: string;
@@ -76,9 +79,12 @@ export type AtualizarTipoHardwareData = Partial<CriarTipoHardwareData>;
 
 export interface CriarCampoHardwareData {
   nome: string;
-  descricao?: string;
-  tipo: string;
+  chave: string;
+  tipoDado: string;
+  unidade?: string | null;
+  placeholder?: string | null;
   obrigatorio?: boolean;
+  ativo?: boolean;
   ordem?: number;
   tipoHardwareId: number;
 }

@@ -22,8 +22,9 @@ interface CampoHardwareFormProps {
 
 interface FormularioCampoHardware {
   nome: string;
-  descricao: string;
-  tipo: string;
+  tipoDado: string;
+  unidade: string;
+  placeholder: string;
   obrigatorio: boolean;
   ordem: number;
   tipoHardwareId: number;
@@ -31,8 +32,9 @@ interface FormularioCampoHardware {
 
 const formularioInicial: FormularioCampoHardware = {
   nome: "",
-  descricao: "",
-  tipo: "texto",
+  tipoDado: "texto",
+  unidade: "",
+  placeholder: "",
   obrigatorio: false,
   ordem: 0,
   tipoHardwareId: 0,
@@ -78,8 +80,9 @@ export function CampoHardwareForm({
     if (modo === "editar" && campoHardware) {
       setFormulario({
         nome: campoHardware.nome,
-        descricao: campoHardware.descricao ?? "",
-        tipo: (campoHardware as any).tipoDado ?? "texto",
+        tipoDado: campoHardware.tipoDado,
+        unidade: campoHardware.unidade ?? "",
+        placeholder: campoHardware.placeholder ?? "",
         obrigatorio: campoHardware.obrigatorio,
         ordem: campoHardware.ordem,
         tipoHardwareId: campoHardware.tipoHardwareId,
@@ -107,11 +110,14 @@ export function CampoHardwareForm({
       return false;
     }
 
-    if (!formulario.tipo) {
+    if (!formulario.tipoDado) {
       toast.error("Selecione o tipo do campo.");
       return false;
     }
-
+    if (formulario.unidade.trim().length > 20) {
+      toast.error("A unidade deve possuir no máximo 20 caracteres.");
+      return false;
+    }
     if (!formulario.tipoHardwareId) {
       toast.error("Selecione o tipo de hardware.");
       return false;
@@ -132,28 +138,29 @@ export function CampoHardwareForm({
       return;
     }
 
+    const nome = formulario.nome.trim();
+
+    const chave = nome
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+    const dados: CriarCampoHardwareData = {
+      nome,
+      chave,
+      tipoDado: formulario.tipoDado,
+      unidade: formulario.unidade.trim() || null,
+      placeholder: formulario.placeholder.trim() || null,
+      obrigatorio: formulario.obrigatorio,
+      ordem: Number(formulario.ordem),
+      tipoHardwareId: Number(formulario.tipoHardwareId),
+    };
+
     try {
       setSalvando(true);
 
-      const dados: CriarCampoHardwareData = {
-        nome: formulario.nome
-          .trim()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "_")
-          .replace(/^_+|_+$/g, ""),
-
-        tipo: formulario.tipo,
-
-        obrigatorio: formulario.obrigatorio,
-
-        ordem: Number(formulario.ordem),
-
-        tipoHardwareId: Number(formulario.tipoHardwareId),
-      };
-      console.log("Modo:", modo);
-      console.log("CampoHardware:", campoHardware);
       if (modo === "editar" && campoHardware) {
         await campoHardwareService.atualizar(campoHardware.id, dados);
 
@@ -226,40 +233,20 @@ export function CampoHardwareForm({
         onChange={(event) => atualizarCampo("nome", event.target.value)}
       />
 
-      <div>
-        <label
-          htmlFor="descricao"
-          className="mb-2 block text-sm font-medium text-slate-700"
-        >
-          Descrição
-        </label>
-
-        <textarea
-          id="descricao"
-          name="descricao"
-          rows={3}
-          placeholder="Descreva a finalidade deste campo"
-          value={formulario.descricao}
-          disabled={salvando}
-          onChange={(event) => atualizarCampo("descricao", event.target.value)}
-          className="w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-100"
-        />
-      </div>
-
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label
-            htmlFor="tipo"
+            htmlFor="tipoDado"
             className="mb-2 block text-sm font-medium text-slate-700"
           >
             Tipo do campo *
           </label>
 
           <select
-            id="tipo"
-            value={formulario.tipo}
+            id="tipoDado"
+            value={formulario.tipoDado}
             disabled={salvando}
-            onChange={(event) => atualizarCampo("tipo", event.target.value)}
+            onChange={(event) => atualizarCampo("tipoDado", event.target.value)}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-100"
           >
             <option value="texto">Texto</option>
@@ -269,6 +256,30 @@ export function CampoHardwareForm({
             <option value="lista">Lista de opções</option>
           </select>
         </div>
+
+        <Input
+          label="Unidade de medida"
+          name="unidade"
+          type="text"
+          maxLength={20}
+          placeholder="Ex.: GB, TB, MHz, GHz, W"
+          value={formulario.unidade}
+          disabled={salvando}
+          onChange={(event) => atualizarCampo("unidade", event.target.value)}
+        />
+
+        <Input
+          label="Exemplo de preenchimento"
+          name="placeholder"
+          type="text"
+          maxLength={100}
+          placeholder="Ex.: 16"
+          value={formulario.placeholder}
+          disabled={salvando}
+          onChange={(event) =>
+            atualizarCampo("placeholder", event.target.value)
+          }
+        />
 
         <Input
           label="Ordem"

@@ -94,7 +94,7 @@ export function CategoriaTable({
                     <button
                       type="button"
                       onClick={() => onEditar(categoria)}
-                      className="rounded-md p-2 text-blue-600 transition hover:bg-blue-50"
+                      className="rounded-md p-2 text-slate-800 transition hover:bg-blue-50"
                       title="Editar categoria"
                     >
                       <Edit size={18} />
@@ -103,7 +103,7 @@ export function CategoriaTable({
                     <button
                       type="button"
                       onClick={() => onExcluir(categoria)}
-                      className="rounded-md p-2 text-red-600 transition hover:bg-red-50"
+                      className="rounded-md p-2 text-slate-800 hover:bg-red-50"
                       title="Excluir categoria"
                     >
                       <Trash2 size={18} />

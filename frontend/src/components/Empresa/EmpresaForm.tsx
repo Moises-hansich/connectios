@@ -235,7 +235,7 @@ export function EmpresaForm({
       >
         <div className="flex items-start justify-between border-b border-slate-200 p-5">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-blue-100 p-2 text-blue-700">
+            <div className="rounded-xl bg-blue-100 p-2 text-slate-800">
               <Building2 size={22} />
             </div>
 
