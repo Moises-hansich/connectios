@@ -1,8 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import { toast } from "sonner";
 
 import { equipamentoService } from "../services/equipamentoService";
 import type { Equipamento } from "../types/equipamento";
+
+interface ErroApi {
+  message?: string;
+  mensagem?: string;
+  error?: string;
+  erro?: string;
+}
+
+function obterMensagemErro(error: unknown, mensagemPadrao: string): string {
+  if (!axios.isAxiosError<ErroApi>(error)) {
+    return mensagemPadrao;
+  }
+
+  return (
+    error.response?.data?.message ??
+    error.response?.data?.mensagem ??
+    error.response?.data?.error ??
+    error.response?.data?.erro ??
+    mensagemPadrao
+  );
+}
 
 export function useEquipamentos() {
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
@@ -35,7 +57,9 @@ export function useEquipamentos() {
     } catch (error) {
       console.error("Erro ao carregar equipamentos:", error);
 
-      toast.error("Não foi possível carregar os equipamentos.");
+      toast.error(
+        obterMensagemErro(error, "Não foi possível carregar os equipamentos."),
+      );
     } finally {
       setCarregando(false);
     }
@@ -195,14 +219,17 @@ export function useEquipamentos() {
       toast.success(
         `Equipamento "${equipamentoExcluir.nome}" excluído com sucesso.`,
       );
+
+      setModalExcluirAberto(false);
+      setEquipamentoExcluir(null);
     } catch (error) {
       console.error("Erro ao excluir equipamento:", error);
 
-      toast.error("Não foi possível excluir o equipamento.");
+      toast.error(
+        obterMensagemErro(error, "Não foi possível excluir o equipamento."),
+      );
     } finally {
       setExcluindo(false);
-      setModalExcluirAberto(false);
-      setEquipamentoExcluir(null);
     }
   }
 

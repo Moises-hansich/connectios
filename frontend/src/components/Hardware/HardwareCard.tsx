@@ -21,7 +21,7 @@ export function HardwareCard({
     <Card className="rounded-xl">
       <div className="flex items-center justify-between border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
-          <Cpu size={22} className="text-blue-600" />
+          <Cpu size={22} className="text-slate-800" />
 
           <div>
             <h3 className="font-semibold text-slate-900">
@@ -50,7 +50,11 @@ export function HardwareCard({
               <InfoRow
                 key={valor.id}
                 label={valor.campoHardware.nome}
-                value={valor.valor}
+                value={
+                  valor.campoHardware.unidade
+                    ? `${valor.valor} ${valor.campoHardware.unidade}`
+                    : valor.valor
+                }
               />
             ))}
           </div>

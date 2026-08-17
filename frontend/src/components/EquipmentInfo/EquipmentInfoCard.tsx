@@ -62,7 +62,7 @@ export function EquipmentInfoCard({ equipamento }: EquipmentInfoCardProps) {
         />
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:shadow-sm">
-          <div className="mb-3 flex items-center gap-2 text-blue-600">
+          <div className="mb-3 flex items-center gap-2 text-slate-800">
             <Package size={18} />
 
             <span className="text-sm font-semibold">Status</span>
@@ -94,7 +94,7 @@ interface InfoItemProps {
 function InfoItem({ titulo, valor, icon }: InfoItemProps) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:shadow-sm">
-      <div className="mb-3 flex items-center gap-2 text-blue-600">
+      <div className="mb-3 flex items-center gap-2 text-slate-800">
         {icon}
 
         <span className="text-sm font-semibold">{titulo}</span>

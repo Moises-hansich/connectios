@@ -43,7 +43,7 @@ export function ColaboradorTable({
               </div>
 
               <span
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                className={` px-3 py-1 text-xs font-medium ${
                   colaborador.ativo
                     ? "bg-green-100 text-green-700"
                     : "bg-gray-100 text-gray-600"
@@ -154,7 +154,7 @@ export function ColaboradorTable({
 
                 <td className="px-4 py-3">
                   <span
-                    className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    className={` px-3 py-1 text-xs font-medium ${
                       colaborador.ativo
                         ? "bg-green-100 text-green-700"
                         : "bg-gray-100 text-gray-600"

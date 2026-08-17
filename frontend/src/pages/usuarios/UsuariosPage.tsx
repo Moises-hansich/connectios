@@ -330,14 +330,14 @@ export function UsuariosPage() {
                       </td>
 
                       <td className="whitespace-nowrap px-6 py-4">
-                        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                        <span className="inline-flex  bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                           {usuario.perfil}
                         </span>
                       </td>
 
                       <td className="whitespace-nowrap px-6 py-4">
                         <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                          className={`inline-flex  px-3 py-1 text-xs font-semibold ${
                             usuario.ativo
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"

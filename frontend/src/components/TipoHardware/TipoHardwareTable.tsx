@@ -76,7 +76,7 @@ export function TipoHardwareTable({
 
                 <td className="px-4 py-4 text-center">
                   <span
-                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    className={`inline-flex  px-2.5 py-1 text-xs font-semibold ${
                       tipo.ativo
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-slate-200 text-slate-600"

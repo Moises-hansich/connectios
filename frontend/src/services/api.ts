@@ -3,7 +3,7 @@ import axios from "axios";
 export const TOKEN_KEY = "@connectionjs:token";
 
 export const api = axios.create({
-  baseURL: "http://localhost:3000/api",
+  baseURL: "http://localhost:3100/api",
   headers: {
     "Content-Type": "application/json",
   },

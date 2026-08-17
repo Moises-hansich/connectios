@@ -39,7 +39,7 @@ function obterOrigemBackend() {
     return new URL(baseURL).origin;
   }
 
-  return `${window.location.protocol}//${window.location.hostname}:3000`;
+  return `${window.location.protocol}//${window.location.hostname}:3100`;
 }
 
 function obterUrlFoto(nomeArquivo: string) {

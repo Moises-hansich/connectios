@@ -17,7 +17,7 @@ export function Badge({ status }: BadgeProps) {
     estilo = "bg-yellow-100 text-yellow-700";
   }
 
-  if (status === "Descartado") {
+  if (status === "Baixado") {
     estilo = "bg-red-100 text-red-700";
   }
 

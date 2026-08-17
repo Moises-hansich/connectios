@@ -441,7 +441,23 @@ export class EquipamentoService {
       throw new AppError("Equipamento não encontrado", 404);
     }
 
-    return this.repository.delete(id);
+    try {
+      return await this.repository.delete(id);
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "P2003"
+      ) {
+        throw new AppError(
+          "Este equipamento possui histórico e não pode ser excluído. Altere seu status para Baixado.",
+          409,
+        );
+      }
+
+      throw error;
+    }
   }
 
   async buscarComFiltros(filters: EquipamentoFilters) {

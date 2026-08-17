@@ -440,7 +440,7 @@ export function MovimentacoesPage() {
 
                       <td className="px-5 py-4">
                         <span
-                          className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${classeTipo(
+                          className={`inline-flex whitespace-nowrap  px-3 py-1 text-xs font-semibold ${classeTipo(
                             movimentacao.tipo,
                           )}`}
                         >

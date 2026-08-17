@@ -46,7 +46,7 @@ export function EmpresaTable({
   if (empresas.length === 0) {
     return (
       <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
-        <div className="rounded-full bg-slate-100 p-4 text-slate-500">
+        <div className=" bg-slate-100 p-4 text-slate-500">
           <Building2 size={34} />
         </div>
 
@@ -131,7 +131,7 @@ export function EmpresaTable({
 
                   <td className="px-5 py-4">
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                      className={`inline-flex  px-2.5 py-1 text-xs font-medium ${
                         empresa.ativo
                           ? "bg-emerald-100 text-emerald-700"
                           : "bg-slate-200 text-slate-600"
@@ -209,7 +209,7 @@ export function EmpresaTable({
                 </div>
 
                 <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  className={` px-2.5 py-1 text-xs font-medium ${
                     empresa.ativo
                       ? "bg-emerald-100 text-emerald-700"
                       : "bg-slate-200 text-slate-600"

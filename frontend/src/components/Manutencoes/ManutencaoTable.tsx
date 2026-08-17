@@ -114,7 +114,7 @@ export function ManutencaoTable({
               </div>
 
               <span
-                className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${classeStatus(
+                className={`shrink-0  px-2.5 py-1 text-xs font-semibold ${classeStatus(
                   manutencao.status,
                 )}`}
               >
@@ -280,7 +280,7 @@ export function ManutencaoTable({
 
                   <td className="px-4 py-3 text-center">
                     <span
-                      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${classeStatus(
+                      className={`inline-flex whitespace-nowrap  px-2.5 py-1 text-xs font-semibold ${classeStatus(
                         manutencao.status,
                       )}`}
                     >
