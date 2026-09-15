@@ -12,7 +12,7 @@ import { ColaboradorRepository } from "../repositories/colaboradorRepository";
 import { LocalizacaoRepository } from "../repositories/localizacaoRepository";
 import { movimentacaoRepository } from "../repositories/movimentacaoRepository";
 import { SetorRepository } from "../repositories/setorRepository";
-
+import { zabbixService } from "./zabbixService";
 interface EquipamentoInput {
   nome: string;
   categoriaId: number | string;
@@ -89,7 +89,29 @@ export class EquipamentoService {
     this.validarPeriodoGarantia(dataCompra, garantiaAte);
 
     const numeroSerie = data.numeroSerie?.trim() || null;
+    const zabbixHostId = data.zabbixHostId?.trim() || null;
 
+    if (zabbixHostId) {
+      const equipamentoComMesmoHost =
+        await this.repository.findByZabbixHostId(zabbixHostId);
+
+      if (equipamentoComMesmoHost) {
+        throw new AppError(
+          "Este host do Zabbix já está vinculado a outro equipamento",
+          409,
+        );
+      }
+
+      const hostZabbix =
+        await zabbixService.buscarComputadorPorHostId(zabbixHostId);
+
+      if (!hostZabbix) {
+        throw new AppError(
+          "Host não encontrado no grupo PCS INTERNOS do Zabbix",
+          400,
+        );
+      }
+    }
     const patrimonio = await this.gerarProximoPatrimonio();
 
     if (numeroSerie) {
@@ -116,6 +138,7 @@ export class EquipamentoService {
       modelo: data.modelo?.trim() || null,
       numeroSerie,
       patrimonio,
+      zabbixHostId,
       status: data.status.trim(),
       setorId: setorId ?? null,
       localizacaoId: localizacaoId ?? null,
@@ -278,9 +301,35 @@ export class EquipamentoService {
         }
       }
     }
+    if (data.zabbixHostId !== undefined) {
+      const zabbixHostId = data.zabbixHostId?.trim() || null;
 
+      if (zabbixHostId && zabbixHostId !== equipamentoExistente.zabbixHostId) {
+        const equipamentoComMesmoHost =
+          await this.repository.findByZabbixHostId(zabbixHostId);
+
+        if (equipamentoComMesmoHost && equipamentoComMesmoHost.id !== id) {
+          throw new AppError(
+            "Este host do Zabbix já está vinculado a outro equipamento",
+            409,
+          );
+        }
+
+        const hostZabbix =
+          await zabbixService.buscarComputadorPorHostId(zabbixHostId);
+
+        if (!hostZabbix) {
+          throw new AppError(
+            "Host não encontrado no grupo PCS INTERNOS do Zabbix",
+            400,
+          );
+        }
+      }
+    }
     const equipamentoLimpo: Partial<CreateEquipamentoData> = {};
-
+    if (data.zabbixHostId !== undefined) {
+      equipamentoLimpo.zabbixHostId = data.zabbixHostId?.trim() || null;
+    }
     if (data.nome !== undefined) {
       equipamentoLimpo.nome = data.nome.trim();
     }

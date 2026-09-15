@@ -60,7 +60,7 @@ export interface EmpresaFornecedor {
 export interface Equipamento {
   id: number;
   nome: string;
-
+  zabbixHostId: string | null;
   categoriaId: number;
   categoria: Categoria;
 
@@ -112,6 +112,7 @@ export interface CriarEquipamentoData {
   modelo?: string | null;
   numeroSerie?: string | null;
   patrimonio?: string | null;
+  zabbixHostId: string | null;
   status: string;
   setorId?: number | null;
   localizacaoId?: number | null;

@@ -9,6 +9,10 @@ router.use(authMiddleware);
 
 router.get("/", (req, res) => localizacaoController.listar(req, res));
 
+router.get("/:id/colaboradores", (req, res) =>
+  localizacaoController.listarColaboradores(req, res),
+);
+
 router.get("/:id", (req, res) => localizacaoController.buscarPorId(req, res));
 
 router.post("/", adminMiddleware, (req, res) =>

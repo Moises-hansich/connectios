@@ -12,7 +12,7 @@ import { equipamentoService } from "../../services/equipamentoService";
 import { localizacaoService } from "../../services/localizacaoService";
 import { colaboradorService } from "../../services/colaboradorService";
 import { empresaService } from "../../services/empresaService";
-
+import { zabbixService, type ZabbixHost } from "../../services/zabbixService";
 import type {
   Categoria,
   CriarEquipamentoData,
@@ -46,6 +46,7 @@ interface FormData {
   modelo: string;
   numeroSerie: string;
   patrimonio: string;
+  zabbixHostId: string;
   status: string;
   localizacaoId: string;
   responsavelId: string;
@@ -83,6 +84,7 @@ function criarEstadoInicial(equipamento?: Equipamento): FormData {
     modelo: equipamento?.modelo ?? "",
     numeroSerie: equipamento?.numeroSerie ?? "",
     patrimonio: equipamento?.patrimonio ?? "",
+    zabbixHostId: equipamento?.zabbixHostId ?? "",
     status: equipamento?.status ?? "Disponível",
 
     localizacaoId: equipamento?.localizacaoId?.toString() ?? "",
@@ -133,6 +135,10 @@ export function EquipmentForm({
   const [colaboradores, setColaboradores] = useState<ColaboradorOption[]>([]);
 
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+
+  const [hostsZabbix, setHostsZabbix] = useState<ZabbixHost[]>([]);
+
+  const [carregandoHostsZabbix, setCarregandoHostsZabbix] = useState(true);
 
   const [carregandoCategorias, setCarregandoCategorias] = useState(true);
 
@@ -270,6 +276,33 @@ export function EquipmentForm({
     void carregarEmpresas();
   }, []);
 
+  useEffect(() => {
+    async function carregarHostsZabbix() {
+      try {
+        setCarregandoHostsZabbix(true);
+
+        const hosts = await zabbixService.listarHosts();
+
+        setHostsZabbix(hosts);
+      } catch (error) {
+        console.error("Erro ao carregar hosts do Zabbix:", error);
+
+        setHostsZabbix([]);
+
+        toast.error(
+          obterMensagemErro(
+            error,
+            "Não foi possível carregar os computadores do Zabbix.",
+          ),
+        );
+      } finally {
+        setCarregandoHostsZabbix(false);
+      }
+    }
+
+    void carregarHostsZabbix();
+  }, []);
+
   function handleChange(campo: keyof FormData, valor: string) {
     setFormData((dadosAtuais) => ({
       ...dadosAtuais,
@@ -368,6 +401,8 @@ export function EquipmentForm({
 
       patrimonio: formData.patrimonio.trim() || null,
 
+      zabbixHostId: formData.zabbixHostId.trim() || null,
+
       status: formData.status.trim(),
       localizacaoId,
       responsavelId,
@@ -431,7 +466,8 @@ export function EquipmentForm({
     carregandoCategorias ||
     carregandoLocalizacoes ||
     carregandoColaboradores ||
-    carregandoEmpresas;
+    carregandoEmpresas ||
+    carregandoHostsZabbix;
 
   const formularioDesabilitado = salvando || carregandoDados;
 
@@ -493,7 +529,25 @@ export function EquipmentForm({
         disabled={formularioDesabilitado}
         onChange={(event) => handleChange("patrimonio", event.target.value)}
       />
+      <Select
+        label="Computador no Zabbix"
+        value={formData.zabbixHostId}
+        disabled={formularioDesabilitado}
+        onChange={(event) => handleChange("zabbixHostId", event.target.value)}
+      >
+        <option value="">
+          {carregandoHostsZabbix
+            ? "Carregando computadores..."
+            : "Sem vínculo com o Zabbix"}
+        </option>
 
+        {hostsZabbix.map((host) => (
+          <option key={host.hostid} value={host.hostid}>
+            {host.nome}
+            {host.ips.length > 0 ? ` — ${host.ips.join(", ")}` : " — sem IP"}
+          </option>
+        ))}
+      </Select>
       <Select
         label="Status"
         required

@@ -15,7 +15,7 @@ import { fotoEquipamentoRoutes } from "./fotoEquipamentoRoutes";
 import { movimentacaoRoutes } from "./movimentacaoRoutes";
 import { manutencaoRoutes } from "./manutencaoRoutes";
 import empresaRoutes from "./empresaRoutes";
-
+import zabbixRoutes from "./zabbixRoutes";
 const routes = Router();
 
 routes.use("/auth", authRoutes);
@@ -33,5 +33,5 @@ routes.use("/hardwares", hardwareRoutes);
 routes.use("/hardware-valores", hardwareValorRoutes);
 routes.use("/movimentacoes", movimentacaoRoutes);
 routes.use("/manutencoes", manutencaoRoutes);
-
+routes.use("/zabbix", zabbixRoutes);
 export default routes;

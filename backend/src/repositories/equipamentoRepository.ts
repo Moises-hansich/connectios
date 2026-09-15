@@ -18,6 +18,7 @@ export interface CreateEquipamentoData {
   modelo?: string | null;
   numeroSerie?: string | null;
   patrimonio?: string | null;
+  zabbixHostId?: string | null;
   status: string;
   setorId?: number | null;
   localizacaoId?: number | null;
@@ -97,7 +98,13 @@ export class EquipamentoRepository {
       },
     });
   }
-
+  async findByZabbixHostId(zabbixHostId: string) {
+    return prisma.equipamento.findUnique({
+      where: {
+        zabbixHostId,
+      },
+    });
+  }
   async findPatrimoniosAutomaticos() {
     return prisma.equipamento.findMany({
       where: {

@@ -67,6 +67,28 @@ export class LocalizacaoController {
       });
     }
   }
+  async listarColaboradores(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+          message: "ID da localização inválido.",
+        });
+      }
+
+      const resultado = await localizacaoService.listarColaboradores(id);
+
+      return res.status(200).json(resultado);
+    } catch (error) {
+      return res.status(404).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Erro ao buscar colaboradores.",
+      });
+    }
+  }
 }
 
 export const localizacaoController = new LocalizacaoController();

@@ -8,6 +8,43 @@ export interface Localizacao {
   atualizadoEm?: string;
 }
 
+export interface EquipamentoColaborador {
+  id: number;
+  nome: string;
+  patrimonio?: string | null;
+  status: string;
+  zabbixHostId?: string | null;
+  nomeZabbix?: string | null;
+  ips: string[];
+  online: boolean | null;
+}
+
+export interface ColaboradorLocalizacao {
+  id: number;
+  nome: string;
+  email?: string | null;
+  telefone?: string | null;
+  cargo?: string | null;
+  ativo: boolean;
+  localizacaoId?: number | null;
+  ips: string[];
+  setor?: {
+    id: number;
+    nome: string;
+  } | null;
+
+  equipamentos: EquipamentoColaborador[];
+}
+
+export interface ResultadoColaboradoresLocalizacao {
+  localizacao: {
+    id: number;
+    nome: string;
+    descricao?: string | null;
+  };
+  colaboradores: ColaboradorLocalizacao[];
+}
+
 interface RespostaComData {
   success?: boolean;
   data?: Localizacao[];
@@ -44,5 +81,23 @@ export const localizacaoService = {
     }
 
     return response.data as Localizacao;
+  },
+
+  async listarColaboradores(
+    id: number,
+  ): Promise<ResultadoColaboradoresLocalizacao> {
+    const response = await api.get<
+      | ResultadoColaboradoresLocalizacao
+      | {
+          success?: boolean;
+          data?: ResultadoColaboradoresLocalizacao;
+        }
+    >(`/localizacoes/${id}/colaboradores`);
+
+    if ("data" in response.data && response.data.data) {
+      return response.data.data;
+    }
+
+    return response.data as ResultadoColaboradoresLocalizacao;
   },
 };

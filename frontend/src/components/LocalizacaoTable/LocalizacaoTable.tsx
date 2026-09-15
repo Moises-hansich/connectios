@@ -1,4 +1,4 @@
-import { Edit, MapPin, Trash2 } from "lucide-react";
+import { Edit, MapPin, Trash2, Users } from "lucide-react";
 
 import type { Localizacao } from "../../services/localizacaoService";
 
@@ -7,6 +7,7 @@ interface LocalizacaoTableProps {
   carregando?: boolean;
   onEditar: (localizacao: Localizacao) => void;
   onExcluir: (localizacao: Localizacao) => void;
+  onVerColaboradores: (localizacao: Localizacao) => void;
 }
 
 export function LocalizacaoTable({
@@ -14,6 +15,7 @@ export function LocalizacaoTable({
   carregando = false,
   onEditar,
   onExcluir,
+  onVerColaboradores,
 }: LocalizacaoTableProps) {
   if (carregando) {
     return (
@@ -97,6 +99,15 @@ export function LocalizacaoTable({
 
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onVerColaboradores(localizacao)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-600"
+                      title="Ver colaboradores"
+                    >
+                      <Users size={18} />
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => onEditar(localizacao)}

@@ -31,6 +31,30 @@ export class LocalizacaoRepository {
     });
   }
 
+  async findColaboradores(id: number) {
+    return prisma.colaborador.findMany({
+      where: {
+        localizacaoId: id,
+        ativo: true,
+      },
+      include: {
+        setor: true,
+        equipamentos: {
+          select: {
+            id: true,
+            nome: true,
+            patrimonio: true,
+            status: true,
+            zabbixHostId: true,
+          },
+        },
+      },
+      orderBy: {
+        nome: "asc",
+      },
+    });
+  }
+
   async create(data: CreateLocalizacaoData) {
     return prisma.localizacao.create({
       data,

@@ -109,7 +109,7 @@ const equipamentoBaseSchema = z.object({
   modelo: campoTextoOpcional,
   numeroSerie: campoTextoOpcional,
   patrimonio: campoTextoOpcional,
-
+  zabbixHostId: campoTextoOpcional,
   status: z
     .string({ message: "Status é obrigatório" })
     .trim()

@@ -3,7 +3,7 @@ import {
   type CreateLocalizacaoData,
   type UpdateLocalizacaoData,
 } from "../repositories/localizacaoRepository";
-
+import { zabbixService } from "./zabbixService";
 export class LocalizacaoService {
   async listar() {
     return localizacaoRepository.findAll();
@@ -17,6 +17,73 @@ export class LocalizacaoService {
     }
 
     return localizacao;
+  }
+  async listarColaboradores(id: number) {
+    const localizacao = await this.buscarPorId(id);
+
+    const colaboradores = await localizacaoRepository.findColaboradores(id);
+
+    /*
+     * Consulta o grupo PCS INTERNOS uma única vez.
+     * Depois relaciona os hosts pelo zabbixHostId.
+     */
+    let hostsZabbix = [];
+
+    try {
+      hostsZabbix = await zabbixService.listarComputadores();
+    } catch (error) {
+      console.error("Não foi possível consultar os IPs no Zabbix:", error);
+    }
+
+    const hostsPorId = new Map(hostsZabbix.map((host) => [host.hostid, host]));
+
+    const colaboradoresComIps = colaboradores.map((colaborador) => {
+      const equipamentos = colaborador.equipamentos.map((equipamento) => {
+        const hostZabbix = equipamento.zabbixHostId
+          ? hostsPorId.get(equipamento.zabbixHostId)
+          : undefined;
+
+        const ips = [
+          ...new Set(
+            (hostZabbix?.interfaces ?? [])
+              .map((interfaceRede) => interfaceRede.ip.trim())
+              .filter((ip) => ip !== ""),
+          ),
+        ];
+
+        const online = hostZabbix
+          ? hostZabbix.interfaces.some(
+              (interfaceRede) => interfaceRede.available === "1",
+            )
+          : null;
+
+        return {
+          ...equipamento,
+          nomeZabbix: hostZabbix?.name ?? null,
+          ips,
+          online,
+        };
+      });
+
+      const ips = [
+        ...new Set(equipamentos.flatMap((equipamento) => equipamento.ips)),
+      ];
+
+      return {
+        ...colaborador,
+        ips,
+        equipamentos,
+      };
+    });
+
+    return {
+      localizacao: {
+        id: localizacao.id,
+        nome: localizacao.nome,
+        descricao: localizacao.descricao,
+      },
+      colaboradores: colaboradoresComIps,
+    };
   }
 
   async criar(data: CreateLocalizacaoData) {
