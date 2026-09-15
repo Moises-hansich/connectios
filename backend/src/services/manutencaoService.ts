@@ -15,8 +15,12 @@ export const STATUS_MANUTENCAO = ["EM_ANDAMENTO", "FINALIZADA"] as const;
 
 export type StatusManutencao = (typeof STATUS_MANUTENCAO)[number];
 
+export type TipoManutencao = "INTERNA" | "EXTERNA";
+
 export interface AbrirManutencaoData {
   equipamentoId: number;
+  tipo?: TipoManutencao;
+  tecnicoResponsavelId?: number | null;
   problemaInformado: string;
   localManutencao?: string | null;
   empresaResponsavelId?: number | null;
@@ -79,23 +83,65 @@ export class ManutencaoService {
   async abrir(data: AbrirManutencaoData) {
     this.validarId(data.equipamentoId, "ID do equipamento");
 
-    if (!data.problemaInformado || data.problemaInformado.trim().length < 5) {
+    const tipo = data.tipo === undefined ? "EXTERNA" : data.tipo;
+
+    if (tipo !== "INTERNA" && tipo !== "EXTERNA") {
+      throw new AppError(
+        "O tipo da manutenção deve ser INTERNA ou EXTERNA",
+        400,
+      );
+    }
+
+    const interna = tipo === "INTERNA";
+
+    if (
+      typeof data.problemaInformado !== "string" ||
+      data.problemaInformado.trim().length < 5
+    ) {
       throw new AppError(
         "O problema informado deve possuir pelo menos 5 caracteres",
         400,
       );
     }
 
+    const problema = data.problemaInformado.trim();
+
+    const tecnicoResponsavelId = data.tecnicoResponsavelId ?? null;
+
+    if (interna && tecnicoResponsavelId === null) {
+      throw new AppError(
+        "Selecione o técnico responsável pela manutenção interna",
+        400,
+      );
+    }
+
+    if (!interna && tecnicoResponsavelId !== null) {
+      throw new AppError(
+        "O técnico responsável deve ser informado somente na manutenção interna",
+        400,
+      );
+    }
+
+    if (interna && data.empresaResponsavelId != null) {
+      throw new AppError(
+        "A manutenção interna deve possuir um técnico responsável, sem empresa de assistência",
+        400,
+      );
+    }
+
     const dataSaida = data.dataSaida ?? new Date();
 
-    this.validarData(dataSaida, "Data de saída");
+    this.validarData(dataSaida, interna ? "Data de início" : "Data de saída");
 
     if (data.previsaoRetorno) {
-      this.validarData(data.previsaoRetorno, "Previsão de retorno");
+      this.validarData(
+        data.previsaoRetorno,
+        interna ? "Previsão de conclusão" : "Previsão de retorno",
+      );
 
       if (data.previsaoRetorno < dataSaida) {
         throw new AppError(
-          "A previsão de retorno não pode ser anterior à data de saída",
+          "A previsão não pode ser anterior ao início da manutenção",
           400,
         );
       }
@@ -110,7 +156,6 @@ export class ManutencaoService {
         where: {
           id: data.equipamentoId,
         },
-
         select: {
           id: true,
           status: true,
@@ -118,7 +163,6 @@ export class ManutencaoService {
           localizacaoId: true,
           garantiaAte: true,
           fornecedorId: true,
-
           fornecedor: {
             select: {
               id: true,
@@ -153,6 +197,33 @@ export class ManutencaoService {
         );
       }
 
+      let nomeTecnico: string | null = null;
+
+      if (tecnicoResponsavelId !== null) {
+        this.validarId(tecnicoResponsavelId, "ID do técnico responsável");
+
+        const tecnico = await tx.usuario.findUnique({
+          where: {
+            id: tecnicoResponsavelId,
+          },
+          select: {
+            id: true,
+            nome: true,
+            ativo: true,
+          },
+        });
+
+        if (!tecnico) {
+          throw new AppError("Técnico responsável não encontrado", 404);
+        }
+
+        if (!tecnico.ativo) {
+          throw new AppError("O técnico responsável está inativo", 400);
+        }
+
+        nomeTecnico = tecnico.nome;
+      }
+
       const garantiaAtiva = this.garantiaEstaAtiva(
         equipamento.garantiaAte,
         dataSaida,
@@ -160,123 +231,127 @@ export class ManutencaoService {
 
       let empresaResponsavelId = data.empresaResponsavelId ?? null;
 
-      if (garantiaAtiva) {
-        if (!equipamento.fornecedorId || !equipamento.fornecedor) {
-          throw new AppError(
-            "O equipamento está na garantia, mas não possui fornecedor cadastrado",
-            400,
-          );
-        }
+      if (!interna) {
+        if (garantiaAtiva) {
+          if (!equipamento.fornecedorId || !equipamento.fornecedor) {
+            throw new AppError(
+              "O equipamento está na garantia, mas não possui fornecedor cadastrado",
+              400,
+            );
+          }
 
-        if (!equipamento.fornecedor.ativo) {
-          throw new AppError(
-            "O fornecedor responsável pela garantia está inativo. Regularize o cadastro da empresa antes de abrir a manutenção",
-            400,
-          );
-        }
+          if (!equipamento.fornecedor.ativo) {
+            throw new AppError(
+              "O fornecedor responsável pela garantia está inativo. Regularize o cadastro da empresa antes de abrir a manutenção",
+              400,
+            );
+          }
 
-        // Durante a garantia, ignora a empresa
-        // enviada pelo frontend.
-        empresaResponsavelId = equipamento.fornecedorId;
-      } else if (empresaResponsavelId !== null) {
-        this.validarId(empresaResponsavelId, "ID da empresa responsável");
+          empresaResponsavelId = equipamento.fornecedorId;
+        } else if (empresaResponsavelId !== null) {
+          this.validarId(empresaResponsavelId, "ID da empresa responsável");
 
-        const empresa = await tx.empresa.findUnique({
-          where: {
-            id: empresaResponsavelId,
-          },
+          const empresa = await tx.empresa.findUnique({
+            where: {
+              id: empresaResponsavelId,
+            },
+            select: {
+              id: true,
+              ativo: true,
+            },
+          });
 
-          select: {
-            id: true,
-            ativo: true,
-          },
-        });
+          if (!empresa) {
+            throw new AppError("Empresa responsável não encontrada", 404);
+          }
 
-        if (!empresa) {
-          throw new AppError("Empresa responsável não encontrada", 404);
-        }
-
-        if (!empresa.ativo) {
-          throw new AppError("A empresa responsável está inativa", 400);
+          if (!empresa.ativo) {
+            throw new AppError("A empresa responsável está inativa", 400);
+          }
         }
       }
 
       const manutencao = await this.manutencaoRepository.create(
         {
           equipamentoId: equipamento.id,
+          tipo,
+          tecnicoResponsavelId,
 
-          problemaInformado: data.problemaInformado.trim(),
-
+          problemaInformado: problema,
           localManutencao: data.localManutencao?.trim() || null,
 
           empresaResponsavelId,
-
           empresaResponsavelTexto: null,
 
           dataSaida,
-
           previsaoRetorno: data.previsaoRetorno ?? null,
-
           dataRetorno: null,
 
           custo: data.custo ?? null,
-
           status: "EM_ANDAMENTO",
-
           observacoes: data.observacoes?.trim() || null,
 
           responsavelAnteriorId: equipamento.responsavelId,
-
           localizacaoAnteriorId: equipamento.localizacaoId,
-
           statusAnterior: equipamento.status,
-
           registradoPorId: data.registradoPorId ?? null,
         },
         tx,
       );
 
+      const responsavelNovoId = interna ? equipamento.responsavelId : null;
+
+      const localizacaoNovaId = interna ? equipamento.localizacaoId : null;
+
       await tx.equipamento.update({
         where: {
           id: equipamento.id,
         },
-
         data: {
           status: "Em manutenção",
-          responsavelId: null,
-          localizacaoId: null,
+          responsavelId: responsavelNovoId,
+          localizacaoId: localizacaoNovaId,
         },
       });
 
-      const observacaoMovimentacao =
-        garantiaAtiva && equipamento.fornecedor
-          ? `Entrada em manutenção pela garantia. Fornecedor: ${equipamento.fornecedor.nome}. Problema: ${data.problemaInformado.trim()}`
-          : `Entrada em manutenção: ${data.problemaInformado.trim()}`;
+      let observacaoMovimentacao: string;
+
+      if (interna) {
+        observacaoMovimentacao =
+          `Entrada em manutenção interna. ` +
+          `Técnico: ${nomeTecnico}. Problema: ${problema}`;
+
+        if (garantiaAtiva) {
+          observacaoMovimentacao +=
+            " Equipamento com garantia ativa na data de início.";
+        }
+      } else if (garantiaAtiva && equipamento.fornecedor) {
+        observacaoMovimentacao =
+          `Entrada em manutenção externa pela garantia. ` +
+          `Fornecedor: ${equipamento.fornecedor.nome}. ` +
+          `Problema: ${problema}`;
+      } else {
+        observacaoMovimentacao = `Entrada em manutenção externa. Problema: ${problema}`;
+      }
 
       await this.movimentacaoRepository.create(
         {
           tipo: "ENTRADA_MANUTENCAO",
-
           equipamentoId: equipamento.id,
 
           responsavelAnteriorId: equipamento.responsavelId,
-
-          responsavelNovoId: null,
+          responsavelNovoId,
 
           localizacaoAnteriorId: equipamento.localizacaoId,
-
-          localizacaoNovaId: null,
+          localizacaoNovaId,
 
           manutencaoId: manutencao.id,
-
           usuarioId: data.registradoPorId ?? null,
 
           statusAnterior: equipamento.status,
-
           statusNovo: "Em manutenção",
 
           observacoes: observacaoMovimentacao,
-
           dataHora: dataSaida,
         },
         tx,

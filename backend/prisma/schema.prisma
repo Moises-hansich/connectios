@@ -17,6 +17,8 @@ model Equipamento {
   status      String
   observacoes String?
 
+  zabbixHostId String? @unique
+
   dataCompra  DateTime?
   garantiaAte DateTime?
 
@@ -257,8 +259,9 @@ model Usuario {
   perfil    String  @default("USUARIO")
   ativo     Boolean @default(true)
 
-  movimentacoes Movimentacao[] @relation("MovimentacaoUsuario")
-  manutencoes   Manutencao[]   @relation("ManutencaoUsuario")
+  movimentacoes          Movimentacao[] @relation("MovimentacaoUsuario")
+  manutencoes            Manutencao[]   @relation("ManutencaoUsuario")
+  manutencoesComoTecnico Manutencao[]   @relation("ManutencaoTecnico")
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
@@ -325,6 +328,13 @@ model Manutencao {
   equipamentoId Int
   equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Restrict)
 
+  // INTERNA ou EXTERNA.
+  // Null preserva registros antigos sem classificação.
+  tipo String?
+
+  tecnicoResponsavelId Int?
+  tecnicoResponsavel   Usuario? @relation("ManutencaoTecnico", fields: [tecnicoResponsavelId], references: [id], onDelete: SetNull)
+
   problemaInformado String
   diagnostico       String?
   solucao           String?
@@ -364,6 +374,8 @@ model Manutencao {
   atualizadoEm DateTime @updatedAt
 
   @@index([equipamentoId])
+  @@index([tipo])
+  @@index([tecnicoResponsavelId])
   @@index([responsavelAnteriorId])
   @@index([setorAnteriorId])
   @@index([localizacaoAnteriorId])

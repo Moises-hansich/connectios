@@ -1,6 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { ManutencaoService } from "../services/manutencaoService";
+import {
+  ManutencaoService,
+  type TipoManutencao,
+} from "../services/manutencaoService";
+
+import { AppError } from "../errors/AppError";
 
 export class ManutencaoController {
   private service: ManutencaoService;
@@ -64,6 +69,12 @@ export class ManutencaoController {
     try {
       const manutencao = await this.service.abrir({
         equipamentoId: Number(req.body.equipamentoId),
+
+        tipo: this.converterTipoManutencao(req.body.tipo),
+
+        tecnicoResponsavelId: this.converterTecnicoResponsavel(
+          req.body.tecnicoResponsavelId,
+        ),
 
         problemaInformado: this.converterTextoObrigatorio(
           req.body.problemaInformado,
@@ -136,7 +147,55 @@ export class ManutencaoController {
       next(error);
     }
   };
+  private converterTipoManutencao(valor: unknown): TipoManutencao | undefined {
+    // Compatibilidade com o formulário antigo.
+    // O service assume EXTERNA quando o campo não é enviado.
+    if (valor === undefined) {
+      return undefined;
+    }
 
+    if (typeof valor !== "string") {
+      throw new AppError(
+        "O tipo da manutenção deve ser INTERNA ou EXTERNA",
+        400,
+      );
+    }
+
+    const tipo = valor.trim().toUpperCase();
+
+    if (tipo !== "INTERNA" && tipo !== "EXTERNA") {
+      throw new AppError(
+        "O tipo da manutenção deve ser INTERNA ou EXTERNA",
+        400,
+      );
+    }
+
+    return tipo;
+  }
+
+  private converterTecnicoResponsavel(
+    valor: unknown,
+  ): number | null | undefined {
+    if (valor === undefined) {
+      return undefined;
+    }
+
+    if (valor === null || valor === "") {
+      return null;
+    }
+
+    if (typeof valor !== "string" && typeof valor !== "number") {
+      throw new AppError("ID do técnico responsável inválido", 400);
+    }
+
+    const id = Number(valor);
+
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new AppError("ID do técnico responsável inválido", 400);
+    }
+
+    return id;
+  }
   private obterValorUnico(valor: unknown) {
     if (Array.isArray(valor)) {
       return valor[0];

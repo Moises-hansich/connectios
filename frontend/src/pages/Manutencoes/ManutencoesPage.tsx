@@ -3,8 +3,10 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  Plus,
   Search,
   Wrench,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,7 +22,10 @@ import {
   DetalhesManutencaoModal,
 } from "../../components/Manutencoes";
 import type { Manutencao, StatusManutencao } from "../../types/manutencao";
+import { equipamentoService } from "../../services/equipamentoService";
+import type { Equipamento } from "../../types/equipamento";
 
+import { AbrirManutencaoModal } from "../../components/Manutencoes/AbrirManutencaoModal";
 interface FiltrosFormulario {
   status: "" | StatusManutencao;
   dataInicio: string;
@@ -41,7 +46,16 @@ export function ManutencoesPage() {
 
   const [filtrosAplicados, setFiltrosAplicados] =
     useState<FiltrosFormulario>(filtrosIniciais);
+  const [selecaoEquipamentoAberta, setSelecaoEquipamentoAberta] =
+    useState(false);
 
+  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
+  const [carregandoEquipamentos, setCarregandoEquipamentos] = useState(false);
+  const [erroEquipamentos, setErroEquipamentos] = useState(false);
+  const [equipamentoIdSelecionado, setEquipamentoIdSelecionado] = useState("");
+
+  const [equipamentoCadastro, setEquipamentoCadastro] =
+    useState<Equipamento | null>(null);
   const [pagina, setPagina] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
@@ -129,10 +143,87 @@ export function ManutencoesPage() {
   function fecharModalDetalhes() {
     setManutencaoDetalhes(null);
   }
+  useEffect(() => {
+    if (!selecaoEquipamentoAberta) {
+      return;
+    }
 
+    let ativo = true;
+
+    async function carregarEquipamentos() {
+      try {
+        setCarregandoEquipamentos(true);
+        setErroEquipamentos(false);
+
+        const dados = await equipamentoService.listar();
+
+        if (ativo) {
+          setEquipamentos(dados);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar equipamentos:", error);
+
+        if (ativo) {
+          setEquipamentos([]);
+          setErroEquipamentos(true);
+          toast.error("Não foi possível carregar os equipamentos.");
+        }
+      } finally {
+        if (ativo) {
+          setCarregandoEquipamentos(false);
+        }
+      }
+    }
+
+    function fecharComEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSelecaoEquipamentoAberta(false);
+      }
+    }
+
+    void carregarEquipamentos();
+    window.addEventListener("keydown", fecharComEscape);
+
+    return () => {
+      ativo = false;
+      window.removeEventListener("keydown", fecharComEscape);
+    };
+  }, [selecaoEquipamentoAberta]);
+
+  function abrirCadastroManutencao() {
+    setEquipamentoIdSelecionado("");
+    setEquipamentos([]);
+    setErroEquipamentos(false);
+    setCarregandoEquipamentos(true);
+    setSelecaoEquipamentoAberta(true);
+  }
+
+  function continuarCadastro(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const equipamento = equipamentos.find(
+      (item) => item.id === Number(equipamentoIdSelecionado),
+    );
+
+    if (!equipamento) {
+      toast.error("Selecione um equipamento.");
+      return;
+    }
+
+    setSelecaoEquipamentoAberta(false);
+    setEquipamentoCadastro(equipamento);
+  }
+
+  function fecharCadastroManutencao() {
+    setEquipamentoCadastro(null);
+  }
+
+  async function finalizarCadastroManutencao() {
+    await carregarManutencoes();
+  }
   return (
     <MainLayout>
-      <div className="mb-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-blue-100 p-3 text-slate-800">
             <Wrench size={24} />
@@ -146,6 +237,11 @@ export function ManutencoesPage() {
             </p>
           </div>
         </div>
+
+        <Button type="button" onClick={abrirCadastroManutencao}>
+          <Plus size={18} />
+          Cadastrar manutenção
+        </Button>
       </div>
 
       <Card className="mb-6">
@@ -294,6 +390,132 @@ export function ManutencoesPage() {
           </div>
         )}
       </Card>
+
+      {selecaoEquipamentoAberta && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setSelecaoEquipamentoAberta(false);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-selecionar-equipamento"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
+              <div>
+                <h2
+                  id="titulo-selecionar-equipamento"
+                  className="text-lg font-semibold text-slate-900"
+                >
+                  Cadastrar manutenção
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Selecione o equipamento que receberá a manutenção.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelecaoEquipamentoAberta(false)}
+                aria-label="Fechar seleção de equipamento"
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={continuarCadastro}>
+              <div className="p-5">
+                <label
+                  htmlFor="equipamento-manutencao"
+                  className="mb-1 block text-sm font-medium text-slate-700"
+                >
+                  Equipamento *
+                </label>
+
+                <select
+                  id="equipamento-manutencao"
+                  autoFocus
+                  required
+                  value={equipamentoIdSelecionado}
+                  disabled={carregandoEquipamentos || erroEquipamentos}
+                  onChange={(event) =>
+                    setEquipamentoIdSelecionado(event.target.value)
+                  }
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {carregandoEquipamentos
+                      ? "Carregando equipamentos..."
+                      : "Selecione um equipamento"}
+                  </option>
+
+                  {equipamentos.map((equipamento) => (
+                    <option key={equipamento.id} value={equipamento.id}>
+                      {equipamento.nome}
+                      {equipamento.patrimonio
+                        ? ` — ${equipamento.patrimonio}`
+                        : ` — ID ${equipamento.id}`}
+                    </option>
+                  ))}
+                </select>
+
+                {erroEquipamentos && (
+                  <p className="mt-2 text-sm text-red-600">
+                    Não foi possível carregar os equipamentos. Feche e abra
+                    novamente para tentar outra vez.
+                  </p>
+                )}
+
+                {!carregandoEquipamentos &&
+                  !erroEquipamentos &&
+                  equipamentos.length === 0 && (
+                    <p className="mt-2 text-sm text-slate-500">
+                      Nenhum equipamento encontrado.
+                    </p>
+                  )}
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-slate-200 p-5">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setSelecaoEquipamentoAberta(false)}
+                >
+                  Cancelar
+                </Button>
+
+                <Button
+                  type="submit"
+                  disabled={
+                    carregandoEquipamentos ||
+                    erroEquipamentos ||
+                    !equipamentoIdSelecionado
+                  }
+                >
+                  Continuar
+                  <ChevronRight size={18} />
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {equipamentoCadastro && (
+        <AbrirManutencaoModal
+          aberto
+          equipamento={equipamentoCadastro}
+          onFechar={fecharCadastroManutencao}
+          onSucesso={finalizarCadastroManutencao}
+        />
+      )}
 
       <FinalizarManutencaoModal
         aberto={manutencaoFinalizacao !== null}

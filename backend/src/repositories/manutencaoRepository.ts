@@ -42,6 +42,15 @@ const manutencaoInclude = {
   responsavelAnterior: true,
   localizacaoAnterior: true,
 
+  tecnicoResponsavel: {
+    select: {
+      id: true,
+      nome: true,
+      email: true,
+      ativo: true,
+    },
+  },
+
   registradoPor: {
     select: {
       id: true,

@@ -1,5 +1,14 @@
 export type StatusManutencao = "EM_ANDAMENTO" | "FINALIZADA";
 
+export type TipoManutencao = "INTERNA" | "EXTERNA";
+
+export interface TecnicoResponsavelManutencao {
+  id: number;
+  nome: string;
+  email: string;
+  ativo: boolean;
+}
+
 export interface CategoriaEquipamentoManutencao {
   id: number;
   nome: string;
@@ -59,39 +68,33 @@ export interface MovimentacaoManutencao {
 export interface Manutencao {
   id: number;
   equipamentoId: number;
-
+  tipo: TipoManutencao | null;
+  tecnicoResponsavelId: number | null;
+  tecnicoResponsavel: TecnicoResponsavelManutencao | null;
   problemaInformado: string;
   diagnostico: string | null;
   solucao: string | null;
-
   localManutencao: string | null;
-
   empresaResponsavelTexto: string | null;
   empresaResponsavelId: number | null;
   empresaResponsavel: EmpresaResponsavelManutencao | null;
-
   dataSaida: string;
   previsaoRetorno: string | null;
   dataRetorno: string | null;
-
   custo: string | number | null;
   status: StatusManutencao;
   observacoes: string | null;
-
   responsavelAnteriorId: number | null;
   setorAnteriorId: number | null;
   localizacaoAnteriorId: number | null;
   statusAnterior: string | null;
   registradoPorId: number | null;
-
   criadoEm: string;
   atualizadoEm: string;
-
   equipamento: EquipamentoManutencao;
   responsavelAnterior: ResponsavelManutencao | null;
   localizacaoAnterior: LocalizacaoManutencao | null;
   registradoPor: UsuarioManutencao | null;
-
   movimentacoes?: MovimentacaoManutencao[];
 }
 
@@ -106,6 +109,10 @@ export interface ManutencaoFiltros {
 
 export interface AbrirManutencaoData {
   equipamentoId: number;
+
+  tipo?: TipoManutencao;
+  tecnicoResponsavelId?: number | null;
+
   problemaInformado: string;
   localManutencao?: string | null;
   empresaResponsavelId?: number | null;

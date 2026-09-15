@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { AlertTriangle, ShieldCheck, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
@@ -7,9 +7,13 @@ import { Button } from "../Button";
 
 import { empresaService } from "../../services/empresaService";
 import { manutencaoService } from "../../services/manutencaoService";
+import { usuarioService, type Usuario } from "../../services/usuarioService";
 
 import type { Empresa } from "../../types/empresa";
-import type { GarantiaEquipamento } from "../../types/manutencao";
+import type {
+  GarantiaEquipamento,
+  TipoManutencao,
+} from "../../types/manutencao";
 
 interface EquipamentoSelecionado {
   id: number;
@@ -25,6 +29,8 @@ interface AbrirManutencaoModalProps {
 }
 
 interface FormularioManutencao {
+  tipo: TipoManutencao;
+  tecnicoResponsavelId: string;
   problemaInformado: string;
   localManutencao: string;
   empresaResponsavelId: string;
@@ -40,6 +46,8 @@ interface ErroApi {
 }
 
 const formularioInicial: FormularioManutencao = {
+  tipo: "INTERNA",
+  tecnicoResponsavelId: "",
   problemaInformado: "",
   localManutencao: "",
   empresaResponsavelId: "",
@@ -48,14 +56,20 @@ const formularioInicial: FormularioManutencao = {
   observacoes: "",
 };
 
+const classeCampo =
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100";
+
+const classeLabel = "mb-1 block text-sm font-medium text-slate-700";
+
 function obterMensagemErro(error: unknown): string {
   if (axios.isAxiosError<ErroApi>(error)) {
-    return (
-      error.response?.data?.mensagem ||
-      error.response?.data?.message ||
-      error.response?.data?.erro ||
-      "Não foi possível abrir a manutenção."
-    );
+    const dados = error.response?.data;
+
+    for (const mensagem of [dados?.mensagem, dados?.message, dados?.erro]) {
+      if (typeof mensagem === "string" && mensagem.trim()) {
+        return mensagem;
+      }
+    }
   }
 
   return "Não foi possível abrir a manutenção.";
@@ -66,14 +80,9 @@ function formatarDataGarantia(valor: string | null): string {
     return "Não informada";
   }
 
-  const dataSomente = valor.slice(0, 10);
-  const [ano, mes, dia] = dataSomente.split("-");
+  const [ano, mes, dia] = valor.slice(0, 10).split("-");
 
-  if (!ano || !mes || !dia) {
-    return "Data inválida";
-  }
-
-  return `${dia}/${mes}/${ano}`;
+  return ano && mes && dia ? `${dia}/${mes}/${ano}` : "Data inválida";
 }
 
 export function AbrirManutencaoModal({
@@ -86,112 +95,73 @@ export function AbrirManutencaoModal({
     useState<FormularioManutencao>(formularioInicial);
 
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [tecnicos, setTecnicos] = useState<Usuario[]>([]);
 
-  const [carregandoEmpresas, setCarregandoEmpresas] = useState(false);
+  const [carregandoEmpresas, setCarregandoEmpresas] = useState(true);
+  const [carregandoTecnicos, setCarregandoTecnicos] = useState(true);
+
+  const [erroEmpresas, setErroEmpresas] = useState(false);
+  const [erroTecnicos, setErroTecnicos] = useState(false);
 
   const [garantia, setGarantia] = useState<GarantiaEquipamento | null>(null);
 
-  const [carregandoGarantia, setCarregandoGarantia] = useState(false);
-
+  const [carregandoGarantia, setCarregandoGarantia] = useState(true);
   const [erroGarantia, setErroGarantia] = useState(false);
 
+  const [tentativaCarga, setTentativaCarga] = useState(0);
   const [salvando, setSalvando] = useState(false);
 
-  const garantiaAtiva = garantia?.garantiaAtiva === true;
+  const envioEmAndamento = useRef(false);
 
+  const equipamentoId = equipamento?.id;
+  const interna = formulario.tipo === "INTERNA";
+  const garantiaAtiva = garantia?.garantiaAtiva === true;
   const fornecedorGarantia = garantia?.fornecedor ?? null;
 
-  const garantiaSemFornecedor = garantiaAtiva && fornecedorGarantia === null;
+  const fornecedorObrigatorio = !interna && garantiaAtiva;
+
+  const fornecedorInvalido =
+    fornecedorObrigatorio && (!fornecedorGarantia || !fornecedorGarantia.ativo);
+
+  const empresaSelecionada =
+    fornecedorObrigatorio && fornecedorGarantia
+      ? String(fornecedorGarantia.id)
+      : formulario.empresaResponsavelId;
 
   useEffect(() => {
     if (!aberto) {
       return;
     }
 
-    setFormulario(formularioInicial);
+    setFormulario({ ...formularioInicial });
+  }, [aberto, equipamentoId]);
+
+  useEffect(() => {
+    if (!aberto || equipamentoId === undefined) {
+      return;
+    }
+
+    let ativo = true;
+
     setGarantia(null);
     setErroGarantia(false);
-  }, [aberto, equipamento?.id]);
-
-  useEffect(() => {
-    if (!aberto) {
-      return;
-    }
-
-    let componenteAtivo = true;
-
-    async function carregarEmpresas() {
-      try {
-        setCarregandoEmpresas(true);
-
-        const dados = await empresaService.listarAtivas();
-
-        if (componenteAtivo) {
-          setEmpresas(dados);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar empresas:", error);
-
-        if (componenteAtivo) {
-          setEmpresas([]);
-
-          toast.error("Não foi possível carregar as empresas.");
-        }
-      } finally {
-        if (componenteAtivo) {
-          setCarregandoEmpresas(false);
-        }
-      }
-    }
-
-    void carregarEmpresas();
-
-    return () => {
-      componenteAtivo = false;
-    };
-  }, [aberto]);
-
-  useEffect(() => {
-    if (!aberto || !equipamento) {
-      return;
-    }
-
-    let componenteAtivo = true;
+    setCarregandoGarantia(true);
 
     async function carregarGarantia() {
       try {
-        setCarregandoGarantia(true);
-        setErroGarantia(false);
-        setGarantia(null);
+        const dados = await manutencaoService.consultarGarantia(equipamentoId!);
 
-        const dados = await manutencaoService.consultarGarantia(
-          equipamento!.id,
-        );
-
-        if (!componenteAtivo) {
-          return;
-        }
-
-        setGarantia(dados);
-
-        if (dados.garantiaAtiva && dados.fornecedor) {
-          const fornecedorId = dados.fornecedor.id;
-
-          setFormulario((anterior) => ({
-            ...anterior,
-            empresaResponsavelId: String(fornecedorId),
-          }));
+        if (ativo) {
+          setGarantia(dados);
         }
       } catch (error) {
         console.error("Erro ao consultar garantia:", error);
 
-        if (componenteAtivo) {
+        if (ativo) {
           setErroGarantia(true);
-
-          toast.error("Não foi possível consultar a garantia do equipamento.");
         }
       } finally {
-        if (componenteAtivo) {
+        if (ativo) {
           setCarregandoGarantia(false);
         }
       }
@@ -200,9 +170,85 @@ export function AbrirManutencaoModal({
     void carregarGarantia();
 
     return () => {
-      componenteAtivo = false;
+      ativo = false;
     };
-  }, [aberto, equipamento]);
+  }, [aberto, equipamentoId, tentativaCarga]);
+
+  useEffect(() => {
+    if (!aberto) {
+      return;
+    }
+
+    let ativo = true;
+
+    async function carregarResponsaveis() {
+      if (interna) {
+        setCarregandoTecnicos(true);
+        setErroTecnicos(false);
+        setTecnicos([]);
+
+        try {
+          const dados = await usuarioService.listar();
+
+          if (!Array.isArray(dados)) {
+            throw new Error("Resposta inválida ao listar usuários.");
+          }
+
+          if (ativo) {
+            setTecnicos(
+              dados
+                .filter((usuario) => usuario.ativo)
+                .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+            );
+          }
+        } catch (error) {
+          console.error("Erro ao carregar técnicos:", error);
+
+          if (ativo) {
+            setErroTecnicos(true);
+          }
+        } finally {
+          if (ativo) {
+            setCarregandoTecnicos(false);
+          }
+        }
+
+        return;
+      }
+
+      setCarregandoEmpresas(true);
+      setErroEmpresas(false);
+      setEmpresas([]);
+
+      try {
+        const dados = await empresaService.listarAtivas();
+
+        if (!Array.isArray(dados)) {
+          throw new Error("Resposta inválida ao listar empresas.");
+        }
+
+        if (ativo) {
+          setEmpresas(dados);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar empresas:", error);
+
+        if (ativo) {
+          setErroEmpresas(true);
+        }
+      } finally {
+        if (ativo) {
+          setCarregandoEmpresas(false);
+        }
+      }
+    }
+
+    void carregarResponsaveis();
+
+    return () => {
+      ativo = false;
+    };
+  }, [aberto, interna, tentativaCarga]);
 
   useEffect(() => {
     if (!aberto) {
@@ -210,7 +256,7 @@ export function AbrirManutencaoModal({
     }
 
     function fecharComEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !salvando) {
+      if (event.key === "Escape" && !envioEmAndamento.current) {
         onFechar();
       }
     }
@@ -220,47 +266,101 @@ export function AbrirManutencaoModal({
     return () => {
       window.removeEventListener("keydown", fecharComEscape);
     };
-  }, [aberto, salvando, onFechar]);
+  }, [aberto, onFechar]);
 
-  function alterarCampo(campo: keyof FormularioManutencao, valor: string) {
+  function alterarCampo<K extends keyof FormularioManutencao>(
+    campo: K,
+    valor: FormularioManutencao[K],
+  ) {
     setFormulario((anterior) => ({
       ...anterior,
       [campo]: valor,
     }));
   }
 
-  function fecharModal() {
-    if (salvando) {
+  function alterarTipo(tipo: TipoManutencao) {
+    if (tipo === formulario.tipo) {
       return;
     }
 
-    setFormulario(formularioInicial);
-    setGarantia(null);
+    setFormulario((anterior) => ({
+      ...anterior,
+      tipo,
+      tecnicoResponsavelId: "",
+      empresaResponsavelId: "",
+    }));
+
+    if (tipo === "INTERNA") {
+      setCarregandoTecnicos(true);
+      setErroTecnicos(false);
+    } else {
+      setCarregandoEmpresas(true);
+      setErroEmpresas(false);
+    }
+  }
+
+  function tentarNovamente() {
+    setCarregandoGarantia(true);
     setErroGarantia(false);
 
+    if (interna) {
+      setCarregandoTecnicos(true);
+      setErroTecnicos(false);
+    } else {
+      setCarregandoEmpresas(true);
+      setErroEmpresas(false);
+    }
+
+    setTentativaCarga((anterior) => anterior + 1);
+  }
+
+  function fecharModal() {
+    if (envioEmAndamento.current) {
+      return;
+    }
+
     onFechar();
+  }
+
+  let motivoBloqueio: string | null = null;
+
+  if (!equipamento) {
+    motivoBloqueio = "Selecione um equipamento.";
+  } else if (interna) {
+    if (carregandoTecnicos) {
+      motivoBloqueio = "Carregando técnicos...";
+    } else if (erroTecnicos) {
+      motivoBloqueio = "Não foi possível carregar os técnicos.";
+    } else if (tecnicos.length === 0) {
+      motivoBloqueio = "Nenhum usuário ativo disponível como técnico.";
+    } else if (
+      !tecnicos.some(
+        (tecnico) => tecnico.id === Number(formulario.tecnicoResponsavelId),
+      )
+    ) {
+      motivoBloqueio = "Selecione o técnico responsável.";
+    }
+  } else if (carregandoGarantia) {
+    motivoBloqueio = "Consultando a garantia...";
+  } else if (erroGarantia || !garantia) {
+    motivoBloqueio = "Consulte a garantia antes de continuar.";
+  } else if (fornecedorInvalido) {
+    motivoBloqueio = "Regularize o fornecedor da garantia antes de continuar.";
+  } else if (!fornecedorObrigatorio && carregandoEmpresas) {
+    motivoBloqueio = "Carregando empresas...";
+  } else if (!fornecedorObrigatorio && erroEmpresas) {
+    motivoBloqueio = "Não foi possível carregar as empresas.";
   }
 
   async function enviarFormulario(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!equipamento) {
-      toast.error("Nenhum equipamento foi selecionado.");
-
+    if (envioEmAndamento.current) {
       return;
     }
 
-    if (carregandoGarantia || erroGarantia || !garantia) {
-      toast.error("Aguarde a consulta da garantia do equipamento.");
-
-      return;
-    }
-
-    if (garantiaSemFornecedor) {
-      toast.error(
-        "O equipamento está na garantia, mas não possui fornecedor cadastrado.",
-      );
-
+    if (!equipamento || motivoBloqueio) {
+      toast.error(motivoBloqueio ?? "Selecione um equipamento.");
       return;
     }
 
@@ -268,23 +368,34 @@ export function AbrirManutencaoModal({
 
     if (problema.length < 5) {
       toast.error("Informe o problema com pelo menos 5 caracteres.");
-
       return;
     }
 
-    const empresaResponsavelId =
-      garantiaAtiva && fornecedorGarantia
+    const tecnicoResponsavelId = interna
+      ? Number(formulario.tecnicoResponsavelId)
+      : null;
+
+    const empresaResponsavelId = interna
+      ? null
+      : fornecedorObrigatorio && fornecedorGarantia
         ? fornecedorGarantia.id
-        : formulario.empresaResponsavelId === ""
-          ? null
-          : Number(formulario.empresaResponsavelId);
+        : formulario.empresaResponsavelId
+          ? Number(formulario.empresaResponsavelId)
+          : null;
+
+    if (
+      tecnicoResponsavelId !== null &&
+      (!Number.isSafeInteger(tecnicoResponsavelId) || tecnicoResponsavelId <= 0)
+    ) {
+      toast.error("Selecione um técnico válido.");
+      return;
+    }
 
     if (
       empresaResponsavelId !== null &&
-      (!Number.isInteger(empresaResponsavelId) || empresaResponsavelId <= 0)
+      (!Number.isSafeInteger(empresaResponsavelId) || empresaResponsavelId <= 0)
     ) {
       toast.error("Selecione uma empresa válida.");
-
       return;
     }
 
@@ -295,7 +406,6 @@ export function AbrirManutencaoModal({
 
       if (!Number.isFinite(custo) || custo < 0) {
         toast.error("Informe um custo válido.");
-
         return;
       }
     }
@@ -306,45 +416,57 @@ export function AbrirManutencaoModal({
       const data = new Date(formulario.previsaoRetorno);
 
       if (Number.isNaN(data.getTime())) {
-        toast.error("Informe uma previsão de retorno válida.");
+        toast.error("Informe uma previsão válida.");
+        return;
+      }
 
+      if (data.getTime() < Date.now()) {
+        toast.error("A previsão não pode estar no passado.");
         return;
       }
 
       previsaoRetorno = data.toISOString();
     }
 
-    try {
-      setSalvando(true);
+    envioEmAndamento.current = true;
+    setSalvando(true);
 
+    try {
       await manutencaoService.abrir({
         equipamentoId: equipamento.id,
+        tipo: formulario.tipo,
+        tecnicoResponsavelId,
         problemaInformado: problema,
-
         localManutencao: formulario.localManutencao.trim() || null,
-
         empresaResponsavelId,
-
         previsaoRetorno,
         custo,
-
         observacoes: formulario.observacoes.trim() || null,
       });
-
-      toast.success("Manutenção aberta com sucesso.");
-
-      setFormulario(formularioInicial);
-      setGarantia(null);
-
-      await onSucesso?.();
-
-      onFechar();
     } catch (error) {
       console.error("Erro ao abrir manutenção:", error);
-
       toast.error(obterMensagemErro(error));
-    } finally {
+
+      envioEmAndamento.current = false;
       setSalvando(false);
+      return;
+    }
+
+    toast.success("Manutenção aberta com sucesso.");
+
+    // Uma falha na atualização da tabela não significa
+    // que o cadastro falhou e não deve permitir outro envio.
+    try {
+      await onSucesso?.();
+    } catch (error) {
+      console.error("Erro ao atualizar a listagem:", error);
+      toast.warning(
+        "A manutenção foi salva, mas a listagem não foi atualizada. Atualize a página.",
+      );
+    } finally {
+      envioEmAndamento.current = false;
+      setSalvando(false);
+      onFechar();
     }
   }
 
@@ -378,12 +500,11 @@ export function AbrirManutencaoModal({
                 id="titulo-abrir-manutencao"
                 className="text-lg font-semibold text-slate-900"
               >
-                Abrir manutenção
+                Cadastrar manutenção
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
                 {equipamento?.nome}
-
                 {equipamento?.patrimonio
                   ? ` • Patrimônio ${equipamento.patrimonio}`
                   : ""}
@@ -396,7 +517,7 @@ export function AbrirManutencaoModal({
             disabled={salvando}
             onClick={fecharModal}
             aria-label="Fechar"
-            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
           >
             <X size={20} />
           </button>
@@ -405,24 +526,53 @@ export function AbrirManutencaoModal({
         <form onSubmit={enviarFormulario}>
           <div className="grid gap-5 p-5 md:grid-cols-2">
             <div className="md:col-span-2">
+              <label htmlFor="tipoManutencao" className={classeLabel}>
+                Tipo de manutenção *
+              </label>
+
+              <select
+                id="tipoManutencao"
+                value={formulario.tipo}
+                disabled={salvando}
+                onChange={(event) => {
+                  const tipo = event.target.value;
+
+                  if (tipo === "INTERNA" || tipo === "EXTERNA") {
+                    alterarTipo(tipo);
+                  }
+                }}
+                className={classeCampo}
+              >
+                <option value="INTERNA">Interna — equipe de TI</option>
+                <option value="EXTERNA">Externa — assistência técnica</option>
+              </select>
+
+              <p className="mt-2 text-xs text-slate-500">
+                {interna
+                  ? "Atendimento pela TI. O equipamento mantém seu responsável e sua localização."
+                  : "Encaminhamento para assistência. O responsável e a localização serão restaurados no retorno."}
+              </p>
+            </div>
+
+            <div className="space-y-3 md:col-span-2">
               {carregandoGarantia && (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+                <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-700">
                   Consultando a garantia do equipamento...
-                </div>
+                </p>
               )}
 
               {!carregandoGarantia && erroGarantia && (
-                <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                  <AlertTriangle size={20} className="shrink-0" />
-
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                   <p>
-                    Não foi possível consultar a garantia. Feche e abra
-                    novamente o formulário.
+                    Não foi possível consultar a garantia.
+                    {interna
+                      ? " O atendimento interno pode ser registrado."
+                      : " Tente novamente antes de registrar o envio externo."}
                   </p>
                 </div>
               )}
 
-              {!carregandoGarantia && garantiaAtiva && fornecedorGarantia && (
+              {!carregandoGarantia && garantiaAtiva && (
                 <div className="flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                   <ShieldCheck
                     size={22}
@@ -435,80 +585,165 @@ export function AbrirManutencaoModal({
                     </p>
 
                     <p className="mt-1 text-sm text-emerald-700">
-                      Garantia válida até{" "}
+                      Válida até{" "}
                       {formatarDataGarantia(garantia?.garantiaAte ?? null)}.
-                      Encaminhamento obrigatório para{" "}
-                      <strong>{fornecedorGarantia.nome}</strong>.
+                      {interna
+                        ? " O atendimento interno será registrado sem encaminhamento obrigatório ao fornecedor."
+                        : fornecedorGarantia
+                          ? ` Encaminhamento para ${fornecedorGarantia.nome}.`
+                          : " Nenhum fornecedor cadastrado."}
                     </p>
                   </div>
                 </div>
               )}
 
-              {!carregandoGarantia && garantiaSemFornecedor && (
-                <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-                  <AlertTriangle size={22} className="shrink-0 text-red-700" />
+              {fornecedorInvalido && (
+                <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <AlertTriangle size={20} className="shrink-0" />
 
-                  <div>
-                    <p className="font-medium text-red-800">
-                      Fornecedor não cadastrado
-                    </p>
-
-                    <p className="mt-1 text-sm text-red-700">
-                      O equipamento está na garantia até{" "}
-                      {formatarDataGarantia(garantia?.garantiaAte ?? null)}, mas
-                      não possui fornecedor. Atualize o cadastro do equipamento
-                      antes de abrir a manutenção.
-                    </p>
-                  </div>
+                  <p>
+                    {!fornecedorGarantia
+                      ? "Cadastre o fornecedor do equipamento para abrir a manutenção externa em garantia."
+                      : "O fornecedor da garantia está inativo. Regularize seu cadastro para continuar."}
+                  </p>
                 </div>
               )}
 
               {!carregandoGarantia &&
                 garantia?.possuiGarantia &&
                 !garantiaAtiva && (
-                  <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                    <AlertTriangle
-                      size={22}
-                      className="shrink-0 text-amber-700"
-                    />
-
-                    <p className="text-sm text-amber-800">
-                      A garantia deste equipamento venceu em{" "}
-                      {formatarDataGarantia(garantia.garantiaAte)}. A empresa
-                      responsável pode ser escolhida normalmente.
-                    </p>
-                  </div>
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    A garantia venceu em{" "}
+                    {formatarDataGarantia(garantia.garantiaAte)}.
+                  </p>
                 )}
+
+              {!carregandoGarantia && garantia && !garantia.possuiGarantia && (
+                <p className="text-sm text-slate-500">
+                  Garantia não informada no cadastro do equipamento.
+                </p>
+              )}
+
+              {(erroGarantia || (interna ? erroTecnicos : erroEmpresas)) && (
+                <button
+                  type="button"
+                  disabled={salvando}
+                  onClick={tentarNovamente}
+                  className="text-sm font-medium text-blue-700 underline disabled:opacity-50"
+                >
+                  Tentar carregar novamente
+                </button>
+              )}
             </div>
 
+            {interna ? (
+              <div className="md:col-span-2">
+                <label htmlFor="tecnicoResponsavelId" className={classeLabel}>
+                  Técnico responsável *
+                </label>
+
+                <select
+                  id="tecnicoResponsavelId"
+                  required
+                  disabled={salvando || carregandoTecnicos || erroTecnicos}
+                  value={formulario.tecnicoResponsavelId}
+                  onChange={(event) =>
+                    alterarCampo("tecnicoResponsavelId", event.target.value)
+                  }
+                  className={classeCampo}
+                >
+                  <option value="">
+                    {carregandoTecnicos
+                      ? "Carregando técnicos..."
+                      : "Selecione o técnico"}
+                  </option>
+
+                  {tecnicos.map((tecnico) => (
+                    <option key={tecnico.id} value={tecnico.id}>
+                      {tecnico.nome} — {tecnico.email}
+                    </option>
+                  ))}
+                </select>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  Selecione o usuário que executará o atendimento.
+                </p>
+              </div>
+            ) : (
+              <div className="md:col-span-2">
+                <label htmlFor="empresaResponsavelId" className={classeLabel}>
+                  Empresa responsável
+                </label>
+
+                <select
+                  id="empresaResponsavelId"
+                  disabled={
+                    salvando ||
+                    carregandoEmpresas ||
+                    erroEmpresas ||
+                    carregandoGarantia ||
+                    fornecedorObrigatorio
+                  }
+                  value={empresaSelecionada}
+                  onChange={(event) =>
+                    alterarCampo("empresaResponsavelId", event.target.value)
+                  }
+                  className={classeCampo}
+                >
+                  <option value="">
+                    {carregandoEmpresas
+                      ? "Carregando empresas..."
+                      : "Selecione uma empresa"}
+                  </option>
+
+                  {fornecedorObrigatorio &&
+                    fornecedorGarantia &&
+                    !empresas.some(
+                      (empresa) => empresa.id === fornecedorGarantia.id,
+                    ) && (
+                      <option value={fornecedorGarantia.id}>
+                        {fornecedorGarantia.nome}
+                      </option>
+                    )}
+
+                  {empresas.map((empresa) => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.nome}
+                    </option>
+                  ))}
+                </select>
+
+                {fornecedorObrigatorio && (
+                  <p className="mt-1 text-xs text-emerald-700">
+                    Empresa definida pelo fornecedor da garantia.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="md:col-span-2">
-              <label
-                htmlFor="problemaInformado"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
+              <label htmlFor="problemaInformado" className={classeLabel}>
                 Problema informado *
               </label>
 
               <textarea
                 id="problemaInformado"
                 required
+                minLength={5}
                 rows={3}
                 disabled={salvando}
                 value={formulario.problemaInformado}
                 onChange={(event) =>
                   alterarCampo("problemaInformado", event.target.value)
                 }
-                placeholder="Descreva o problema apresentado pelo equipamento"
-                className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                placeholder="Descreva o problema apresentado"
+                className={`${classeCampo} resize-none`}
               />
             </div>
 
             <div>
-              <label
-                htmlFor="localManutencao"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
-                Local da manutenção
+              <label htmlFor="localManutencao" className={classeLabel}>
+                {interna ? "Local do atendimento" : "Local da assistência"}
               </label>
 
               <input
@@ -519,76 +754,16 @@ export function AbrirManutencaoModal({
                 onChange={(event) =>
                   alterarCampo("localManutencao", event.target.value)
                 }
-                placeholder="Ex.: Assistência técnica"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                placeholder={
+                  interna ? "Ex.: Sala TI" : "Ex.: Assistência técnica"
+                }
+                className={classeCampo}
               />
             </div>
 
             <div>
-              <label
-                htmlFor="empresaResponsavelId"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
-                Empresa responsável
-              </label>
-
-              <select
-                id="empresaResponsavelId"
-                disabled={
-                  salvando ||
-                  carregandoEmpresas ||
-                  carregandoGarantia ||
-                  garantiaAtiva
-                }
-                value={formulario.empresaResponsavelId}
-                onChange={(event) =>
-                  alterarCampo("empresaResponsavelId", event.target.value)
-                }
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-              >
-                <option value="">
-                  {carregandoEmpresas
-                    ? "Carregando empresas..."
-                    : "Selecione uma empresa"}
-                </option>
-
-                {fornecedorGarantia &&
-                  !empresas.some(
-                    (empresa) => empresa.id === fornecedorGarantia.id,
-                  ) && (
-                    <option value={fornecedorGarantia.id}>
-                      {fornecedorGarantia.nome}
-                    </option>
-                  )}
-
-                {empresas.map((empresa) => (
-                  <option key={empresa.id} value={empresa.id}>
-                    {empresa.nome}
-                  </option>
-                ))}
-              </select>
-
-              {garantiaAtiva && fornecedorGarantia && (
-                <p className="mt-1 text-xs text-emerald-700">
-                  Empresa definida automaticamente pelo fornecedor da garantia.
-                </p>
-              )}
-
-              {!carregandoEmpresas &&
-                empresas.length === 0 &&
-                !fornecedorGarantia && (
-                  <p className="mt-1 text-xs text-amber-600">
-                    Nenhuma empresa ativa encontrada.
-                  </p>
-                )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="previsaoRetorno"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
-                Previsão de retorno
+              <label htmlFor="previsaoRetorno" className={classeLabel}>
+                {interna ? "Previsão de conclusão" : "Previsão de retorno"}
               </label>
 
               <input
@@ -599,15 +774,12 @@ export function AbrirManutencaoModal({
                 onChange={(event) =>
                   alterarCampo("previsaoRetorno", event.target.value)
                 }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                className={classeCampo}
               />
             </div>
 
             <div>
-              <label
-                htmlFor="custo"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
+              <label htmlFor="custo" className={classeLabel}>
                 Custo previsto
               </label>
 
@@ -620,15 +792,12 @@ export function AbrirManutencaoModal({
                 value={formulario.custo}
                 onChange={(event) => alterarCampo("custo", event.target.value)}
                 placeholder="0,00"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                className={classeCampo}
               />
             </div>
 
             <div className="md:col-span-2">
-              <label
-                htmlFor="observacoes"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
+              <label htmlFor="observacoes" className={classeLabel}>
                 Observações
               </label>
 
@@ -640,35 +809,36 @@ export function AbrirManutencaoModal({
                 onChange={(event) =>
                   alterarCampo("observacoes", event.target.value)
                 }
-                placeholder="Informações adicionais sobre a manutenção"
-                className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                placeholder="Informações adicionais sobre o atendimento"
+                className={`${classeCampo} resize-none`}
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-slate-200 p-5">
-            <button
-              type="button"
-              disabled={salvando}
-              onClick={fecharModal}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Cancelar
-            </button>
+          <div className="border-t border-slate-200 p-5">
+            {motivoBloqueio && (
+              <p role="status" className="mb-3 text-sm text-amber-700">
+                {motivoBloqueio}
+              </p>
+            )}
 
-            <Button
-              type="submit"
-              disabled={
-                salvando ||
-                carregandoEmpresas ||
-                carregandoGarantia ||
-                erroGarantia ||
-                garantiaSemFornecedor ||
-                !equipamento
-              }
-            >
-              {salvando ? "Abrindo..." : "Abrir manutenção"}
-            </Button>
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={salvando}
+                onClick={fecharModal}
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                type="submit"
+                disabled={salvando || motivoBloqueio !== null}
+              >
+                {salvando ? "Salvando..." : "Cadastrar manutenção"}
+              </Button>
+            </div>
           </div>
         </form>
       </div>
