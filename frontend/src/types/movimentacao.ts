@@ -7,6 +7,8 @@ export const TIPOS_MOVIMENTACAO = [
   "ENTRADA_MANUTENCAO",
   "RETORNO_MANUTENCAO",
   "BAIXA",
+  "INSTALACAO_PECA",
+  "RETIRADA_PECA",
 ] as const;
 
 export type TipoMovimentacao = (typeof TIPOS_MOVIMENTACAO)[number];

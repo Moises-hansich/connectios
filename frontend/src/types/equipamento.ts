@@ -58,6 +58,7 @@ export interface EmpresaFornecedor {
   atualizadoEm?: string;
 }
 export interface Equipamento {
+  instaladoEmId?: number | null;
   id: number;
   nome: string;
   zabbixHostId: string | null;

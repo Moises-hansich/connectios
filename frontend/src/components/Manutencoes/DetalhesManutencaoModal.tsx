@@ -224,6 +224,19 @@ export function DetalhesManutencaoModal({
             </section>
           </div>
 
+          <section className="rounded-xl border border-slate-200 p-4">
+            <h4 className="font-semibold text-slate-900">Intervenções em peças</h4>
+            <p className="mt-1 text-sm text-slate-500">Técnico: {manutencao.tecnicoResponsavel?.nome || "Não informado"}</p>
+            <div className="mt-3 space-y-3">
+              {(manutencao.movimentacoes ?? []).filter((m) =>
+                m.equipamentoId === manutencao.equipamentoId && ["INSTALACAO_PECA", "RETIRADA_PECA"].includes(m.tipo)
+              ).map((m) => <div key={m.id} className="rounded-lg bg-slate-50 p-3 text-sm">
+                <p className="whitespace-pre-wrap text-slate-800">{m.observacoes}</p>
+                <p className="mt-2 text-xs text-slate-500">{formatarData(m.dataHora)} · Registrado por {m.usuario?.nome || "Não informado"}</p>
+              </div>)}
+              {!(manutencao.movimentacoes ?? []).some((m) => ["INSTALACAO_PECA", "RETIRADA_PECA"].includes(m.tipo)) && <p className="text-sm text-slate-500">Nenhuma intervenção em peças registrada.</p>}
+            </div>
+          </section>
           {manutencao.status === "EM_ANDAMENTO" && (
             <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               <ClipboardCheck size={19} className="mt-0.5 shrink-0" />

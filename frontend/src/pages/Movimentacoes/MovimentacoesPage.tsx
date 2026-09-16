@@ -72,6 +72,8 @@ const tiposMovimentacao: Array<{
     valor: "RETORNO_MANUTENCAO",
     texto: "Retorno da manutenção",
   },
+  {valor: "INSTALACAO_PECA", texto: "Instalação de peça"},
+  {valor: "RETIRADA_PECA", texto: "Retirada de peça"},
   {
     valor: "BAIXA",
     texto: "Baixa",
@@ -188,6 +190,8 @@ export function MovimentacoesPage() {
   }
 
   function textoTipo(tipo: TipoMovimentacao) {
+    if (tipo === "INSTALACAO_PECA") return "Instalação de peça";
+    if (tipo === "RETIRADA_PECA") return "Retirada de peça";
     return tiposMovimentacao.find((item) => item.valor === tipo)?.texto ?? tipo;
   }
 
@@ -200,6 +204,8 @@ export function MovimentacoesPage() {
       MUDANCA_LOCALIZACAO: "bg-sky-100 text-sky-700",
       ENTRADA_MANUTENCAO: "bg-amber-100 text-amber-700",
       RETORNO_MANUTENCAO: "bg-emerald-100 text-emerald-700",
+      INSTALACAO_PECA: "bg-blue-100 text-blue-700",
+      RETIRADA_PECA: "bg-amber-100 text-amber-700",
       BAIXA: "bg-rose-100 text-rose-700",
     };
 

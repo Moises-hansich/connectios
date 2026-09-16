@@ -1,3 +1,6 @@
+import { PecasModal } from "../../components/Pecas/PecasModal";
+import { useAuth } from "../../hooks/useAuth";
+import { obterGrupo, normalizarTexto } from "../../utils/grupoEquipamento";
 import { useMemo, useState } from "react";
 import {
   Boxes,
@@ -47,96 +50,15 @@ const grupos: {
 
 // Acrescente aqui os nomes de outras categorias do seu sistema.
 // A comparação ignora acentos e letras maiúsculas.
-const categoriasPorGrupo = {
-  COMPUTADORES: [
-    "computador",
-    "computadores",
-    "desktop",
-    "desktops",
-    "notebook",
-    "notebooks",
-    "servidor",
-    "servidores",
-    "all in one",
-  ],
-
-  PERIFERICOS: [
-    "monitor",
-    "monitores",
-    "teclado",
-    "teclados",
-    "mouse",
-    "mouses",
-    "impressora",
-    "impressoras",
-    "scanner",
-    "scanners",
-    "webcam",
-    "webcams",
-    "headset",
-    "headsets",
-    "tv",
-    "televisao",
-    "televisores",
-    "projetor",
-    "projetores",
-  ],
-
-  PECAS: [
-    "memoria",
-    "memorias",
-    "memoria ram",
-    "memorias ram",
-    "ram",
-    "ssd",
-    "ssds",
-    "hd",
-    "hds",
-    "hdd",
-    "hdds",
-    "processador",
-    "processadores",
-    "placa de video",
-    "placas de video",
-    "placa mae",
-    "placas mae",
-    "fonte",
-    "fontes",
-    "cooler",
-    "coolers",
-    "armazenamento",
-  ],
-};
-
-function normalizarTexto(valor: string) {
-  return valor
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, " ");
-}
-
-function obterGrupo(categoria: string): Exclude<Grupo, "TODOS"> {
-  const nome = normalizarTexto(categoria);
-
-  if (categoriasPorGrupo.COMPUTADORES.includes(nome)) {
-    return "COMPUTADORES";
-  }
-
-  if (categoriasPorGrupo.PERIFERICOS.includes(nome)) {
-    return "PERIFERICOS";
-  }
-
-  if (categoriasPorGrupo.PECAS.includes(nome)) {
-    return "PECAS";
-  }
-
-  return "OUTROS";
-}
+// A classificação é compartilhada pelos componentes de equipamentos.
 
 export function EquipamentosPage() {
   const navigate = useNavigate();
+  const {usuario} = useAuth();
+  const [operacaoPeca, setOperacaoPeca] = useState<{computadorId?: number; pecaId?: number; retiradaId?: number} | null>(null);
+  function abrirPecas(e: Equipamento) {
+    setOperacaoPeca(e.instaladoEmId ? {computadorId: e.instaladoEmId, retiradaId: e.id} : obterGrupo(e.categoria?.nome ?? "") === "COMPUTADORES" ? {computadorId: e.id} : {pecaId: e.id});
+  }
 
   const [grupoSelecionado, setGrupoSelecionado] =
     useState<Grupo>("TODOS");
@@ -190,6 +112,7 @@ export function EquipamentosPage() {
     fecharModalExclusao,
     confirmarExclusao,
 
+    carregarEquipamentos,
     finalizarCadastroOuEdicao,
   } = useEquipamentos();
 
@@ -440,7 +363,8 @@ export function EquipamentosPage() {
             </Card>
           ) : (
             <EquipmentTable
-              equipamentos={equipamentosExibidos}
+              onPecas={usuario?.perfil === "ADMIN" ? abrirPecas : undefined}
+            equipamentos={equipamentosExibidos}
               onEdit={abrirModalEdicao}
               onDelete={abrirModalExclusao}
               onHardware={abrirHardware}
@@ -484,6 +408,7 @@ export function EquipamentosPage() {
         onFechar={fecharModalManutencao}
         onSucesso={finalizarAberturaManutencao}
       />
+      {operacaoPeca && <PecasModal {...operacaoPeca} onFechar={() => setOperacaoPeca(null)} onSucesso={carregarEquipamentos} />}
     </MainLayout>
   );
 }

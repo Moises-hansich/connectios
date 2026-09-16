@@ -57,6 +57,8 @@ export interface UsuarioManutencao {
 }
 
 export interface MovimentacaoManutencao {
+  usuario?: { id: number; nome: string } | null;
+  equipamentoId?: number;
   id: number;
   tipo: string;
   statusAnterior: string | null;

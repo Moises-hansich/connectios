@@ -1,3 +1,4 @@
+import { obterGrupo } from "../../utils/grupoEquipamento";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -239,6 +240,7 @@ interface EquipmentTableProps {
   onEdit?: (equipamento: Equipamento) => void;
   onDelete?: (equipamento: Equipamento) => void;
   onHardware?: (equipamento: Equipamento) => void;
+  onPecas?: (equipamento: Equipamento) => void;
   onMaintenance?: (equipamento: Equipamento) => void;
 }
 
@@ -248,10 +250,14 @@ export function EquipmentTable({
   onDelete,
   onHardware,
   onMaintenance,
+  onPecas,
 }: EquipmentTableProps) {
   function acoesDoEquipamento(equipamento: Equipamento): Acao[] {
     const acoes: Acao[] = [];
 
+    if (onPecas && ["PECAS", "COMPUTADORES"].includes(obterGrupo(equipamento.categoria?.nome ?? ""))) {
+      acoes.push({titulo: equipamento.instaladoEmId ? "Retirar peça" : obterGrupo(equipamento.categoria?.nome ?? "") === "PECAS" ? "Instalar peça" : "Instalar ou trocar peça", icone: Cpu, executar: () => onPecas(equipamento)});
+    }
     if (onHardware) {
       acoes.push({
         titulo: "Detalhes e hardware",
@@ -317,6 +323,7 @@ export function EquipmentTable({
             </p>
           )}
 
+          {equipamento.instaladoEmId && <p className="text-xs text-indigo-700">Instalada no computador #{equipamento.instaladoEmId}</p>}
           {descricao && (
             <p className="break-words text-sm text-slate-500">{descricao}</p>
           )}
