@@ -14,6 +14,7 @@ import { movimentacaoRepository } from "../repositories/movimentacaoRepository";
 import { SetorRepository } from "../repositories/setorRepository";
 import { zabbixService } from "./zabbixService";
 interface EquipamentoInput {
+  zabbixHostId?: string | null;
   nome: string;
   categoriaId: number | string;
   fabricante?: string | null;
@@ -58,6 +59,9 @@ export class EquipamentoService {
       throw new AppError("Status é obrigatório", 400);
     }
 
+    if (data.status.trim().toLowerCase() === "instalada") {
+      throw new AppError("Cadastre a peça como disponível e use Instalar peça para vinculá-la ao computador.", 400);
+    }
     const categoriaId = this.converterIdObrigatorio(
       data.categoriaId,
       "Categoria",
@@ -393,12 +397,25 @@ export class EquipamentoService {
         throw new AppError("Equipamento não encontrado", 404);
       }
 
+      if (equipamentoAnterior.instaladoEmId !== null &&
+          ["status", "responsavelId", "localizacaoId", "setorId", "categoriaId"].some((campo) =>
+            campo in equipamentoLimpo && equipamentoLimpo[campo as keyof typeof equipamentoLimpo] !== equipamentoAnterior[campo as keyof typeof equipamentoAnterior])) {
+        throw new AppError("Retire a peça pelo atendimento de manutenção antes de alterar sua situação ou localização.", 409);
+      }
+      if (equipamentoAnterior.instaladoEmId === null && equipamentoLimpo.status?.trim().toLowerCase() === "instalada") {
+        throw new AppError("Utilize Instalar peça para vincular a peça a um computador.", 400);
+      }
+      const possuiPecas = await tx.equipamento.count({where: {instaladoEmId: id}});
+      if (possuiPecas && ((equipamentoLimpo.categoriaId !== undefined && equipamentoLimpo.categoriaId !== equipamentoAnterior.categoriaId) || ["baixado", "descartado"].includes(equipamentoLimpo.status?.trim().toLowerCase() ?? ""))) {
+        throw new AppError("Retire as peças instaladas antes de baixar o computador ou alterar sua categoria.", 409);
+      }
       const equipamentoAtualizado = await this.repository.update(
         id,
         equipamentoLimpo,
         tx,
       );
 
+      if (possuiPecas) await tx.equipamento.updateMany({where: {instaladoEmId: id}, data: {localizacaoId: equipamentoAtualizado.localizacaoId, setorId: equipamentoAtualizado.setorId}});
       const dataHora = new Date();
 
       if (

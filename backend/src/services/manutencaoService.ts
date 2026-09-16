@@ -1,3 +1,4 @@
+import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../errors/AppError";
 import { prisma } from "../prisma";
 
@@ -80,7 +81,7 @@ export class ManutencaoService {
     return this.manutencaoRepository.findByEquipamentoId(equipamentoId);
   }
 
-  async abrir(data: AbrirManutencaoData) {
+  async abrir(data: AbrirManutencaoData, banco?: Prisma.TransactionClient) {
     this.validarId(data.equipamentoId, "ID do equipamento");
 
     const tipo = data.tipo === undefined ? "EXTERNA" : data.tipo;
@@ -151,7 +152,7 @@ export class ManutencaoService {
 
     await this.validarUsuario(data.registradoPorId);
 
-    return prisma.$transaction(async (tx) => {
+    const executar = async (tx: Prisma.TransactionClient) => {
       const equipamento = await tx.equipamento.findUnique({
         where: {
           id: data.equipamentoId,
@@ -159,6 +160,7 @@ export class ManutencaoService {
         select: {
           id: true,
           status: true,
+          instaladoEmId: true,
           responsavelId: true,
           localizacaoId: true,
           garantiaAte: true,
@@ -177,6 +179,9 @@ export class ManutencaoService {
         throw new AppError("Equipamento não encontrado", 404);
       }
 
+      if (equipamento.instaladoEmId !== null) {
+        throw new AppError("Registre o atendimento no computador ou retire a peça antes de abrir sua manutenção.", 409);
+      }
       const manutencaoEmAndamento =
         await this.manutencaoRepository.findEmAndamentoByEquipamentoId(
           equipamento.id,
@@ -314,6 +319,7 @@ export class ManutencaoService {
         },
       });
 
+      await tx.equipamento.updateMany({where: {instaladoEmId: equipamento.id}, data: {localizacaoId: localizacaoNovaId}});
       let observacaoMovimentacao: string;
 
       if (interna) {
@@ -358,7 +364,8 @@ export class ManutencaoService {
       );
 
       return this.manutencaoRepository.findById(manutencao.id, tx);
-    });
+    };
+    return banco ? executar(banco) : prisma.$transaction(executar);
   }
 
   async finalizar(id: number, data: FinalizarManutencaoData) {
@@ -454,6 +461,7 @@ export class ManutencaoService {
         },
       });
 
+      await tx.equipamento.updateMany({where: {instaladoEmId: equipamentoAtual.id}, data: {localizacaoId: manutencao.localizacaoAnteriorId}});
       await this.movimentacaoRepository.create(
         {
           tipo: "RETORNO_MANUTENCAO",

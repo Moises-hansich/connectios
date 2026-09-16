@@ -62,6 +62,8 @@ const manutencaoInclude = {
 
   movimentacoes: {
     select: {
+      usuario: { select: { id: true, nome: true } },
+      equipamentoId: true,
       id: true,
       tipo: true,
       statusAnterior: true,

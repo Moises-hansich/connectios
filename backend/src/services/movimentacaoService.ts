@@ -20,6 +20,8 @@ export const TIPOS_MOVIMENTACAO = [
   "ENTRADA_MANUTENCAO",
   "RETORNO_MANUTENCAO",
   "BAIXA",
+  "INSTALACAO_PECA",
+  "RETIRADA_PECA",
 ] as const;
 
 export type TipoMovimentacao = (typeof TIPOS_MOVIMENTACAO)[number];
@@ -75,6 +77,9 @@ export class MovimentacaoService {
       throw new AppError("Tipo de movimentação inválido", 400);
     }
 
+    if (tipo === "INSTALACAO_PECA" || tipo === "RETIRADA_PECA") {
+      throw new AppError("Utilize a operação de peças vinculada à manutenção.", 400);
+    }
     this.validarId(data.equipamentoId, "ID do equipamento");
 
     const equipamento = await this.equipamentoRepository.findById(

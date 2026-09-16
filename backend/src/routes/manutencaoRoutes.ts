@@ -1,3 +1,4 @@
+import { pecasController } from "../controllers/pecasController";
 import { Router } from "express";
 
 import { manutencaoController } from "../controllers/manutencaoController";
@@ -7,6 +8,8 @@ import { adminMiddleware } from "../middlewares/adminMiddleware";
 export const manutencaoRoutes = Router();
 
 manutencaoRoutes.use(authMiddleware);
+manutencaoRoutes.get("/pecas/opcoes", pecasController.opcoes);
+manutencaoRoutes.post("/pecas", adminMiddleware, pecasController.registrar);
 
 manutencaoRoutes.get("/", manutencaoController.listar);
 

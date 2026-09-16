@@ -8,6 +8,15 @@ datasource db {
 }
 
 model Equipamento {
+  instaladoEmId Int?
+  instaladoEm Equipamento? @relation("PecasInstaladas", fields: [instaladoEmId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  pecasInstaladas Equipamento[] @relation("PecasInstaladas")
+  localReservaId Int?
+  localReserva Localizacao? @relation("ReservaPeca", fields: [localReservaId], references: [id], onDelete: SetNull)
+  setorReservaId Int?
+  setorReserva Setor? @relation("SetorReservaPeca", fields: [setorReservaId], references: [id], onDelete: SetNull)
+  @@index([instaladoEmId])
+
   id          Int     @id @default(autoincrement())
   nome        String
   fabricante  String?
@@ -190,6 +199,7 @@ model HardwareValor {
 }
 
 model Setor {
+  pecasReserva Equipamento[] @relation("SetorReservaPeca")
   id        Int     @id @default(autoincrement())
   nome      String  @unique
   descricao String?
@@ -207,6 +217,7 @@ model Setor {
 }
 
 model Localizacao {
+  pecasReserva Equipamento[] @relation("ReservaPeca")
   id        Int     @id @default(autoincrement())
   nome      String  @unique
   descricao String?
