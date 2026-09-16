@@ -3,7 +3,7 @@ import {
   type CreateLocalizacaoData,
   type UpdateLocalizacaoData,
 } from "../repositories/localizacaoRepository";
-import { zabbixService } from "./zabbixService";
+import { zabbixService, type ZabbixHost } from "./zabbixService";
 export class LocalizacaoService {
   async listar() {
     return localizacaoRepository.findAll();
@@ -27,7 +27,7 @@ export class LocalizacaoService {
      * Consulta o grupo PCS INTERNOS uma única vez.
      * Depois relaciona os hosts pelo zabbixHostId.
      */
-    let hostsZabbix = [];
+    let hostsZabbix: ZabbixHost[] = [];
 
     try {
       hostsZabbix = await zabbixService.listarComputadores();
