@@ -3,6 +3,7 @@ import type { Categoria } from "../types/equipamento";
 
 export interface CriarCategoriaData {
   nome: string;
+  grupo: Categoria["grupo"];
   descricao?: string | null;
   ativo?: boolean;
 }

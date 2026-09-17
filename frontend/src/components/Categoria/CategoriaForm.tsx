@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 
@@ -23,6 +22,7 @@ interface CategoriaFormProps {
 
 interface FormData {
   nome: string;
+  grupo: Categoria["grupo"];
   descricao: string;
   ativo: boolean;
 }
@@ -32,15 +32,26 @@ interface ApiErrorResponse {
   mensagem?: string;
 }
 
+const grupos: {
+  valor: Categoria["grupo"];
+  nome: string;
+}[] = [
+  { valor: "COMPUTADORES", nome: "Computadores" },
+  { valor: "PERIFERICOS", nome: "Periféricos" },
+  { valor: "PECAS", nome: "Peças" },
+  { valor: "OUTROS", nome: "Outros" },
+];
+
 function criarEstadoInicial(categoria?: Categoria): FormData {
   return {
     nome: categoria?.nome ?? "",
+    grupo: categoria?.grupo ?? "OUTROS",
     descricao: categoria?.descricao ?? "",
     ativo: categoria?.ativo ?? true,
   };
 }
 
-function obterMensagemErro(error: unknown, mensagemPadrao: string) {
+function obterMensagemErro(error: unknown, mensagemPadrao: string): string {
   if (!isAxiosError<ApiErrorResponse>(error)) {
     return mensagemPadrao;
   }
@@ -68,9 +79,9 @@ export function CategoriaForm({
     setFormData(criarEstadoInicial(categoria));
   }, [categoria]);
 
-  function handleChange(campo: "nome" | "descricao", valor: string) {
-    setFormData((dadosAtuais) => ({
-      ...dadosAtuais,
+  function alterarTexto(campo: "nome" | "descricao", valor: string) {
+    setFormData((anterior) => ({
+      ...anterior,
       [campo]: valor,
     }));
   }
@@ -96,26 +107,22 @@ export function CategoriaForm({
       if (modo === "editar" && categoria) {
         const dados: AtualizarCategoriaData = {
           nome,
+          grupo: formData.grupo,
           descricao: descricao || null,
           ativo: formData.ativo,
         };
 
         await categoriaService.atualizar(categoria.id, dados);
-
-        toast.success("Categoria atualizada com sucesso.");
       } else {
         const dados: CriarCategoriaData = {
           nome,
+          grupo: formData.grupo,
           descricao: descricao || null,
           ativo: formData.ativo,
         };
 
         await categoriaService.criar(dados);
-
-        toast.success("Categoria cadastrada com sucesso.");
       }
-
-      onSuccess();
     } catch (error) {
       console.error("Erro ao salvar categoria:", error);
 
@@ -127,9 +134,19 @@ export function CategoriaForm({
             : "Não foi possível cadastrar a categoria.",
         ),
       );
+
+      return;
     } finally {
       setSalvando(false);
     }
+
+    toast.success(
+      modo === "editar"
+        ? "Categoria atualizada com sucesso."
+        : "Categoria cadastrada com sucesso.",
+    );
+
+    onSuccess();
   }
 
   return (
@@ -139,14 +156,40 @@ export function CategoriaForm({
         required
         value={formData.nome}
         disabled={salvando}
-        onChange={(event) => handleChange("nome", event.target.value)}
+        onChange={(event) => alterarTexto("nome", event.target.value)}
       />
+
+      <label className="block text-sm font-medium text-slate-700">
+        Grupo
+        <select
+          required
+          value={formData.grupo}
+          disabled={salvando}
+          onChange={(event) =>
+            setFormData((anterior) => ({
+              ...anterior,
+              grupo: event.target.value as Categoria["grupo"],
+            }))
+          }
+          className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+        >
+          {grupos.map((grupo) => (
+            <option key={grupo.valor} value={grupo.valor}>
+              {grupo.nome}
+            </option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs font-normal text-slate-500">
+          Define o grupo dos equipamentos desta categoria. Exemplo: a categoria
+          Memória RAM pertence ao grupo Peças.
+        </span>
+      </label>
 
       <Input
         label="Descrição"
         value={formData.descricao}
         disabled={salvando}
-        onChange={(event) => handleChange("descricao", event.target.value)}
+        onChange={(event) => alterarTexto("descricao", event.target.value)}
       />
 
       <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3">
@@ -155,8 +198,8 @@ export function CategoriaForm({
           checked={formData.ativo}
           disabled={salvando}
           onChange={(event) =>
-            setFormData((dadosAtuais) => ({
-              ...dadosAtuais,
+            setFormData((anterior) => ({
+              ...anterior,
               ativo: event.target.checked,
             }))
           }

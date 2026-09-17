@@ -255,8 +255,19 @@ export function EquipmentTable({
   function acoesDoEquipamento(equipamento: Equipamento): Acao[] {
     const acoes: Acao[] = [];
 
-    if (onPecas && ["PECAS", "COMPUTADORES"].includes(obterGrupo(equipamento.categoria?.nome ?? ""))) {
-      acoes.push({titulo: equipamento.instaladoEmId ? "Retirar peça" : obterGrupo(equipamento.categoria?.nome ?? "") === "PECAS" ? "Instalar peça" : "Instalar ou trocar peça", icone: Cpu, executar: () => onPecas(equipamento)});
+    if (
+      onPecas &&
+      ["PECAS", "COMPUTADORES"].includes(obterGrupo(equipamento.categoria))
+    ) {
+      acoes.push({
+        titulo: equipamento.instaladoEmId
+          ? "Retirar peça"
+          : obterGrupo(equipamento.categoria) === "PECAS"
+            ? "Instalar peça"
+            : "Instalar ou trocar peça",
+        icone: Cpu,
+        executar: () => onPecas(equipamento),
+      });
     }
     if (onHardware) {
       acoes.push({
@@ -323,7 +334,11 @@ export function EquipmentTable({
             </p>
           )}
 
-          {equipamento.instaladoEmId && <p className="text-xs text-indigo-700">Instalada no computador #{equipamento.instaladoEmId}</p>}
+          {equipamento.instaladoEmId && (
+            <p className="text-xs text-indigo-700">
+              Instalada no computador #{equipamento.instaladoEmId}
+            </p>
+          )}
           {descricao && (
             <p className="break-words text-sm text-slate-500">{descricao}</p>
           )}

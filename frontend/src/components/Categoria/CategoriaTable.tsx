@@ -2,6 +2,13 @@ import { Edit, Trash2 } from "lucide-react";
 
 import type { Categoria } from "../../types/equipamento";
 
+const nomesGrupos: Record<Categoria["grupo"], string> = {
+  COMPUTADORES: "Computadores",
+  PERIFERICOS: "Periféricos",
+  PECAS: "Peças",
+  OUTROS: "Outros",
+};
+
 interface CategoriaTableProps {
   categorias: Categoria[];
   carregando?: boolean;
@@ -69,6 +76,10 @@ export function CategoriaTable({
               >
                 <td className="px-4 py-4">
                   <p className="font-medium text-slate-800">{categoria.nome}</p>
+
+                  <span className="mt-1 inline-block rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                    {nomesGrupos[categoria.grupo] ?? "Outros"}
+                  </span>
                 </td>
 
                 <td className="max-w-xs px-4 py-4 text-sm text-slate-600">

@@ -4,6 +4,7 @@ export type { Hardware } from "./hardware";
 export interface Categoria {
   id: number;
   nome: string;
+  grupo: "COMPUTADORES" | "PERIFERICOS" | "PECAS" | "OUTROS";
   descricao: string | null;
   ativo: boolean;
   criadoEm: string;

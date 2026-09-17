@@ -70,8 +70,14 @@ const tiposMovimentacao: Record<
     classe: "bg-emerald-100 text-emerald-700",
   },
 
-  INSTALACAO_PECA: { texto: "Instalação de peça", classe: "bg-blue-100 text-blue-700" },
-  RETIRADA_PECA: { texto: "Retirada de peça", classe: "bg-amber-100 text-amber-700" },
+  INSTALACAO_PECA: {
+    texto: "Instalação de peça",
+    classe: "bg-blue-100 text-blue-700",
+  },
+  RETIRADA_PECA: {
+    texto: "Retirada de peça",
+    classe: "bg-amber-100 text-amber-700",
+  },
   BAIXA: {
     texto: "Baixa",
     classe: "bg-rose-100 text-rose-700",
@@ -374,7 +380,14 @@ export function EquipamentoDetalhesPage() {
         <EquipmentInfoCard equipamento={equipamento} />
 
         <FotoEquipamentoGallery equipamentoId={equipamento.id} />
-        {obterGrupo(equipamento.categoria?.nome ?? "") === "COMPUTADORES" && <PecasComputador computadorId={equipamento.id} onSucesso={async () => {await Promise.all([carregarEquipamento(), carregarHistorico()]);}} />}
+        {obterGrupo(equipamento.categoria) === "COMPUTADORES" && (
+          <PecasComputador
+            computadorId={equipamento.id}
+            onSucesso={async () => {
+              await Promise.all([carregarEquipamento(), carregarHistorico()]);
+            }}
+          />
+        )}
 
         <Card>
           <div className="mb-6 flex items-center justify-between">

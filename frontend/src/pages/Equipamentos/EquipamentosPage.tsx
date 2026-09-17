@@ -1,6 +1,3 @@
-import { PecasModal } from "../../components/Pecas/PecasModal";
-import { useAuth } from "../../hooks/useAuth";
-import { obterGrupo, normalizarTexto } from "../../utils/grupoEquipamento";
 import { useMemo, useState } from "react";
 import {
   Boxes,
@@ -15,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { MainLayout } from "../../layouts/MainLayout";
+
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { SearchInput } from "../../components/SearchInput";
@@ -25,16 +23,28 @@ import { ConfirmModal } from "../../components/ConfirmModal";
 import { SkeletonTable } from "../../components/Skeleton";
 import { Select } from "../../components/Select";
 import { AbrirManutencaoModal } from "../../components/Manutencoes";
+import { PecasModal } from "../../components/Pecas/PecasModal";
 
+import { useAuth } from "../../hooks/useAuth";
 import { useEquipamentos } from "../../hooks/useEquipamentos";
+
+import {
+  obterGrupo,
+  normalizarTexto,
+  type GrupoCategoria,
+} from "../../utils/grupoEquipamento";
+
 import type { Equipamento } from "../../types/equipamento";
 
-type Grupo =
-  | "TODOS"
-  | "COMPUTADORES"
-  | "PERIFERICOS"
-  | "PECAS"
-  | "OUTROS";
+type Grupo = "TODOS" | GrupoCategoria;
+
+type SituacaoPeca = "TODAS" | "RESERVA" | "INSTALADAS" | "DEFEITO";
+
+interface OperacaoPeca {
+  computadorId?: number;
+  pecaId?: number;
+  retiradaId?: number;
+}
 
 const grupos: {
   id: Grupo;
@@ -48,28 +58,59 @@ const grupos: {
   { id: "OUTROS", nome: "Outros", icone: Package },
 ];
 
-// Acrescente aqui os nomes de outras categorias do seu sistema.
-// A comparação ignora acentos e letras maiúsculas.
-// A classificação é compartilhada pelos componentes de equipamentos.
+const filtrosPecas: {
+  id: SituacaoPeca;
+  nome: string;
+}[] = [
+  { id: "TODAS", nome: "Todas as peças" },
+  { id: "RESERVA", nome: "Reserva" },
+  { id: "INSTALADAS", nome: "Instaladas" },
+  { id: "DEFEITO", nome: "Com defeito" },
+];
+
+function correspondeSituacaoPeca(
+  equipamento: Equipamento,
+  situacao: SituacaoPeca,
+): boolean {
+  const instalada = equipamento.instaladoEmId != null;
+  const status = normalizarTexto(equipamento.status);
+
+  switch (situacao) {
+    case "TODAS":
+      return true;
+
+    case "RESERVA":
+      return (
+        !instalada &&
+        status === "disponivel" &&
+        equipamento.responsavelId == null
+      );
+
+    case "INSTALADAS":
+      return instalada;
+
+    case "DEFEITO":
+      return !instalada && status === "com defeito";
+  }
+}
 
 export function EquipamentosPage() {
   const navigate = useNavigate();
-  const {usuario} = useAuth();
-  const [operacaoPeca, setOperacaoPeca] = useState<{computadorId?: number; pecaId?: number; retiradaId?: number} | null>(null);
-  function abrirPecas(e: Equipamento) {
-    setOperacaoPeca(e.instaladoEmId ? {computadorId: e.instaladoEmId, retiradaId: e.id} : obterGrupo(e.categoria?.nome ?? "") === "COMPUTADORES" ? {computadorId: e.id} : {pecaId: e.id});
-  }
+  const { usuario } = useAuth();
 
-  const [grupoSelecionado, setGrupoSelecionado] =
-    useState<Grupo>("TODOS");
+  const [grupoSelecionado, setGrupoSelecionado] = useState<Grupo>("TODOS");
 
-  const [modalManutencaoAberto, setModalManutencaoAberto] =
-    useState(false);
+  const [situacaoPeca, setSituacaoPeca] = useState<SituacaoPeca>("TODAS");
+
+  const [operacaoPeca, setOperacaoPeca] = useState<OperacaoPeca | null>(null);
+
+  const [modalManutencaoAberto, setModalManutencaoAberto] = useState(false);
 
   const [equipamentoManutencao, setEquipamentoManutencao] =
     useState<Equipamento | null>(null);
 
   const {
+    equipamentos,
     equipamentosFiltrados,
 
     pesquisa,
@@ -116,6 +157,22 @@ export function EquipamentosPage() {
     finalizarCadastroOuEdicao,
   } = useEquipamentos();
 
+  // Usa a lista original para manter as categorias disponíveis
+  // mesmo quando pesquisa e outros filtros reduzem os resultados.
+  const gruposPorCategoria = useMemo(() => {
+    const resultado = new Map<string, GrupoCategoria>();
+
+    for (const equipamento of equipamentos) {
+      const nome = equipamento.categoria?.nome?.trim();
+
+      if (nome) {
+        resultado.set(nome, obterGrupo(equipamento.categoria));
+      }
+    }
+
+    return resultado;
+  }, [equipamentos]);
+
   const contagens = useMemo(() => {
     const resultado: Record<Grupo, number> = {
       TODOS: equipamentosFiltrados.length,
@@ -126,24 +183,54 @@ export function EquipamentosPage() {
     };
 
     for (const equipamento of equipamentosFiltrados) {
-      const grupo = obterGrupo(equipamento.categoria?.nome ?? "");
-      resultado[grupo] += 1;
+      resultado[obterGrupo(equipamento.categoria)] += 1;
+    }
+
+    return resultado;
+  }, [equipamentosFiltrados]);
+
+  const contagensPecas = useMemo(() => {
+    const resultado: Record<SituacaoPeca, number> = {
+      TODAS: 0,
+      RESERVA: 0,
+      INSTALADAS: 0,
+      DEFEITO: 0,
+    };
+
+    for (const equipamento of equipamentosFiltrados) {
+      if (obterGrupo(equipamento.categoria) !== "PECAS") {
+        continue;
+      }
+
+      for (const filtro of filtrosPecas) {
+        if (correspondeSituacaoPeca(equipamento, filtro.id)) {
+          resultado[filtro.id] += 1;
+        }
+      }
     }
 
     return resultado;
   }, [equipamentosFiltrados]);
 
   const equipamentosExibidos = useMemo(() => {
-    if (grupoSelecionado === "TODOS") {
-      return equipamentosFiltrados;
-    }
+    return equipamentosFiltrados.filter((equipamento) => {
+      if (grupoSelecionado === "TODOS") {
+        return true;
+      }
 
-    return equipamentosFiltrados.filter(
-      (equipamento) =>
-        obterGrupo(equipamento.categoria?.nome ?? "") ===
-        grupoSelecionado,
-    );
-  }, [equipamentosFiltrados, grupoSelecionado]);
+      const grupo = obterGrupo(equipamento.categoria);
+
+      if (grupo !== grupoSelecionado) {
+        return false;
+      }
+
+      if (grupoSelecionado === "PECAS") {
+        return correspondeSituacaoPeca(equipamento, situacaoPeca);
+      }
+
+      return true;
+    });
+  }, [equipamentosFiltrados, grupoSelecionado, situacaoPeca]);
 
   const categoriasVisiveis = useMemo(() => {
     if (grupoSelecionado === "TODOS") {
@@ -151,18 +238,19 @@ export function EquipamentosPage() {
     }
 
     return categorias.filter(
-      (categoria) => obterGrupo(categoria) === grupoSelecionado,
+      (categoria) =>
+        (gruposPorCategoria.get(categoria) ?? "OUTROS") === grupoSelecionado,
     );
-  }, [categorias, grupoSelecionado]);
+  }, [categorias, grupoSelecionado, gruposPorCategoria]);
 
   function selecionarGrupo(grupo: Grupo) {
     setGrupoSelecionado(grupo);
+    setSituacaoPeca("TODAS");
 
-    // Remove uma categoria incompatível com a nova aba.
     if (
       categoriaSelecionada &&
       grupo !== "TODOS" &&
-      obterGrupo(categoriaSelecionada) !== grupo
+      (gruposPorCategoria.get(categoriaSelecionada) ?? "OUTROS") !== grupo
     ) {
       setCategoriaSelecionada("");
     }
@@ -170,6 +258,7 @@ export function EquipamentosPage() {
 
   function limparTudo() {
     setGrupoSelecionado("TODOS");
+    setSituacaoPeca("TODAS");
     limparFiltros();
   }
 
@@ -177,7 +266,38 @@ export function EquipamentosPage() {
     navigate(`/equipamentos/${equipamento.id}`);
   }
 
+  function abrirPecas(equipamento: Equipamento) {
+    if (equipamento.instaladoEmId != null) {
+      setOperacaoPeca({
+        computadorId: equipamento.instaladoEmId,
+        retiradaId: equipamento.id,
+      });
+
+      return;
+    }
+
+    if (obterGrupo(equipamento.categoria) === "COMPUTADORES") {
+      setOperacaoPeca({
+        computadorId: equipamento.id,
+      });
+
+      return;
+    }
+
+    setOperacaoPeca({
+      pecaId: equipamento.id,
+    });
+  }
+
   function abrirModalManutencao(equipamento: Equipamento) {
+    if (equipamento.instaladoEmId != null) {
+      toast.info(
+        "Registre o atendimento no computador ou retire a peça antes de abrir sua manutenção.",
+      );
+
+      return;
+    }
+
     if (normalizarTexto(equipamento.status) === "em manutencao") {
       toast.info("Este equipamento já está em manutenção.");
       return;
@@ -195,6 +315,9 @@ export function EquipamentosPage() {
   async function finalizarAberturaManutencao() {
     await finalizarCadastroOuEdicao();
   }
+
+  const possuiFiltro =
+    filtrosAtivos || grupoSelecionado !== "TODOS" || situacaoPeca !== "TODAS";
 
   return (
     <MainLayout>
@@ -255,6 +378,42 @@ export function EquipamentosPage() {
           ))}
         </nav>
 
+        {grupoSelecionado === "PECAS" && (
+          <section aria-label="Situação das peças" className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {filtrosPecas.map(({ id, nome }) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={situacaoPeca === id}
+                  onClick={() => setSituacaoPeca(id)}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                    situacaoPeca === id
+                      ? "border-blue-600 bg-blue-50 text-blue-800"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {nome}
+
+                  <span className="rounded bg-slate-100 px-2 py-0.5 text-xs tabular-nums text-slate-700">
+                    {carregando ? "…" : contagensPecas[id]}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Reserva mostra peças disponíveis, sem computador vinculado e sem
+              responsável. Peças em manutenção e outras situações aparecem em
+              Todas as peças.
+            </p>
+
+            <p className="text-xs text-slate-500">
+              As contagens consideram a pesquisa e os filtros abaixo.
+            </p>
+          </section>
+        )}
+
         <Card>
           <div className="grid items-end gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="md:col-span-2 xl:col-span-4">
@@ -268,9 +427,7 @@ export function EquipamentosPage() {
             <Select
               label="Categoria"
               value={categoriaSelecionada}
-              onChange={(event) =>
-                setCategoriaSelecionada(event.target.value)
-              }
+              onChange={(event) => setCategoriaSelecionada(event.target.value)}
             >
               <option value="">Todas as categorias</option>
 
@@ -316,9 +473,7 @@ export function EquipamentosPage() {
             <Select
               label="Status"
               value={statusSelecionado}
-              onChange={(event) =>
-                setStatusSelecionado(event.target.value)
-              }
+              onChange={(event) => setStatusSelecionado(event.target.value)}
             >
               <option value="">Todos os status</option>
 
@@ -344,7 +499,7 @@ export function EquipamentosPage() {
             <Button
               type="button"
               variant="secondary"
-              disabled={!filtrosAtivos && grupoSelecionado === "TODOS"}
+              disabled={!possuiFiltro}
               onClick={limparTudo}
             >
               <FilterX size={17} />
@@ -353,18 +508,15 @@ export function EquipamentosPage() {
           </div>
         </Card>
 
-        <section
-          aria-label="Lista de equipamentos"
-          aria-busy={carregando}
-        >
+        <section aria-label="Lista de equipamentos" aria-busy={carregando}>
           {carregando ? (
             <Card>
               <SkeletonTable />
             </Card>
           ) : (
             <EquipmentTable
+              equipamentos={equipamentosExibidos}
               onPecas={usuario?.perfil === "ADMIN" ? abrirPecas : undefined}
-            equipamentos={equipamentosExibidos}
               onEdit={abrirModalEdicao}
               onDelete={abrirModalExclusao}
               onHardware={abrirHardware}
@@ -408,7 +560,14 @@ export function EquipamentosPage() {
         onFechar={fecharModalManutencao}
         onSucesso={finalizarAberturaManutencao}
       />
-      {operacaoPeca && <PecasModal {...operacaoPeca} onFechar={() => setOperacaoPeca(null)} onSucesso={carregarEquipamentos} />}
+
+      {operacaoPeca && (
+        <PecasModal
+          {...operacaoPeca}
+          onFechar={() => setOperacaoPeca(null)}
+          onSucesso={carregarEquipamentos}
+        />
+      )}
     </MainLayout>
   );
 }
