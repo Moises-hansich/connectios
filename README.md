@@ -248,3 +248,4 @@ O ConnectionJS foi desenvolvido com o objetivo de aplicar conhecimentos de **des
 Técnico em Informática e desenvolvedor do ConnectionJS.
 
 GitHub: [@Moises-hansich](https://github.com/Moises-hansich)
+Linkedin : [Moises-hansich](https://www.linkedin.com/in/mois%C3%A9s-hanisch-12ba81396/)
