@@ -68,7 +68,8 @@ model Categoria {
   nome      String  @unique
   descricao String?
   ativo     Boolean @default(true)
-
+  grupo String @default("OUTROS")
+  
   equipamentos Equipamento[]
 
   criadoEm     DateTime @default(now())

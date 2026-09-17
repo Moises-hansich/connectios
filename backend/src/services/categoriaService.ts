@@ -4,11 +4,23 @@ import {
   type UpdateCategoriaData,
 } from "../repositories/categoriaRepository";
 
+import { grupoValido, type GrupoCategoria } from "../utils/grupoEquipamento";
+
 export class CategoriaService {
   private validarId(id: number) {
     if (!Number.isInteger(id) || id <= 0) {
       throw new Error("ID da categoria inválido.");
     }
+  }
+
+  private validarGrupo(valor: unknown): GrupoCategoria {
+    if (!grupoValido(valor)) {
+      throw new Error(
+        "Selecione um grupo válido: Computadores, Periféricos, Peças ou Outros.",
+      );
+    }
+
+    return valor;
   }
 
   async listar() {
@@ -32,10 +44,21 @@ export class CategoriaService {
   }
 
   async criar(data: CreateCategoriaData) {
-    const nome = data.nome?.trim();
+    const nome = typeof data.nome === "string" ? data.nome.trim() : "";
 
     if (!nome) {
       throw new Error("O nome da categoria é obrigatório.");
+    }
+
+    const grupo =
+      data.grupo === undefined ? "OUTROS" : this.validarGrupo(data.grupo);
+
+    if (
+      data.descricao !== undefined &&
+      data.descricao !== null &&
+      typeof data.descricao !== "string"
+    ) {
+      throw new Error("A descrição deve ser um texto.");
     }
 
     if (data.ativo !== undefined && typeof data.ativo !== "boolean") {
@@ -50,6 +73,7 @@ export class CategoriaService {
 
     return categoriaRepository.create({
       nome,
+      grupo,
       descricao: data.descricao?.trim() || null,
       ativo: data.ativo ?? true,
     });
@@ -61,12 +85,11 @@ export class CategoriaService {
     const dadosAtualizados: UpdateCategoriaData = {};
 
     if (data.nome !== undefined) {
-      const nome = data.nome.trim();
-
-      if (!nome) {
+      if (typeof data.nome !== "string" || !data.nome.trim()) {
         throw new Error("O nome da categoria é obrigatório.");
       }
 
+      const nome = data.nome.trim();
       const existente = await categoriaRepository.findByNome(nome);
 
       if (existente && existente.id !== id) {
@@ -76,7 +99,15 @@ export class CategoriaService {
       dadosAtualizados.nome = nome;
     }
 
+    if (data.grupo !== undefined) {
+      dadosAtualizados.grupo = this.validarGrupo(data.grupo);
+    }
+
     if (data.descricao !== undefined) {
+      if (data.descricao !== null && typeof data.descricao !== "string") {
+        throw new Error("A descrição deve ser um texto.");
+      }
+
       dadosAtualizados.descricao = data.descricao?.trim() || null;
     }
 
