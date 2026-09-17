@@ -528,7 +528,7 @@ function CampoDinamico({
   disabled,
   onChange,
 }: CampoDinamicoProps) {
-  const tipo = campo.tipo?.toLowerCase() ?? "texto";
+  const tipo = campo.tipoDado?.trim().toLowerCase() ?? "texto";
 
   if (
     tipo === "textarea" ||
@@ -546,7 +546,7 @@ function CampoDinamico({
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
           rows={3}
-          placeholder={campo.descricao ?? `Informe ${campo.nome}`}
+          placeholder={campo.placeholder ?? `Informe ${campo.nome}`}
           className={`${inputClassName} resize-y`}
         />
       </FormField>
@@ -583,9 +583,9 @@ function CampoDinamico({
             )}
           </span>
 
-          {campo.descricao && (
+          {campo.placeholder && (
             <span className="block text-xs text-slate-500">
-              {campo.descricao}
+              {campo.placeholder}
             </span>
           )}
         </label>
@@ -602,7 +602,7 @@ function CampoDinamico({
         value={valor}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
-        placeholder={campo.descricao ?? `Informe ${campo.nome}`}
+        placeholder={campo.placeholder ?? `Informe ${campo.nome}`}
         className={inputClassName}
         step={inputType === "number" ? "any" : undefined}
       />
