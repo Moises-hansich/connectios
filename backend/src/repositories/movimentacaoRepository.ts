@@ -32,6 +32,20 @@ export interface CreateMovimentacaoData {
 type BancoDados = typeof prisma | Prisma.TransactionClient;
 
 const movimentacaoInclude = {
+  alteracoes: {
+    select: {
+      id: true,
+      campo: true,
+      valorAnterior: true,
+      valorNovo: true,
+      referenciaAnteriorId: true,
+      referenciaNovaId: true,
+    },
+    orderBy: {
+      id: "asc",
+    },
+  },
+
   equipamento: {
     select: {
       id: true,
@@ -44,7 +58,6 @@ const movimentacaoInclude = {
       status: true,
     },
   },
-
   equipamentoRelacionado: {
     select: {
       id: true,
@@ -137,10 +150,7 @@ export class MovimentacaoRepository {
     });
   }
 
-  async create(
-    data: CreateMovimentacaoData,
-    bancoDados: BancoDados = prisma,
-  ) {
+  async create(data: CreateMovimentacaoData, bancoDados: BancoDados = prisma) {
     return bancoDados.movimentacao.create({
       data,
       include: movimentacaoInclude,

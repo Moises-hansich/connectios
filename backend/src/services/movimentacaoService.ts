@@ -22,6 +22,7 @@ export const TIPOS_MOVIMENTACAO = [
   "BAIXA",
   "INSTALACAO_PECA",
   "RETIRADA_PECA",
+  "ALTERACAO_CADASTRAL",
 ] as const;
 
 export type TipoMovimentacao = (typeof TIPOS_MOVIMENTACAO)[number];
@@ -76,9 +77,17 @@ export class MovimentacaoService {
     if (!this.tipoPermitido(tipo)) {
       throw new AppError("Tipo de movimentação inválido", 400);
     }
-
+    if (tipo === "ALTERACAO_CADASTRAL") {
+      throw new AppError(
+        "As alterações cadastrais são registradas automaticamente ao editar o equipamento.",
+        400,
+      );
+    }
     if (tipo === "INSTALACAO_PECA" || tipo === "RETIRADA_PECA") {
-      throw new AppError("Utilize a operação de peças vinculada à manutenção.", 400);
+      throw new AppError(
+        "Utilize a operação de peças vinculada à manutenção.",
+        400,
+      );
     }
     this.validarId(data.equipamentoId, "ID do equipamento");
 

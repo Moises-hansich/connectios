@@ -60,7 +60,10 @@ export class EquipamentoService {
     }
 
     if (data.status.trim().toLowerCase() === "instalada") {
-      throw new AppError("Cadastre a peça como disponível e use Instalar peça para vinculá-la ao computador.", 400);
+      throw new AppError(
+        "Cadastre a peça como disponível e use Instalar peça para vinculá-la ao computador.",
+        400,
+      );
     }
     const categoriaId = this.converterIdObrigatorio(
       data.categoriaId,
@@ -187,6 +190,12 @@ export class EquipamentoService {
   ) {
     this.validarId(id, "ID do equipamento");
 
+    if (usuarioId === null || !Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new AppError("Usuário não autenticado", 401);
+    }
+
+    const autorId = usuarioId;
+
     const equipamentoExistente = await this.repository.findById(id);
 
     if (!equipamentoExistente) {
@@ -256,23 +265,21 @@ export class EquipamentoService {
     this.validarPeriodoGarantia(dataCompraFinal, garantiaAteFinal);
 
     if (categoriaId !== undefined) {
-      const exigirCategoriaAtiva =
-        categoriaId !== equipamentoExistente.categoriaId;
-
-      await this.validarCategoria(categoriaId, exigirCategoriaAtiva);
+      await this.validarCategoria(
+        categoriaId,
+        categoriaId !== equipamentoExistente.categoriaId,
+      );
     }
 
     await this.validarSetor(setorId);
-
     await this.validarLocalizacao(localizacaoId);
-
     await this.validarResponsavel(responsavelId);
 
     if (fornecedorId !== undefined) {
-      const exigirFornecedorAtivo =
-        fornecedorId !== equipamentoExistente.fornecedorId;
-
-      await this.validarFornecedor(fornecedorId, exigirFornecedorAtivo);
+      await this.validarFornecedor(
+        fornecedorId,
+        fornecedorId !== equipamentoExistente.fornecedorId,
+      );
     }
 
     this.validarFornecedorDaGarantia(garantiaAteFinal, fornecedorIdFinal);
@@ -281,10 +288,10 @@ export class EquipamentoService {
       const numeroSerie = data.numeroSerie?.trim() || null;
 
       if (numeroSerie && numeroSerie !== equipamentoExistente.numeroSerie) {
-        const equipamentoComMesmoSerial =
+        const mesmoSerial =
           await this.repository.findByNumeroSerie(numeroSerie);
 
-        if (equipamentoComMesmoSerial && equipamentoComMesmoSerial.id !== id) {
+        if (mesmoSerial && mesmoSerial.id !== id) {
           throw new AppError("Número de série já cadastrado", 409);
         }
       }
@@ -294,25 +301,23 @@ export class EquipamentoService {
       const patrimonio = data.patrimonio?.trim() || null;
 
       if (patrimonio && patrimonio !== equipamentoExistente.patrimonio) {
-        const equipamentoComMesmoPatrimonio =
+        const mesmoPatrimonio =
           await this.repository.findByPatrimonio(patrimonio);
 
-        if (
-          equipamentoComMesmoPatrimonio &&
-          equipamentoComMesmoPatrimonio.id !== id
-        ) {
+        if (mesmoPatrimonio && mesmoPatrimonio.id !== id) {
           throw new AppError("Patrimônio já cadastrado", 409);
         }
       }
     }
+
     if (data.zabbixHostId !== undefined) {
       const zabbixHostId = data.zabbixHostId?.trim() || null;
 
       if (zabbixHostId && zabbixHostId !== equipamentoExistente.zabbixHostId) {
-        const equipamentoComMesmoHost =
+        const mesmoHost =
           await this.repository.findByZabbixHostId(zabbixHostId);
 
-        if (equipamentoComMesmoHost && equipamentoComMesmoHost.id !== id) {
+        if (mesmoHost && mesmoHost.id !== id) {
           throw new AppError(
             "Este host do Zabbix já está vinculado a outro equipamento",
             409,
@@ -330,10 +335,9 @@ export class EquipamentoService {
         }
       }
     }
+
     const equipamentoLimpo: Partial<CreateEquipamentoData> = {};
-    if (data.zabbixHostId !== undefined) {
-      equipamentoLimpo.zabbixHostId = data.zabbixHostId?.trim() || null;
-    }
+
     if (data.nome !== undefined) {
       equipamentoLimpo.nome = data.nome.trim();
     }
@@ -356,6 +360,10 @@ export class EquipamentoService {
 
     if (data.patrimonio !== undefined) {
       equipamentoLimpo.patrimonio = data.patrimonio?.trim() || null;
+    }
+
+    if (data.zabbixHostId !== undefined) {
+      equipamentoLimpo.zabbixHostId = data.zabbixHostId?.trim() || null;
     }
 
     if (data.status !== undefined) {
@@ -391,33 +399,112 @@ export class EquipamentoService {
     }
 
     return prisma.$transaction(async (tx) => {
+      const autor = await tx.usuario.findUnique({
+        where: { id: autorId },
+        select: {
+          id: true,
+          ativo: true,
+        },
+      });
+
+      if (!autor || !autor.ativo) {
+        throw new AppError("Usuário inválido ou inativo", 401);
+      }
+
+      // O repository retorna categoria, responsável e localização.
+      // Essa leitura ocorre antes da alteração e dentro da transação.
       const equipamentoAnterior = await this.repository.findById(id, tx);
 
       if (!equipamentoAnterior) {
         throw new AppError("Equipamento não encontrado", 404);
       }
 
-      if (equipamentoAnterior.instaladoEmId !== null &&
-          ["status", "responsavelId", "localizacaoId", "setorId", "categoriaId"].some((campo) =>
-            campo in equipamentoLimpo && equipamentoLimpo[campo as keyof typeof equipamentoLimpo] !== equipamentoAnterior[campo as keyof typeof equipamentoAnterior])) {
-        throw new AppError("Retire a peça pelo atendimento de manutenção antes de alterar sua situação ou localização.", 409);
+      // Reconfere os valores combinados com o cadastro atual.
+      const compraFinal =
+        dataCompra === undefined ? equipamentoAnterior.dataCompra : dataCompra;
+
+      const garantiaFinal =
+        garantiaAte === undefined
+          ? equipamentoAnterior.garantiaAte
+          : garantiaAte;
+
+      const fornecedorFinal =
+        fornecedorId === undefined
+          ? equipamentoAnterior.fornecedorId
+          : fornecedorId;
+
+      this.validarPeriodoGarantia(compraFinal, garantiaFinal);
+      this.validarFornecedorDaGarantia(garantiaFinal, fornecedorFinal);
+
+      const camposProtegidos = [
+        "status",
+        "responsavelId",
+        "localizacaoId",
+        "setorId",
+        "categoriaId",
+      ] as const;
+
+      const alterouCampoProtegido = camposProtegidos.some(
+        (campo) =>
+          equipamentoLimpo[campo] !== undefined &&
+          equipamentoLimpo[campo] !== equipamentoAnterior[campo],
+      );
+
+      if (equipamentoAnterior.instaladoEmId !== null && alterouCampoProtegido) {
+        throw new AppError(
+          "Retire a peça pelo atendimento de manutenção antes de alterar sua situação ou localização.",
+          409,
+        );
       }
-      if (equipamentoAnterior.instaladoEmId === null && equipamentoLimpo.status?.trim().toLowerCase() === "instalada") {
-        throw new AppError("Utilize Instalar peça para vincular a peça a um computador.", 400);
+
+      if (
+        equipamentoAnterior.instaladoEmId === null &&
+        equipamentoLimpo.status?.trim().toLowerCase() === "instalada"
+      ) {
+        throw new AppError(
+          "Utilize Instalar peça para vincular a peça a um computador.",
+          400,
+        );
       }
-      const possuiPecas = await tx.equipamento.count({where: {instaladoEmId: id}});
-      if (possuiPecas && ((equipamentoLimpo.categoriaId !== undefined && equipamentoLimpo.categoriaId !== equipamentoAnterior.categoriaId) || ["baixado", "descartado"].includes(equipamentoLimpo.status?.trim().toLowerCase() ?? ""))) {
-        throw new AppError("Retire as peças instaladas antes de baixar o computador ou alterar sua categoria.", 409);
+
+      const possuiPecas = await tx.equipamento.count({
+        where: { instaladoEmId: id },
+      });
+
+      const mudouCategoria =
+        equipamentoLimpo.categoriaId !== undefined &&
+        equipamentoLimpo.categoriaId !== equipamentoAnterior.categoriaId;
+
+      const solicitouBaixa =
+        equipamentoLimpo.status !== undefined &&
+        this.ehStatusDeBaixa(equipamentoLimpo.status);
+
+      if (possuiPecas > 0 && (mudouCategoria || solicitouBaixa)) {
+        throw new AppError(
+          "Retire as peças instaladas antes de baixar o computador ou alterar sua categoria.",
+          409,
+        );
       }
+
       const equipamentoAtualizado = await this.repository.update(
         id,
         equipamentoLimpo,
         tx,
       );
 
-      if (possuiPecas) await tx.equipamento.updateMany({where: {instaladoEmId: id}, data: {localizacaoId: equipamentoAtualizado.localizacaoId, setorId: equipamentoAtualizado.setorId}});
+      if (possuiPecas > 0) {
+        await tx.equipamento.updateMany({
+          where: { instaladoEmId: id },
+          data: {
+            localizacaoId: equipamentoAtualizado.localizacaoId,
+            setorId: equipamentoAtualizado.setorId,
+          },
+        });
+      }
+
       const dataHora = new Date();
 
+      // Preserva as movimentações operacionais existentes.
       if (
         equipamentoAnterior.responsavelId !==
         equipamentoAtualizado.responsavelId
@@ -432,7 +519,7 @@ export class EquipamentoService {
             equipamentoId: id,
             responsavelAnteriorId: equipamentoAnterior.responsavelId,
             responsavelNovoId: equipamentoAtualizado.responsavelId,
-            usuarioId,
+            usuarioId: autorId,
             observacoes:
               tipo === "ENTREGA"
                 ? "Responsável alterado na edição do equipamento."
@@ -450,7 +537,7 @@ export class EquipamentoService {
             equipamentoId: id,
             setorAnteriorId: equipamentoAnterior.setorId,
             setorNovoId: equipamentoAtualizado.setorId,
-            usuarioId,
+            usuarioId: autorId,
             observacoes: "Setor alterado na edição do equipamento.",
             dataHora,
           },
@@ -468,7 +555,7 @@ export class EquipamentoService {
             equipamentoId: id,
             localizacaoAnteriorId: equipamentoAnterior.localizacaoId,
             localizacaoNovaId: equipamentoAtualizado.localizacaoId,
-            usuarioId,
+            usuarioId: autorId,
             observacoes: "Localização alterada na edição do equipamento.",
             dataHora,
           },
@@ -484,7 +571,7 @@ export class EquipamentoService {
           {
             tipo: "BAIXA",
             equipamentoId: id,
-            usuarioId,
+            usuarioId: autorId,
             statusAnterior: equipamentoAnterior.status,
             statusNovo: equipamentoAtualizado.status,
             observacoes: "Equipamento baixado na edição.",
@@ -492,6 +579,104 @@ export class EquipamentoService {
           },
           tx,
         );
+      }
+
+      // Compara os valores anteriores com os efetivamente gravados.
+      type CampoAuditado =
+        | "patrimonio"
+        | "categoria"
+        | "responsavel"
+        | "localizacao";
+
+      type AlteracaoCadastro = {
+        campo: CampoAuditado;
+        valorAnterior: string | null;
+        valorNovo: string | null;
+        referenciaAnteriorId: number | null;
+        referenciaNovaId: number | null;
+      };
+
+      const alteracoes: AlteracaoCadastro[] = [];
+
+      if (equipamentoAnterior.patrimonio !== equipamentoAtualizado.patrimonio) {
+        alteracoes.push({
+          campo: "patrimonio",
+          valorAnterior: equipamentoAnterior.patrimonio,
+          valorNovo: equipamentoAtualizado.patrimonio,
+          referenciaAnteriorId: null,
+          referenciaNovaId: null,
+        });
+      }
+
+      if (
+        equipamentoAnterior.categoriaId !== equipamentoAtualizado.categoriaId
+      ) {
+        alteracoes.push({
+          campo: "categoria",
+          valorAnterior: equipamentoAnterior.categoria.nome,
+          valorNovo: equipamentoAtualizado.categoria.nome,
+          referenciaAnteriorId: equipamentoAnterior.categoriaId,
+          referenciaNovaId: equipamentoAtualizado.categoriaId,
+        });
+      }
+
+      if (
+        equipamentoAnterior.responsavelId !==
+        equipamentoAtualizado.responsavelId
+      ) {
+        alteracoes.push({
+          campo: "responsavel",
+          valorAnterior: equipamentoAnterior.responsavel?.nome ?? null,
+          valorNovo: equipamentoAtualizado.responsavel?.nome ?? null,
+          referenciaAnteriorId: equipamentoAnterior.responsavelId,
+          referenciaNovaId: equipamentoAtualizado.responsavelId,
+        });
+      }
+
+      if (
+        equipamentoAnterior.localizacaoId !==
+        equipamentoAtualizado.localizacaoId
+      ) {
+        alteracoes.push({
+          campo: "localizacao",
+          valorAnterior: equipamentoAnterior.localizacao?.nome ?? null,
+          valorNovo: equipamentoAtualizado.localizacao?.nome ?? null,
+          referenciaAnteriorId: equipamentoAnterior.localizacaoId,
+          referenciaNovaId: equipamentoAtualizado.localizacaoId,
+        });
+      }
+
+      // Um evento cadastral por salvamento, apenas quando há mudanças.
+      if (alteracoes.length > 0) {
+        const nomesCampos: Record<CampoAuditado, string> = {
+          patrimonio: "Patrimônio",
+          categoria: "Categoria",
+          responsavel: "Responsável",
+          localizacao: "Localização",
+        };
+
+        const resumo = alteracoes
+          .map((alteracao) => {
+            const campo = nomesCampos[alteracao.campo];
+            const anterior = alteracao.valorAnterior ?? "Não informado";
+            const novo = alteracao.valorNovo ?? "Não informado";
+
+            return `${campo}: ${anterior} → ${novo}`;
+          })
+          .join("\n");
+
+        await tx.movimentacao.create({
+          data: {
+            tipo: "ALTERACAO_CADASTRAL",
+            equipamentoId: id,
+            usuarioId: autorId,
+            dataHora,
+            observacoes: resumo,
+            alteracoes: {
+              create: alteracoes,
+            },
+          },
+        });
       }
 
       return equipamentoAtualizado;

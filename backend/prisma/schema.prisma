@@ -279,10 +279,27 @@ model Usuario {
   atualizadoEm DateTime @updatedAt
 }
 
+model AlteracaoEquipamento {
+  id Int @id @default(autoincrement())
+
+  movimentacaoId Int
+  movimentacao   Movimentacao @relation(fields: [movimentacaoId], references: [id], onDelete: Restrict)
+
+  campo String
+
+  valorAnterior String?
+  valorNovo     String?
+
+  referenciaAnteriorId Int?
+  referenciaNovaId     Int?
+
+  @@unique([movimentacaoId, campo])
+}
+
 model Movimentacao {
   id   Int    @id @default(autoincrement())
   tipo String
-
+  alteracoes AlteracaoEquipamento[]
   equipamentoId Int
   equipamento   Equipamento @relation("MovimentacaoEquipamentoPrincipal", fields: [equipamentoId], references: [id], onDelete: Restrict)
 
