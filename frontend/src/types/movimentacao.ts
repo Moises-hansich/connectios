@@ -9,6 +9,7 @@ export const TIPOS_MOVIMENTACAO = [
   "BAIXA",
   "INSTALACAO_PECA",
   "RETIRADA_PECA",
+  "ALTERACAO_CADASTRAL",
 ] as const;
 
 export type TipoMovimentacao = (typeof TIPOS_MOVIMENTACAO)[number];
@@ -71,9 +72,20 @@ export interface UsuarioMovimentacao {
   perfil: string;
 }
 
+export interface AlteracaoEquipamento {
+  id: number;
+  campo: string;
+  valorAnterior: string | null;
+  valorNovo: string | null;
+  referenciaAnteriorId: number | null;
+  referenciaNovaId: number | null;
+}
+
 export interface Movimentacao {
   id: number;
   tipo: TipoMovimentacao;
+
+  alteracoes?: AlteracaoEquipamento[];
 
   equipamentoId: number;
   equipamento: EquipamentoMovimentacao;

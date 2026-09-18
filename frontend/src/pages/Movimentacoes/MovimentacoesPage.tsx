@@ -72,8 +72,8 @@ const tiposMovimentacao: Array<{
     valor: "RETORNO_MANUTENCAO",
     texto: "Retorno da manutenção",
   },
-  {valor: "INSTALACAO_PECA", texto: "Instalação de peça"},
-  {valor: "RETIRADA_PECA", texto: "Retirada de peça"},
+  { valor: "INSTALACAO_PECA", texto: "Instalação de peça" },
+  { valor: "RETIRADA_PECA", texto: "Retirada de peça" },
   {
     valor: "BAIXA",
     texto: "Baixa",
@@ -207,6 +207,7 @@ export function MovimentacoesPage() {
       INSTALACAO_PECA: "bg-blue-100 text-blue-700",
       RETIRADA_PECA: "bg-amber-100 text-amber-700",
       BAIXA: "bg-rose-100 text-rose-700",
+      ALTERACAO_CADASTRAL: "bg-orange-100 text-orange-700",
     };
 
     return classes[tipo];

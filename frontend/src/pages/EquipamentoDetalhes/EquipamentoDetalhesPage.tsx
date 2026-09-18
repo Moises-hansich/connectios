@@ -78,6 +78,10 @@ const tiposMovimentacao: Record<
     texto: "Retirada de peça",
     classe: "bg-amber-100 text-amber-700",
   },
+  ALTERACAO_CADASTRAL: {
+    texto: "Alteração cadastral",
+    classe: "bg-orange-100 text-orange-700",
+  },
   BAIXA: {
     texto: "Baixa",
     classe: "bg-rose-100 text-rose-700",
