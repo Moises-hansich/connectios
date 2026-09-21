@@ -94,13 +94,17 @@ export const usuarioController = {
     try {
       const id = converterId(req.params.id);
 
-      const usuario = await usuarioService.atualizar(id, {
-        nome: req.body.nome,
-        email: req.body.email,
-        senha: req.body.senha,
-        perfil: req.body.perfil,
-        ativo: req.body.ativo,
-      });
+      const usuario = await usuarioService.atualizar(
+        id,
+        {
+          nome: req.body.nome,
+          email: req.body.email,
+          senha: req.body.senha,
+          perfil: req.body.perfil,
+          ativo: req.body.ativo,
+        },
+        req.usuario?.usuarioId,
+      );
 
       return res.status(200).json({
         sucesso: true,
@@ -117,9 +121,13 @@ export const usuarioController = {
 
       if (mensagem === "Usuário não encontrado.") {
         status = 404;
-      }
-
-      if (mensagem.includes("Já existe")) {
+      } else if (mensagem === "Usuário não autenticado.") {
+        status = 401;
+      } else if (
+        mensagem === "Acesso permitido apenas para administradores ativos."
+      ) {
+        status = 403;
+      } else if (mensagem.includes("Já existe")) {
         status = 409;
       }
 
@@ -134,7 +142,11 @@ export const usuarioController = {
     try {
       const id = converterId(req.params.id);
 
-      const usuario = await usuarioService.alterarStatus(id, req.body.ativo);
+      const usuario = await usuarioService.alterarStatus(
+        id,
+        req.body.ativo,
+        req.usuario?.usuarioId,
+      );
 
       return res.status(200).json({
         sucesso: true,

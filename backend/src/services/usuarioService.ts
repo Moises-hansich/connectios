@@ -1,3 +1,5 @@
+import { prisma } from "../prisma";
+import type { Prisma } from "../generated/prisma/client";
 import bcrypt from "bcryptjs";
 
 import {
@@ -34,7 +36,81 @@ function validarPerfil(perfil: string) {
     );
   }
 }
+const usuarioPublicoSelect = {
+  id: true,
+  nome: true,
+  email: true,
+  perfil: true,
+  ativo: true,
+  criadoEm: true,
+  atualizadoEm: true,
+} satisfies Prisma.UsuarioSelect;
 
+async function validarAdministrador(
+  tx: Prisma.TransactionClient,
+  usuarioLogadoId: number | undefined,
+) {
+  if (
+    usuarioLogadoId === undefined ||
+    !Number.isSafeInteger(usuarioLogadoId) ||
+    usuarioLogadoId <= 0
+  ) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  const administrador = await tx.usuario.findUnique({
+    where: { id: usuarioLogadoId },
+    select: {
+      id: true,
+      ativo: true,
+      perfil: true,
+    },
+  });
+
+  if (
+    !administrador ||
+    !administrador.ativo ||
+    administrador.perfil !== "ADMIN"
+  ) {
+    throw new Error("Acesso permitido apenas para administradores ativos.");
+  }
+
+  return administrador.id;
+}
+
+async function protegerUltimoAdministrador(
+  tx: Prisma.TransactionClient,
+  usuario: {
+    id: number;
+    perfil: string;
+    ativo: boolean;
+  },
+  perfilFinal: string,
+  ativoFinal: boolean,
+) {
+  const deixaDeSerAdministradorAtivo =
+    usuario.perfil === "ADMIN" &&
+    usuario.ativo &&
+    (perfilFinal !== "ADMIN" || !ativoFinal);
+
+  if (!deixaDeSerAdministradorAtivo) {
+    return;
+  }
+
+  const outrosAdministradores = await tx.usuario.count({
+    where: {
+      perfil: "ADMIN",
+      ativo: true,
+      id: { not: usuario.id },
+    },
+  });
+
+  if (outrosAdministradores === 0) {
+    throw new Error(
+      "Não é possível remover ou desativar o último administrador ativo.",
+    );
+  }
+}
 export const usuarioService = {
   async listar() {
     return usuarioRepository.listar();
@@ -91,60 +167,65 @@ export const usuarioService = {
     });
   },
 
-  async atualizar(id: number, dados: AtualizarUsuarioInput) {
-    if (!Number.isInteger(id) || id <= 0) {
+  async atualizar(
+    id: number,
+    dados: AtualizarUsuarioInput,
+    usuarioLogadoId?: number,
+  ) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
       throw new Error("ID do usuário inválido.");
-    }
-
-    const usuarioAtual = await usuarioRepository.buscarPorId(id);
-
-    if (!usuarioAtual) {
-      throw new Error("Usuário não encontrado.");
     }
 
     const dadosAtualizados: AtualizarUsuarioData = {};
 
     if (dados.nome !== undefined) {
-      const nome = dados.nome.trim();
-
-      if (!nome) {
-        throw new Error("O nome não pode ficar vazio.");
+      if (typeof dados.nome !== "string" || dados.nome.trim().length < 3) {
+        throw new Error("O nome deve possuir pelo menos 3 caracteres.");
       }
 
-      dadosAtualizados.nome = nome;
+      dadosAtualizados.nome = dados.nome.trim();
     }
 
     if (dados.email !== undefined) {
-      const email = normalizarEmail(dados.email);
-
-      if (!email) {
-        throw new Error("O e-mail não pode ficar vazio.");
+      if (typeof dados.email !== "string") {
+        throw new Error("Informe um e-mail válido.");
       }
 
-      const usuarioComEmail = await usuarioRepository.buscarPorEmail(email);
+      const email = normalizarEmail(dados.email);
 
-      if (usuarioComEmail && usuarioComEmail.id !== id) {
-        throw new Error("Já existe outro usuário com este e-mail.");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error("Informe um e-mail válido.");
       }
 
       dadosAtualizados.email = email;
     }
 
     if (dados.perfil !== undefined) {
-      const perfil = dados.perfil.toUpperCase();
+      if (typeof dados.perfil !== "string") {
+        throw new Error("Perfil inválido.");
+      }
+
+      const perfil = dados.perfil.trim().toUpperCase();
 
       validarPerfil(perfil);
-
       dadosAtualizados.perfil = perfil;
     }
 
     if (dados.ativo !== undefined) {
+      if (typeof dados.ativo !== "boolean") {
+        throw new Error("O campo ativo deve ser verdadeiro ou falso.");
+      }
+
       dadosAtualizados.ativo = dados.ativo;
     }
 
     if (dados.senha !== undefined) {
-      if (dados.senha.length < 6) {
+      if (typeof dados.senha !== "string" || dados.senha.length < 6) {
         throw new Error("A senha deve possuir pelo menos 6 caracteres.");
+      }
+
+      if (Buffer.byteLength(dados.senha, "utf8") > 72) {
+        throw new Error("A senha excede o limite de 72 bytes.");
       }
 
       dadosAtualizados.senhaHash = await bcrypt.hash(dados.senha, 10);
@@ -154,42 +235,115 @@ export const usuarioService = {
       throw new Error("Nenhum dado foi informado para atualização.");
     }
 
-    return usuarioRepository.atualizar(id, dadosAtualizados);
+    return prisma.$transaction(async (tx) => {
+      const administradorId = await validarAdministrador(tx, usuarioLogadoId);
+
+      const usuarioAtual = await tx.usuario.findUnique({
+        where: { id },
+        select: usuarioPublicoSelect,
+      });
+
+      if (!usuarioAtual) {
+        throw new Error("Usuário não encontrado.");
+      }
+
+      const perfilFinal = dadosAtualizados.perfil ?? usuarioAtual.perfil;
+
+      const ativoFinal = dadosAtualizados.ativo ?? usuarioAtual.ativo;
+
+      await protegerUltimoAdministrador(
+        tx,
+        usuarioAtual,
+        perfilFinal,
+        ativoFinal,
+      );
+
+      if (id === administradorId && !ativoFinal) {
+        throw new Error("Você não pode desativar a própria conta.");
+      }
+
+      if (id === administradorId && perfilFinal !== usuarioAtual.perfil) {
+        throw new Error(
+          "Solicite a outro administrador a alteração do seu perfil.",
+        );
+      }
+
+      if (dadosAtualizados.email !== undefined) {
+        const usuarioComEmail = await tx.usuario.findUnique({
+          where: { email: dadosAtualizados.email },
+          select: { id: true },
+        });
+
+        if (usuarioComEmail && usuarioComEmail.id !== id) {
+          throw new Error("Já existe outro usuário com este e-mail.");
+        }
+      }
+
+      return tx.usuario.update({
+        where: { id },
+        data: dadosAtualizados,
+        select: usuarioPublicoSelect,
+      });
+    });
   },
 
-  async alterarStatus(id: number, ativo: boolean) {
-    if (!Number.isInteger(id) || id <= 0) {
-      throw new Error("ID do usuário inválido.");
-    }
-
-    const usuario = await usuarioRepository.buscarPorId(id);
-
-    if (!usuario) {
-      throw new Error("Usuário não encontrado.");
-    }
-
+  async alterarStatus(id: number, ativo: boolean, usuarioLogadoId?: number) {
     if (typeof ativo !== "boolean") {
       throw new Error("O campo ativo deve ser verdadeiro ou falso.");
     }
 
-    return usuarioRepository.alterarStatus(id, ativo);
+    return usuarioService.atualizar(id, { ativo }, usuarioLogadoId);
   },
 
   async excluir(id: number, usuarioLogadoId?: number) {
-    if (!Number.isInteger(id) || id <= 0) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
       throw new Error("ID do usuário inválido.");
     }
 
-    if (usuarioLogadoId === id) {
-      throw new Error("Você não pode excluir o próprio usuário.");
-    }
+    return prisma.$transaction(async (tx) => {
+      const administradorId = await validarAdministrador(tx, usuarioLogadoId);
 
-    const usuario = await usuarioRepository.buscarPorId(id);
+      if (id === administradorId) {
+        throw new Error("Você não pode excluir o próprio usuário.");
+      }
 
-    if (!usuario) {
-      throw new Error("Usuário não encontrado.");
-    }
+      const usuario = await tx.usuario.findUnique({
+        where: { id },
+        select: usuarioPublicoSelect,
+      });
 
-    return usuarioRepository.excluir(id);
+      if (!usuario) {
+        throw new Error("Usuário não encontrado.");
+      }
+
+      await protegerUltimoAdministrador(tx, usuario, usuario.perfil, false);
+
+      const movimentacao = await tx.movimentacao.findFirst({
+        where: { usuarioId: id },
+        select: { id: true },
+      });
+
+      const manutencao = await tx.manutencao.findFirst({
+        where: {
+          OR: [{ registradoPorId: id }, { tecnicoResponsavelId: id }],
+        },
+        select: { id: true },
+      });
+
+      if (movimentacao || manutencao) {
+        throw new Error(
+          "Este usuário possui movimentações ou manutenções vinculadas. Desative a conta para preservar o histórico.",
+        );
+      }
+
+      return tx.usuario.delete({
+        where: { id },
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+        },
+      });
+    });
   },
 };
