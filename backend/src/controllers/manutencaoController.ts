@@ -18,15 +18,10 @@ export class ManutencaoController {
     try {
       const resultado = await this.service.buscarComFiltros({
         equipamentoId: this.converterNumeroOpcional(req.query.equipamentoId),
-
         status: this.converterTextoOpcional(req.query.status),
-
         dataInicio: this.converterDataOpcional(req.query.dataInicio),
-
         dataFim: this.converterDataOpcional(req.query.dataFim),
-
         page: this.converterNumeroOpcional(req.query.page),
-
         limit: this.converterNumeroOpcional(req.query.limit),
       });
 
@@ -67,6 +62,10 @@ export class ManutencaoController {
 
   abrir = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const usuarioId = this.obterUsuarioAutenticadoId(req);
+
+      this.validarCorpo(req.body);
+
       const manutencao = await this.service.abrir({
         equipamentoId: Number(req.body.equipamentoId),
 
@@ -92,7 +91,8 @@ export class ManutencaoController {
 
         observacoes: this.converterTextoNulavel(req.body.observacoes),
 
-        registradoPorId: this.converterNumeroNulavel(req.body.registradoPorId),
+        // A autoria vem do usuário autenticado.
+        registradoPorId: usuarioId,
 
         dataSaida: this.converterDataOpcional(req.body.dataSaida),
       });
@@ -105,6 +105,7 @@ export class ManutencaoController {
       next(error);
     }
   };
+
   consultarGarantia = async (
     req: Request,
     res: Response,
@@ -121,8 +122,13 @@ export class ManutencaoController {
       next(error);
     }
   };
+
   finalizar = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const usuarioId = this.obterUsuarioAutenticadoId(req);
+
+      this.validarCorpo(req.body);
+
       const id = Number(req.params.id);
 
       const manutencao = await this.service.finalizar(id, {
@@ -134,7 +140,8 @@ export class ManutencaoController {
 
         observacoes: this.converterTextoNulavel(req.body.observacoes),
 
-        usuarioId: this.converterNumeroNulavel(req.body.usuarioId),
+        // Identifica quem realmente finalizou o atendimento.
+        usuarioId,
 
         dataRetorno: this.converterDataOpcional(req.body.dataRetorno),
       });
@@ -147,9 +154,29 @@ export class ManutencaoController {
       next(error);
     }
   };
+
+  private obterUsuarioAutenticadoId(req: Request): number {
+    const usuarioId = req.usuario?.usuarioId;
+
+    if (
+      typeof usuarioId !== "number" ||
+      !Number.isSafeInteger(usuarioId) ||
+      usuarioId <= 0
+    ) {
+      throw new AppError("Usuário não autenticado", 401);
+    }
+
+    return usuarioId;
+  }
+
+  private validarCorpo(valor: unknown): void {
+    if (valor === null || typeof valor !== "object" || Array.isArray(valor)) {
+      throw new AppError("Dados inválidos", 400);
+    }
+  }
+
   private converterTipoManutencao(valor: unknown): TipoManutencao | undefined {
-    // Compatibilidade com o formulário antigo.
-    // O service assume EXTERNA quando o campo não é enviado.
+    // O serviço assume EXTERNA quando o campo não é enviado.
     if (valor === undefined) {
       return undefined;
     }
@@ -196,6 +223,7 @@ export class ManutencaoController {
 
     return id;
   }
+
   private obterValorUnico(valor: unknown) {
     if (Array.isArray(valor)) {
       return valor[0];
