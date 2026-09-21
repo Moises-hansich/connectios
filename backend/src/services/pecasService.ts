@@ -116,12 +116,47 @@ export class PecasService {
       );
 
     return prisma.$transaction(async (tx) => {
-      const usuario = await tx.usuario.findUnique({ where: { id: usuarioId } });
-      if (!usuario?.ativo || usuario.perfil !== "ADMIN")
-        throw new AppError(
-          "Usuário sem permissão para registrar a intervenção",
-          403,
+      const usuario = await tx.usuario.findUnique({
+        where: { id: usuarioId },
+        select: {
+          ativo: true,
+          perfil: true,
+          permissoes: {
+            select: {
+              chave: true,
+            },
+          },
+        },
+      });
+
+      if (!usuario?.ativo) {
+        throw new AppError("Usuário inexistente ou desativado", 401);
+      }
+
+      if (usuario.perfil !== "ADMIN") {
+        const permissoes = new Set(
+          usuario.permissoes.map((permissao) => permissao.chave),
         );
+
+        const permissoesNecessarias = [
+          "equipamentos.visualizar",
+          "pecas.visualizar",
+          "pecas.movimentar",
+          "manutencoes.visualizar",
+          "manutencoes.abrir",
+        ];
+
+        const autorizado = permissoesNecessarias.every((permissao) =>
+          permissoes.has(permissao),
+        );
+
+        if (!autorizado) {
+          throw new AppError(
+            "Usuário sem permissão para registrar a intervenção",
+            403,
+          );
+        }
+      }
       const computador = await tx.equipamento.findUnique({
         where: { id: computadorId },
         include: { categoria: true },

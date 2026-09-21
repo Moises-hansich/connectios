@@ -1,26 +1,37 @@
 import { Router } from "express";
+
 import { hardwareController } from "../controllers/hardwareController";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { adminMiddleware } from "../middlewares/adminMiddleware";
+import { exigirPermissao } from "../middlewares/permissaoMiddleware";
 
-const hardwareRoutes = Router();
+const router = Router();
 
-hardwareRoutes.use(authMiddleware);
+router.use(authMiddleware);
 
-hardwareRoutes.get("/", (req, res) => hardwareController.findAll(req, res));
-
-hardwareRoutes.get("/:id", (req, res) => hardwareController.findById(req, res));
-
-hardwareRoutes.post("/", adminMiddleware, (req, res) =>
-  hardwareController.create(req, res),
+router.get("/", exigirPermissao("hardware.visualizar"), (req, res) =>
+  hardwareController.findAll(req, res),
 );
 
-hardwareRoutes.put("/:id", adminMiddleware, (req, res) =>
-  hardwareController.update(req, res),
+router.get("/:id", exigirPermissao("hardware.visualizar"), (req, res) =>
+  hardwareController.findById(req, res),
 );
 
-hardwareRoutes.delete("/:id", adminMiddleware, (req, res) =>
-  hardwareController.delete(req, res),
+router.post(
+  "/",
+  exigirPermissao("hardware.visualizar", "hardware.criar"),
+  (req, res) => hardwareController.create(req, res),
 );
 
-export default hardwareRoutes;
+router.put(
+  "/:id",
+  exigirPermissao("hardware.visualizar", "hardware.editar"),
+  (req, res) => hardwareController.update(req, res),
+);
+
+router.delete(
+  "/:id",
+  exigirPermissao("hardware.visualizar", "hardware.excluir"),
+  (req, res) => hardwareController.delete(req, res),
+);
+
+export default router;

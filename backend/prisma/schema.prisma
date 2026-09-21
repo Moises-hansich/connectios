@@ -8,15 +8,6 @@ datasource db {
 }
 
 model Equipamento {
-  instaladoEmId Int?
-  instaladoEm Equipamento? @relation("PecasInstaladas", fields: [instaladoEmId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  pecasInstaladas Equipamento[] @relation("PecasInstaladas")
-  localReservaId Int?
-  localReserva Localizacao? @relation("ReservaPeca", fields: [localReservaId], references: [id], onDelete: SetNull)
-  setorReservaId Int?
-  setorReserva Setor? @relation("SetorReservaPeca", fields: [setorReservaId], references: [id], onDelete: SetNull)
-  @@index([instaladoEmId])
-
   id          Int     @id @default(autoincrement())
   nome        String
   fabricante  String?
@@ -25,6 +16,16 @@ model Equipamento {
   patrimonio  String? @unique
   status      String
   observacoes String?
+
+  instaladoEmId   Int?
+  instaladoEm     Equipamento?  @relation("PecasInstaladas", fields: [instaladoEmId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  pecasInstaladas Equipamento[] @relation("PecasInstaladas")
+
+  localReservaId Int?
+  localReserva   Localizacao? @relation("ReservaPeca", fields: [localReservaId], references: [id], onDelete: SetNull)
+
+  setorReservaId Int?
+  setorReserva   Setor? @relation("SetorReservaPeca", fields: [setorReservaId], references: [id], onDelete: SetNull)
 
   zabbixHostId String? @unique
 
@@ -56,6 +57,7 @@ model Equipamento {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
+  @@index([instaladoEmId])
   @@index([categoriaId])
   @@index([setorId])
   @@index([localizacaoId])
@@ -68,8 +70,8 @@ model Categoria {
   nome      String  @unique
   descricao String?
   ativo     Boolean @default(true)
-  grupo String @default("OUTROS")
-  
+  grupo     String  @default("OUTROS")
+
   equipamentos Equipamento[]
 
   criadoEm     DateTime @default(now())
@@ -200,11 +202,12 @@ model HardwareValor {
 }
 
 model Setor {
-  pecasReserva Equipamento[] @relation("SetorReservaPeca")
   id        Int     @id @default(autoincrement())
   nome      String  @unique
   descricao String?
   ativo     Boolean @default(true)
+
+  pecasReserva Equipamento[] @relation("SetorReservaPeca")
 
   equipamentos  Equipamento[]
   colaboradores Colaborador[]
@@ -218,10 +221,11 @@ model Setor {
 }
 
 model Localizacao {
-  pecasReserva Equipamento[] @relation("ReservaPeca")
   id        Int     @id @default(autoincrement())
   nome      String  @unique
   descricao String?
+
+  pecasReserva Equipamento[] @relation("ReservaPeca")
 
   equipamentos  Equipamento[]
   colaboradores Colaborador[]
@@ -271,12 +275,23 @@ model Usuario {
   perfil    String  @default("USUARIO")
   ativo     Boolean @default(true)
 
+  permissoes UsuarioPermissao[]
+
   movimentacoes          Movimentacao[] @relation("MovimentacaoUsuario")
   manutencoes            Manutencao[]   @relation("ManutencaoUsuario")
   manutencoesComoTecnico Manutencao[]   @relation("ManutencaoTecnico")
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+}
+
+model UsuarioPermissao {
+  usuarioId Int
+  chave     String
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, chave])
 }
 
 model AlteracaoEquipamento {
@@ -299,7 +314,9 @@ model AlteracaoEquipamento {
 model Movimentacao {
   id   Int    @id @default(autoincrement())
   tipo String
+
   alteracoes AlteracaoEquipamento[]
+
   equipamentoId Int
   equipamento   Equipamento @relation("MovimentacaoEquipamentoPrincipal", fields: [equipamentoId], references: [id], onDelete: Restrict)
 

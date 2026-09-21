@@ -1,34 +1,71 @@
-import { pecasController } from "../controllers/pecasController";
 import { Router } from "express";
 
+import { pecasController } from "../controllers/pecasController";
 import { manutencaoController } from "../controllers/manutencaoController";
+
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { adminMiddleware } from "../middlewares/adminMiddleware";
+import { exigirPermissao } from "../middlewares/permissaoMiddleware";
 
 export const manutencaoRoutes = Router();
 
 manutencaoRoutes.use(authMiddleware);
-manutencaoRoutes.get("/pecas/opcoes", pecasController.opcoes);
-manutencaoRoutes.post("/pecas", adminMiddleware, pecasController.registrar);
 
-manutencaoRoutes.get("/", manutencaoController.listar);
+// Consultar opções para instalação, troca e retirada de peças.
+manutencaoRoutes.get(
+  "/pecas/opcoes",
+  exigirPermissao("pecas.visualizar", "equipamentos.visualizar"),
+  pecasController.opcoes,
+);
+
+// A operação pode abrir uma manutenção interna automaticamente.
+manutencaoRoutes.post(
+  "/pecas",
+  exigirPermissao(
+    "equipamentos.visualizar",
+    "pecas.visualizar",
+    "pecas.movimentar",
+    "manutencoes.visualizar",
+    "manutencoes.abrir",
+  ),
+  pecasController.registrar,
+);
+
+manutencaoRoutes.get(
+  "/",
+  exigirPermissao("manutencoes.visualizar"),
+  manutencaoController.listar,
+);
 
 manutencaoRoutes.get(
   "/equipamento/:equipamentoId/garantia",
+  exigirPermissao("equipamentos.visualizar", "manutencoes.visualizar"),
   manutencaoController.consultarGarantia,
 );
 
 manutencaoRoutes.get(
   "/equipamento/:equipamentoId",
+  exigirPermissao("manutencoes.visualizar"),
   manutencaoController.buscarPorEquipamento,
 );
 
-manutencaoRoutes.get("/:id", manutencaoController.buscarPorId);
+manutencaoRoutes.get(
+  "/:id",
+  exigirPermissao("manutencoes.visualizar"),
+  manutencaoController.buscarPorId,
+);
 
-manutencaoRoutes.post("/", adminMiddleware, manutencaoController.abrir);
+manutencaoRoutes.post(
+  "/",
+  exigirPermissao(
+    "equipamentos.visualizar",
+    "manutencoes.visualizar",
+    "manutencoes.abrir",
+  ),
+  manutencaoController.abrir,
+);
 
 manutencaoRoutes.patch(
   "/:id/finalizar",
-  adminMiddleware,
+  exigirPermissao("manutencoes.visualizar", "manutencoes.finalizar"),
   manutencaoController.finalizar,
 );

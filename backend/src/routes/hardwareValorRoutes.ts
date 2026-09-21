@@ -1,34 +1,49 @@
 import { Router } from "express";
+
 import { hardwareValorController } from "../controllers/hardwareValorController";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { adminMiddleware } from "../middlewares/adminMiddleware";
+import { exigirPermissao } from "../middlewares/permissaoMiddleware";
 
 const hardwareValorRoutes = Router();
 
 hardwareValorRoutes.use(authMiddleware);
 
-hardwareValorRoutes.get("/", (req, res) =>
-  hardwareValorController.findAll(req, res),
+hardwareValorRoutes.get(
+  "/",
+  exigirPermissao("hardware.visualizar"),
+  (req, res) => hardwareValorController.findAll(req, res),
 );
 
-hardwareValorRoutes.get("/:id", (req, res) =>
-  hardwareValorController.findById(req, res),
+hardwareValorRoutes.get(
+  "/hardware/:hardwareId",
+  exigirPermissao("hardware.visualizar"),
+  (req, res) => hardwareValorController.findByHardware(req, res),
 );
 
-hardwareValorRoutes.get("/hardware/:hardwareId", (req, res) =>
-  hardwareValorController.findByHardware(req, res),
+hardwareValorRoutes.get(
+  "/:id",
+  exigirPermissao("hardware.visualizar"),
+  (req, res) => hardwareValorController.findById(req, res),
 );
 
-hardwareValorRoutes.post("/", adminMiddleware, (req, res) =>
-  hardwareValorController.create(req, res),
+// Adicionar um valor modifica as especificações de um hardware existente.
+hardwareValorRoutes.post(
+  "/",
+  exigirPermissao("hardware.visualizar", "hardware.editar"),
+  (req, res) => hardwareValorController.create(req, res),
 );
 
-hardwareValorRoutes.put("/:id", adminMiddleware, (req, res) =>
-  hardwareValorController.update(req, res),
+hardwareValorRoutes.put(
+  "/:id",
+  exigirPermissao("hardware.visualizar", "hardware.editar"),
+  (req, res) => hardwareValorController.update(req, res),
 );
 
-hardwareValorRoutes.delete("/:id", adminMiddleware, (req, res) =>
-  hardwareValorController.delete(req, res),
+// Remove somente o valor de um campo, não o hardware.
+hardwareValorRoutes.delete(
+  "/:id",
+  exigirPermissao("hardware.visualizar", "hardware.editar"),
+  (req, res) => hardwareValorController.delete(req, res),
 );
 
 export default hardwareValorRoutes;

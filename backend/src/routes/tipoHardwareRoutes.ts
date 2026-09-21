@@ -1,30 +1,37 @@
 import { Router } from "express";
+
 import { tipoHardwareController } from "../controllers/tipoHardwareController";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { adminMiddleware } from "../middlewares/adminMiddleware";
+import { exigirPermissao } from "../middlewares/permissaoMiddleware";
 
-const tipoHardwareRoutes = Router();
+const router = Router();
 
-tipoHardwareRoutes.use(authMiddleware);
+router.use(authMiddleware);
 
-tipoHardwareRoutes.get("/", (req, res) =>
+router.get("/", exigirPermissao("hardware.visualizar"), (req, res) =>
   tipoHardwareController.findAll(req, res),
 );
 
-tipoHardwareRoutes.get("/:id", (req, res) =>
+router.get("/:id", exigirPermissao("hardware.visualizar"), (req, res) =>
   tipoHardwareController.findById(req, res),
 );
 
-tipoHardwareRoutes.post("/", adminMiddleware, (req, res) =>
-  tipoHardwareController.create(req, res),
+router.post(
+  "/",
+  exigirPermissao("configuracoes.visualizar", "configuracoes.editar"),
+  (req, res) => tipoHardwareController.create(req, res),
 );
 
-tipoHardwareRoutes.put("/:id", adminMiddleware, (req, res) =>
-  tipoHardwareController.update(req, res),
+router.put(
+  "/:id",
+  exigirPermissao("configuracoes.visualizar", "configuracoes.editar"),
+  (req, res) => tipoHardwareController.update(req, res),
 );
 
-tipoHardwareRoutes.delete("/:id", adminMiddleware, (req, res) =>
-  tipoHardwareController.delete(req, res),
+router.delete(
+  "/:id",
+  exigirPermissao("configuracoes.visualizar", "configuracoes.editar"),
+  (req, res) => tipoHardwareController.delete(req, res),
 );
 
-export default tipoHardwareRoutes;
+export default router;
