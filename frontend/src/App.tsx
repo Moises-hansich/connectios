@@ -1,18 +1,21 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
-import { ColaboradoresPage } from "./pages/colaboradores/ColaboradoresPage";
+
 import { LoginPage } from "./pages/Login";
 import { DashboardPage } from "./pages/Dashboard/DashboardPage";
 import { EquipamentosPage } from "./pages/Equipamentos/EquipamentosPage";
-import { UsuariosPage } from "./pages/usuarios/UsuariosPage";
-import { PrivateRoute } from "./routes/PrivateRoute";
-import { LocalizacoesPage } from "./pages/Localizacao/LocalizacoesPage";
 import { EquipamentoDetalhesPage } from "./pages/EquipamentoDetalhes/EquipamentoDetalhesPage";
-import { ConfiguracoesPage } from "./pages/Configuracoes/ConfiguracoesPage";
+import { UsuariosPage } from "./pages/usuarios/UsuariosPage";
+import { LocalizacoesPage } from "./pages/Localizacao/LocalizacoesPage";
+import { ColaboradoresPage } from "./pages/colaboradores/ColaboradoresPage";
 import { ColaboradorDetalhesPage } from "./pages/colaboradores/ColaboradorDetalhesPage";
+import { ConfiguracoesPage } from "./pages/Configuracoes/ConfiguracoesPage";
 import { ManutencoesPage } from "./pages/Manutencoes/ManutencoesPage";
 import { MovimentacoesPage } from "./pages/Movimentacoes/MovimentacoesPage";
 import { EmpresasPage } from "./pages/EmpresasPage/EmpresasPage";
+
+import { PrivateRoute } from "./routes/PrivateRoute";
+
 export default function App() {
   return (
     <>
@@ -22,7 +25,7 @@ export default function App() {
         <Route
           path="/"
           element={
-            <PrivateRoute>
+            <PrivateRoute permissoes={["dashboard.visualizar"]}>
               <DashboardPage />
             </PrivateRoute>
           }
@@ -31,64 +34,88 @@ export default function App() {
         <Route
           path="/equipamentos"
           element={
-            <PrivateRoute>
+            <PrivateRoute permissoes={["equipamentos.visualizar"]}>
               <EquipamentosPage />
             </PrivateRoute>
           }
         />
+
         <Route
           path="/equipamentos/:id"
           element={
-            <PrivateRoute>
+            <PrivateRoute
+              permissoes={["equipamentos.visualizar", "hardware.visualizar"]}
+            >
               <EquipamentoDetalhesPage />
             </PrivateRoute>
           }
         />
+
         <Route
           path="/localizacoes"
           element={
-            <PrivateRoute>
+            <PrivateRoute permissoes={["localizacoes.visualizar"]}>
               <LocalizacoesPage />
             </PrivateRoute>
           }
         />
+
         <Route
           path="/colaboradores"
           element={
-            <PrivateRoute>
+            <PrivateRoute permissoes={["colaboradores.visualizar"]}>
               <ColaboradoresPage />
             </PrivateRoute>
           }
         />
+
         <Route
           path="/colaboradores/:id"
           element={
-            <PrivateRoute>
+            <PrivateRoute
+              permissoes={[
+                "colaboradores.visualizar",
+                "equipamentos.visualizar",
+              ]}
+            >
               <ColaboradorDetalhesPage />
             </PrivateRoute>
           }
         />
+
         <Route
           path="/usuarios"
           element={
-            <PrivateRoute>
+            <PrivateRoute somenteAdmin>
               <UsuariosPage />
             </PrivateRoute>
           }
         />
-        <Route path="/manutencoes" element={<ManutencoesPage />} />
+
+        <Route
+          path="/manutencoes"
+          element={
+            <PrivateRoute permissoes={["manutencoes.visualizar"]}>
+              <ManutencoesPage />
+            </PrivateRoute>
+          }
+        />
+
         <Route
           path="/configuracoes"
           element={
-            <PrivateRoute>
+            <PrivateRoute
+              permissoes={["configuracoes.visualizar", "hardware.visualizar"]}
+            >
               <ConfiguracoesPage />
             </PrivateRoute>
           }
         />
+
         <Route
           path="/movimentacoes"
           element={
-            <PrivateRoute>
+            <PrivateRoute permissoes={["movimentacoes.visualizar"]}>
               <MovimentacoesPage />
             </PrivateRoute>
           }
@@ -97,7 +124,7 @@ export default function App() {
         <Route
           path="/empresas"
           element={
-            <PrivateRoute>
+            <PrivateRoute permissoes={["empresas.visualizar"]}>
               <EmpresasPage />
             </PrivateRoute>
           }

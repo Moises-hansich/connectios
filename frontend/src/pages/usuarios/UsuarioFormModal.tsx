@@ -316,7 +316,7 @@ export function UsuarioFormModal({
             <button
               type="submit"
               disabled={carregando}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {carregando ? (
                 <LoaderCircle className="h-5 w-5 animate-spin" />

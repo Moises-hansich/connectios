@@ -1,8 +1,7 @@
-import { useContext } from "react";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, RefreshCw, X } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
-import { AuthContext } from "../../contexts/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { menuItems } from "./menu";
 
 interface SidebarProps {
@@ -18,18 +17,32 @@ export function Sidebar({
   onAlternar,
   onFecharMobile,
 }: SidebarProps) {
-  const auth = useContext(AuthContext);
+  const {
+    usuario,
+    carregando,
+    carregandoPermissoes,
+    erroPermissoes,
+    temTodasPermissoes,
+    atualizarPermissoes,
+    logout,
+  } = useAuth();
+
   const navigate = useNavigate();
 
   const itensVisiveis = menuItems.filter((item) => {
-    const itemSomenteAdmin =
-      item.path === "/usuarios" || item.path === "/configuracoes";
+    if (!usuario || carregando || erroPermissoes) {
+      return false;
+    }
 
-    return !itemSomenteAdmin || auth?.usuario?.perfil === "ADMIN";
+    if (item.somenteAdmin) {
+      return usuario.perfil === "ADMIN";
+    }
+
+    return temTodasPermissoes(...item.permissoes);
   });
 
   function handleLogout() {
-    auth?.logout();
+    logout();
     onFecharMobile();
     navigate("/login", { replace: true });
   }
@@ -62,7 +75,8 @@ export function Sidebar({
       >
         <div
           className={`
-            flex h-16 items-center border-b border-slate-800 px-4
+            flex h-16 shrink-0 items-center
+            border-b border-slate-800 px-4
             ${aberta ? "justify-between" : "md:justify-center"}
           `}
         >
@@ -93,16 +107,21 @@ export function Sidebar({
           </button>
         </div>
 
-        <nav className="flex-1 space-y-2 p-3">
+        <nav
+          aria-label="Menu principal"
+          aria-busy={carregando || carregandoPermissoes}
+          className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
+        >
           {itensVisiveis.map((item) => {
             const Icone = item.icon;
 
             return (
               <NavLink
-                key={item.title}
+                key={item.path}
                 to={item.path}
                 end={item.path === "/"}
                 onClick={onFecharMobile}
+                aria-label={item.title}
                 title={!aberta ? item.title : undefined}
                 className={({ isActive }) => `
                   flex items-center rounded-lg px-3 py-3
@@ -130,12 +149,66 @@ export function Sidebar({
               </NavLink>
             );
           })}
+
+          {erroPermissoes && (
+            <div className="rounded-lg bg-slate-800 p-2">
+              <p
+                role="alert"
+                className={`
+                  mb-2 text-sm text-amber-200
+                  ${aberta ? "" : "md:sr-only"}
+                `}
+              >
+                {erroPermissoes}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => void atualizarPermissoes()}
+                disabled={carregandoPermissoes}
+                aria-label="Tentar carregar permissões novamente"
+                title="Tentar novamente"
+                className={`
+                  flex w-full items-center justify-center
+                  gap-2 rounded-lg p-2 text-sm text-white
+                  hover:bg-slate-700 disabled:opacity-50
+                `}
+              >
+                <RefreshCw
+                  size={18}
+                  className={
+                    carregandoPermissoes ? "shrink-0 animate-spin" : "shrink-0"
+                  }
+                />
+
+                <span className={aberta ? "" : "md:hidden"}>
+                  Tentar novamente
+                </span>
+              </button>
+            </div>
+          )}
+
+          {!carregando &&
+            !carregandoPermissoes &&
+            !erroPermissoes &&
+            itensVisiveis.length === 0 && (
+              <p
+                role="status"
+                className={`
+                  px-3 py-2 text-sm text-slate-400
+                  ${aberta ? "" : "md:sr-only"}
+                `}
+              >
+                Nenhum módulo disponível para seu usuário.
+              </p>
+            )}
         </nav>
 
-        <div className="space-y-2 border-t border-slate-800 p-3">
+        <div className="shrink-0 space-y-2 border-t border-slate-800 p-3">
           <button
             type="button"
             onClick={handleLogout}
+            aria-label="Sair"
             className={`
               flex w-full items-center gap-3 rounded-lg px-3 py-3
               text-red-300 transition-colors
@@ -160,6 +233,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={onAlternar}
+            aria-label={aberta ? "Recolher menu" : "Expandir menu"}
             className={`
               hidden w-full items-center rounded-lg px-3 py-3 md:flex
               text-slate-300 transition-colors
