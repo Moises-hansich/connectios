@@ -1,3 +1,5 @@
+import { AppError } from "../errors/AppError";
+
 import {
   empresaRepository,
   type CreateEmpresaData,
@@ -5,22 +7,50 @@ import {
 } from "../repositories/empresaRepository";
 
 export class EmpresaService {
-  private validarId(id: number) {
-    if (!Number.isInteger(id) || id <= 0) {
-      throw new Error("ID da empresa inválido.");
+  private validarId(id: number): void {
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new AppError("ID da empresa inválido.", 400);
     }
+  }
+
+  private validarCorpo(data: unknown): void {
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      throw new AppError("Envie um objeto com os dados da empresa.", 400);
+    }
+  }
+
+  private validarNome(valor: unknown): string {
+    if (typeof valor !== "string") {
+      throw new AppError("O nome da empresa deve ser um texto.", 400);
+    }
+
+    const nome = valor.trim();
+
+    if (!nome) {
+      throw new AppError("O nome da empresa é obrigatório.", 400);
+    }
+
+    return nome;
+  }
+
+  private validarAtivo(valor: unknown): boolean {
+    if (typeof valor !== "boolean") {
+      throw new AppError("O campo ativo deve ser verdadeiro ou falso.", 400);
+    }
+
+    return valor;
   }
 
   private normalizarTextoOpcional(
     valor: unknown,
     nomeCampo: string,
   ): string | null {
-    if (valor === undefined || valor === null || valor === "") {
+    if (valor === undefined || valor === null) {
       return null;
     }
 
     if (typeof valor !== "string") {
-      throw new Error(`O campo ${nomeCampo} deve ser um texto.`);
+      throw new AppError(`O campo ${nomeCampo} deve ser um texto.`, 400);
     }
 
     return valor.trim() || null;
@@ -29,24 +59,23 @@ export class EmpresaService {
   private normalizarCnpj(valor: unknown): string | null {
     const cnpj = this.normalizarTextoOpcional(valor, "CNPJ");
 
-    if (!cnpj) {
+    if (cnpj === null) {
       return null;
     }
 
-    return cnpj.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    // Remove somente os separadores de formatação.
+    // Outros caracteres serão rejeitados na validação.
+    return cnpj.replace(/[./\-\s]/g, "").toUpperCase();
   }
 
-  private validarFormatoCnpj(cnpj: string) {
-    /*
-     * O CNPJ possui 14 posições.
-     * As 12 primeiras podem conter letras ou números.
-     * As duas últimas são os dígitos verificadores numéricos.
-     */
+  private validarFormatoCnpj(cnpj: string): void {
+    // Verifica o formato; não calcula os dígitos verificadores.
     const formatoValido = /^[A-Z0-9]{12}[0-9]{2}$/.test(cnpj);
 
     if (!formatoValido) {
-      throw new Error(
+      throw new AppError(
         "CNPJ inválido. Informe 14 caracteres, com os dois últimos numéricos.",
+        400,
       );
     }
   }
@@ -54,18 +83,14 @@ export class EmpresaService {
   private normalizarEmail(valor: unknown): string | null {
     const email = this.normalizarTextoOpcional(valor, "e-mail");
 
-    if (!email) {
-      return null;
-    }
-
-    return email.toLowerCase();
+    return email === null ? null : email.toLowerCase();
   }
 
-  private validarEmail(email: string) {
+  private validarEmail(email: string): void {
     const formatoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
     if (!formatoValido) {
-      throw new Error("E-mail inválido.");
+      throw new AppError("E-mail inválido.", 400);
     }
   }
 
@@ -83,89 +108,77 @@ export class EmpresaService {
     const empresa = await empresaRepository.findById(id);
 
     if (!empresa) {
-      throw new Error("Empresa não encontrada.");
+      throw new AppError("Empresa não encontrada.", 404);
     }
 
     return empresa;
   }
 
   async criar(data: CreateEmpresaData) {
-    if (typeof data.nome !== "string") {
-      throw new Error("O nome da empresa é obrigatório.");
-    }
+    this.validarCorpo(data);
 
-    const nome = data.nome.trim();
+    const nome = this.validarNome(data.nome);
 
-    if (!nome) {
-      throw new Error("O nome da empresa é obrigatório.");
-    }
-
-    if (data.ativo !== undefined && typeof data.ativo !== "boolean") {
-      throw new Error("O campo ativo deve ser verdadeiro ou falso.");
-    }
+    const ativo =
+      data.ativo === undefined ? true : this.validarAtivo(data.ativo);
 
     const cnpj = this.normalizarCnpj(data.cnpj);
+    const email = this.normalizarEmail(data.email);
 
-    if (cnpj) {
+    const telefone = this.normalizarTextoOpcional(data.telefone, "telefone");
+
+    const endereco = this.normalizarTextoOpcional(data.endereco, "endereço");
+
+    const observacoes = this.normalizarTextoOpcional(
+      data.observacoes,
+      "observações",
+    );
+
+    if (cnpj !== null) {
       this.validarFormatoCnpj(cnpj);
+    }
 
+    if (email !== null) {
+      this.validarEmail(email);
+    }
+
+    if (cnpj !== null) {
       const empresaExistente = await empresaRepository.findByCnpj(cnpj);
 
       if (empresaExistente) {
-        throw new Error("Já existe uma empresa cadastrada com esse CNPJ.");
+        throw new AppError(
+          "Já existe uma empresa cadastrada com esse CNPJ.",
+          409,
+        );
       }
-    }
-
-    const email = this.normalizarEmail(data.email);
-
-    if (email) {
-      this.validarEmail(email);
     }
 
     return empresaRepository.create({
       nome,
       cnpj,
-      telefone: this.normalizarTextoOpcional(data.telefone, "telefone"),
+      telefone,
       email,
-      endereco: this.normalizarTextoOpcional(data.endereco, "endereço"),
-      observacoes: this.normalizarTextoOpcional(
-        data.observacoes,
-        "observações",
-      ),
-      ativo: data.ativo ?? true,
+      endereco,
+      observacoes,
+      ativo,
     });
   }
 
   async atualizar(id: number, data: UpdateEmpresaData) {
-    await this.buscarPorId(id);
+    this.validarId(id);
+    this.validarCorpo(data);
 
     const dadosAtualizados: UpdateEmpresaData = {};
 
     if (data.nome !== undefined) {
-      if (typeof data.nome !== "string") {
-        throw new Error("O nome da empresa deve ser um texto.");
-      }
-
-      const nome = data.nome.trim();
-
-      if (!nome) {
-        throw new Error("O nome da empresa é obrigatório.");
-      }
-
-      dadosAtualizados.nome = nome;
+      dadosAtualizados.nome = this.validarNome(data.nome);
     }
 
     if (data.cnpj !== undefined) {
       const cnpj = this.normalizarCnpj(data.cnpj);
 
-      if (cnpj) {
+      if (cnpj !== null) {
         this.validarFormatoCnpj(cnpj);
-
-        const empresaExistente = await empresaRepository.findByCnpj(cnpj);
-
-        if (empresaExistente && empresaExistente.id !== id) {
-          throw new Error("Já existe uma empresa cadastrada com esse CNPJ.");
-        }
       }
 
       dadosAtualizados.cnpj = cnpj;
@@ -181,7 +194,7 @@ export class EmpresaService {
     if (data.email !== undefined) {
       const email = this.normalizarEmail(data.email);
 
-      if (email) {
+      if (email !== null) {
         this.validarEmail(email);
       }
 
@@ -203,15 +216,26 @@ export class EmpresaService {
     }
 
     if (data.ativo !== undefined) {
-      if (typeof data.ativo !== "boolean") {
-        throw new Error("O campo ativo deve ser verdadeiro ou falso.");
-      }
-
-      dadosAtualizados.ativo = data.ativo;
+      dadosAtualizados.ativo = this.validarAtivo(data.ativo);
     }
 
     if (Object.keys(dadosAtualizados).length === 0) {
-      throw new Error("Nenhum dado foi informado para atualização.");
+      throw new AppError("Nenhum dado foi informado para atualização.", 400);
+    }
+
+    await this.buscarPorId(id);
+
+    if (dadosAtualizados.cnpj !== undefined && dadosAtualizados.cnpj !== null) {
+      const empresaExistente = await empresaRepository.findByCnpj(
+        dadosAtualizados.cnpj,
+      );
+
+      if (empresaExistente && empresaExistente.id !== id) {
+        throw new AppError(
+          "Já existe uma empresa cadastrada com esse CNPJ.",
+          409,
+        );
+      }
     }
 
     return empresaRepository.update(id, dadosAtualizados);
@@ -236,10 +260,11 @@ export class EmpresaService {
     }
 
     if (vinculos.length > 0) {
-      throw new Error(
+      throw new AppError(
         `Esta empresa está vinculada a ${vinculos.join(
           " e ",
         )}. Desative-a em vez de excluir.`,
+        409,
       );
     }
 

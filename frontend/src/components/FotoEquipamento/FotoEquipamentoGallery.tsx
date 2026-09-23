@@ -1,11 +1,5 @@
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+
 import {
   Image as ImageIcon,
   LoaderCircle,
@@ -13,14 +7,17 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
+
 import { toast } from "sonner";
 
-import { AuthContext } from "../../contexts/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { api } from "../../services/api";
+
 import {
   fotoEquipamentoService,
   type FotoEquipamento,
 } from "../../services/fotoEquipamentoService";
+
 import { Card } from "../Card";
 import { ConfirmModal } from "../ConfirmModal";
 
@@ -29,6 +26,7 @@ interface FotoEquipamentoGalleryProps {
 }
 
 const TIPOS_PERMITIDOS = ["image/jpeg", "image/png", "image/webp"];
+
 const TAMANHO_MAXIMO = 5 * 1024 * 1024;
 const LIMITE_POR_ENVIO = 5;
 
@@ -70,39 +68,103 @@ function obterMensagemErro(error: unknown, mensagemPadrao: string) {
 export function FotoEquipamentoGallery({
   equipamentoId,
 }: FotoEquipamentoGalleryProps) {
-  const auth = useContext(AuthContext);
+  const { temTodasPermissoes } = useAuth();
+
+  const podeVisualizar = temTodasPermissoes(
+    "equipamentos.visualizar",
+    "fotos.visualizar",
+  );
+
+  const podeEditar = temTodasPermissoes(
+    "equipamentos.visualizar",
+    "fotos.visualizar",
+    "fotos.editar",
+  );
+
+  if (!podeVisualizar) {
+    return null;
+  }
+
+  return (
+    <GaleriaFotos
+      key={`${equipamentoId}-${podeEditar}`}
+      equipamentoId={equipamentoId}
+      podeEditar={podeEditar}
+    />
+  );
+}
+
+function GaleriaFotos({
+  equipamentoId,
+  podeEditar,
+}: FotoEquipamentoGalleryProps & {
+  podeEditar: boolean;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const operacaoEmAndamento = useRef(false);
+  const montadoRef = useRef(false);
 
   const [fotos, setFotos] = useState<FotoEquipamento[]>([]);
   const [arquivosSelecionados, setArquivosSelecionados] = useState<File[]>([]);
+
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  const [versao, setVersao] = useState(0);
+
   const [fotoEmProcessamento, setFotoEmProcessamento] = useState<number | null>(
     null,
   );
+
   const [fotoExcluir, setFotoExcluir] = useState<FotoEquipamento | null>(null);
 
-  const usuarioAdmin = auth?.usuario?.perfil === "ADMIN";
+  const ocupado = enviando || fotoEmProcessamento !== null;
 
-  const carregarFotos = useCallback(async () => {
-    try {
+  useEffect(() => {
+    montadoRef.current = true;
+
+    return () => {
+      montadoRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarFotos() {
       setCarregando(true);
       setErro("");
 
-      const dados = await fotoEquipamentoService.listar(equipamentoId);
-      setFotos(dados);
-    } catch (error) {
-      console.error("Erro ao carregar fotos do equipamento:", error);
-      setErro(obterMensagemErro(error, "Não foi possível carregar as fotos."));
-    } finally {
-      setCarregando(false);
-    }
-  }, [equipamentoId]);
+      try {
+        const dados = await fotoEquipamentoService.listar(equipamentoId);
 
-  useEffect(() => {
+        if (ativo) {
+          setFotos(dados);
+        }
+      } catch (error) {
+        if (ativo) {
+          console.error("Erro ao carregar fotos:", error);
+          setErro(
+            obterMensagemErro(error, "Não foi possível carregar as fotos."),
+          );
+        }
+      } finally {
+        if (ativo) {
+          setCarregando(false);
+        }
+      }
+    }
+
     void carregarFotos();
-  }, [carregarFotos]);
+
+    return () => {
+      ativo = false;
+    };
+  }, [equipamentoId, versao]);
+
+  function atualizarFotos() {
+    setVersao((valor) => valor + 1);
+  }
 
   function limparSelecao() {
     setArquivosSelecionados([]);
@@ -113,9 +175,11 @@ export function FotoEquipamentoGallery({
   }
 
   function selecionarArquivos(event: ChangeEvent<HTMLInputElement>) {
+    if (!podeEditar || operacaoEmAndamento.current) return;
+
     const arquivos = Array.from(event.target.files ?? []);
 
-    if (!arquivos.length) {
+    if (arquivos.length === 0) {
       limparSelecao();
       return;
     }
@@ -126,21 +190,13 @@ export function FotoEquipamentoGallery({
       return;
     }
 
-    const arquivoFormatoInvalido = arquivos.find(
-      (arquivo) => !TIPOS_PERMITIDOS.includes(arquivo.type),
-    );
-
-    if (arquivoFormatoInvalido) {
+    if (arquivos.some((arquivo) => !TIPOS_PERMITIDOS.includes(arquivo.type))) {
       toast.error("Use somente imagens JPG, PNG ou WebP.");
       limparSelecao();
       return;
     }
 
-    const arquivoMuitoGrande = arquivos.find(
-      (arquivo) => arquivo.size > TAMANHO_MAXIMO,
-    );
-
-    if (arquivoMuitoGrande) {
+    if (arquivos.some((arquivo) => arquivo.size > TAMANHO_MAXIMO)) {
       toast.error("Cada foto pode ter no máximo 5 MB.");
       limparSelecao();
       return;
@@ -150,18 +206,23 @@ export function FotoEquipamentoGallery({
   }
 
   async function enviarFotos() {
-    if (!arquivosSelecionados.length) {
+    if (!podeEditar || operacaoEmAndamento.current) return;
+
+    if (arquivosSelecionados.length === 0) {
       toast.error("Selecione pelo menos uma foto.");
       return;
     }
 
-    try {
-      setEnviando(true);
+    operacaoEmAndamento.current = true;
+    setEnviando(true);
 
+    try {
       await fotoEquipamentoService.adicionar(
         equipamentoId,
         arquivosSelecionados,
       );
+
+      if (!montadoRef.current) return;
 
       toast.success(
         arquivosSelecionados.length === 1
@@ -170,53 +231,95 @@ export function FotoEquipamentoGallery({
       );
 
       limparSelecao();
-      await carregarFotos();
+      atualizarFotos();
     } catch (error) {
-      console.error("Erro ao enviar fotos do equipamento:", error);
-      toast.error(
-        obterMensagemErro(error, "Não foi possível enviar as fotos."),
-      );
+      if (montadoRef.current) {
+        toast.error(
+          obterMensagemErro(error, "Não foi possível enviar as fotos."),
+        );
+      }
     } finally {
-      setEnviando(false);
+      operacaoEmAndamento.current = false;
+
+      if (montadoRef.current) {
+        setEnviando(false);
+      }
     }
   }
 
   async function definirFotoPrincipal(foto: FotoEquipamento) {
-    if (foto.principal) {
+    if (!podeEditar || foto.principal || operacaoEmAndamento.current) {
       return;
     }
 
+    operacaoEmAndamento.current = true;
+    setFotoEmProcessamento(foto.id);
+
     try {
-      setFotoEmProcessamento(foto.id);
       await fotoEquipamentoService.definirPrincipal(equipamentoId, foto.id);
+
+      if (!montadoRef.current) return;
+
       toast.success("Foto principal atualizada.");
-      await carregarFotos();
+      atualizarFotos();
     } catch (error) {
-      console.error("Erro ao definir foto principal:", error);
-      toast.error(
-        obterMensagemErro(error, "Não foi possível definir a foto principal."),
-      );
+      if (montadoRef.current) {
+        toast.error(
+          obterMensagemErro(
+            error,
+            "Não foi possível definir a foto principal.",
+          ),
+        );
+      }
     } finally {
-      setFotoEmProcessamento(null);
+      operacaoEmAndamento.current = false;
+
+      if (montadoRef.current) {
+        setFotoEmProcessamento(null);
+      }
     }
   }
 
+  function solicitarExclusao(foto: FotoEquipamento) {
+    if (!podeEditar || operacaoEmAndamento.current) return;
+
+    setFotoExcluir(foto);
+  }
+
+  function cancelarExclusao() {
+    if (operacaoEmAndamento.current) return;
+
+    setFotoExcluir(null);
+  }
+
   async function confirmarExclusao() {
-    if (!fotoExcluir) {
+    if (!podeEditar || !fotoExcluir || operacaoEmAndamento.current) {
       return;
     }
 
+    operacaoEmAndamento.current = true;
+    setFotoEmProcessamento(fotoExcluir.id);
+
     try {
-      setFotoEmProcessamento(fotoExcluir.id);
       await fotoEquipamentoService.excluir(equipamentoId, fotoExcluir.id);
+
+      if (!montadoRef.current) return;
+
       toast.success("Foto excluída com sucesso.");
       setFotoExcluir(null);
-      await carregarFotos();
+      atualizarFotos();
     } catch (error) {
-      console.error("Erro ao excluir foto:", error);
-      toast.error(obterMensagemErro(error, "Não foi possível excluir a foto."));
+      if (montadoRef.current) {
+        toast.error(
+          obterMensagemErro(error, "Não foi possível excluir a foto."),
+        );
+      }
     } finally {
-      setFotoEmProcessamento(null);
+      operacaoEmAndamento.current = false;
+
+      if (montadoRef.current) {
+        setFotoEmProcessamento(null);
+      }
     }
   }
 
@@ -226,18 +329,19 @@ export function FotoEquipamentoGallery({
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-bold">Fotos do equipamento</h2>
+
             <p className="text-sm text-gray-500">
               {fotos.length}{" "}
               {fotos.length === 1 ? "foto cadastrada" : "fotos cadastradas"}
             </p>
           </div>
 
-          {usuarioAdmin && (
+          {podeEditar && (
             <div className="flex flex-col gap-2 sm:items-end">
               <div className="flex flex-wrap gap-2">
                 <label
                   className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 ${
-                    enviando ? "pointer-events-none opacity-50" : ""
+                    ocupado ? "pointer-events-none opacity-50" : ""
                   }`}
                 >
                   <ImageIcon size={18} />
@@ -247,7 +351,7 @@ export function FotoEquipamentoGallery({
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     multiple
-                    disabled={enviando}
+                    disabled={ocupado}
                     onChange={selecionarArquivos}
                     className="hidden"
                   />
@@ -255,8 +359,8 @@ export function FotoEquipamentoGallery({
 
                 <button
                   type="button"
-                  disabled={!arquivosSelecionados.length || enviando}
-                  onClick={enviarFotos}
+                  disabled={arquivosSelecionados.length === 0 || ocupado}
+                  onClick={() => void enviarFotos()}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {enviando ? (
@@ -264,6 +368,7 @@ export function FotoEquipamentoGallery({
                   ) : (
                     <Upload size={18} />
                   )}
+
                   {enviando ? "Enviando..." : "Enviar"}
                 </button>
               </div>
@@ -292,9 +397,10 @@ export function FotoEquipamentoGallery({
         ) : erro ? (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center">
             <p className="mb-3 text-sm text-red-700">{erro}</p>
+
             <button
               type="button"
-              onClick={() => void carregarFotos()}
+              onClick={atualizarFotos}
               className="text-sm font-semibold text-red-700 underline underline-offset-2"
             >
               Tentar novamente
@@ -303,6 +409,7 @@ export function FotoEquipamentoGallery({
         ) : fotos.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 px-4 py-12 text-center text-slate-500">
             <ImageIcon className="mx-auto mb-3 text-slate-400" size={36} />
+
             <p>Nenhuma foto cadastrada para este equipamento.</p>
           </div>
         ) : (
@@ -345,11 +452,11 @@ export function FotoEquipamentoGallery({
                       {foto.nomeOriginal}
                     </p>
 
-                    {usuarioAdmin && (
+                    {podeEditar && (
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
-                          disabled={foto.principal || processando}
+                          disabled={foto.principal || ocupado}
                           onClick={() => void definirFotoPrincipal(foto)}
                           className="rounded-lg p-2 text-amber-600 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
@@ -368,8 +475,8 @@ export function FotoEquipamentoGallery({
 
                         <button
                           type="button"
-                          disabled={processando}
-                          onClick={() => setFotoExcluir(foto)}
+                          disabled={ocupado}
+                          onClick={() => solicitarExclusao(foto)}
                           className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                           title="Excluir foto"
                           aria-label="Excluir foto"
@@ -386,20 +493,16 @@ export function FotoEquipamentoGallery({
         )}
       </Card>
 
-      <ConfirmModal
-        aberto={Boolean(fotoExcluir)}
-        titulo="Excluir foto"
-        mensagem={
-          fotoExcluir
-            ? `Deseja realmente excluir a foto "${fotoExcluir.nomeOriginal}"?`
-            : ""
-        }
-        carregando={
-          fotoExcluir !== null && fotoEmProcessamento === fotoExcluir.id
-        }
-        onCancel={() => setFotoExcluir(null)}
-        onConfirm={confirmarExclusao}
-      />
+      {podeEditar && fotoExcluir && (
+        <ConfirmModal
+          aberto
+          titulo="Excluir foto"
+          mensagem={`Deseja realmente excluir a foto "${fotoExcluir.nomeOriginal}"?`}
+          carregando={fotoEmProcessamento === fotoExcluir.id}
+          onCancel={cancelarExclusao}
+          onConfirm={confirmarExclusao}
+        />
+      )}
     </>
   );
 }

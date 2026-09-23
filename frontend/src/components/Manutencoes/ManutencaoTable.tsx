@@ -1,5 +1,7 @@
 import { CheckCircle2, Eye, Wrench } from "lucide-react";
 
+import { useAuth } from "../../hooks/useAuth";
+
 import type { Manutencao, StatusManutencao } from "../../types/manutencao";
 
 interface ManutencaoTableProps {
@@ -13,10 +15,16 @@ function formatarData(valor: string | null) {
     return "Não informada";
   }
 
+  const data = new Date(valor);
+
+  if (Number.isNaN(data.getTime())) {
+    return "Data inválida";
+  }
+
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
-  }).format(new Date(valor));
+  }).format(data);
 }
 
 function formatarCusto(custo: string | number | null) {
@@ -26,7 +34,7 @@ function formatarCusto(custo: string | number | null) {
 
   const valor = Number(custo);
 
-  if (Number.isNaN(valor)) {
+  if (!Number.isFinite(valor)) {
     return "Não informado";
   }
 
@@ -54,7 +62,15 @@ function classeStatus(status: StatusManutencao) {
   return classes[status];
 }
 
-function empresaOuLocal(manutencao: Manutencao): string {
+function responsavelOuLocal(manutencao: Manutencao): string {
+  if (manutencao.tipo === "INTERNA") {
+    return (
+      manutencao.tecnicoResponsavel?.nome ||
+      manutencao.localManutencao ||
+      "Técnico não informado"
+    );
+  }
+
   return (
     manutencao.empresaResponsavel?.nome ||
     manutencao.empresaResponsavelTexto ||
@@ -63,12 +79,38 @@ function empresaOuLocal(manutencao: Manutencao): string {
   );
 }
 
-function previsaoOuRetorno(manutencao: Manutencao) {
-  if (manutencao.status === "FINALIZADA") {
-    return formatarData(manutencao.dataRetorno);
+function textoTipo(manutencao: Manutencao) {
+  if (manutencao.tipo === "INTERNA") {
+    return "Interna";
   }
 
-  return formatarData(manutencao.previsaoRetorno);
+  if (manutencao.tipo === "EXTERNA") {
+    return "Externa";
+  }
+
+  return "Tipo não informado";
+}
+
+function rotuloDataInicio(manutencao: Manutencao) {
+  return manutencao.tipo === "INTERNA" ? "Data de início" : "Data de saída";
+}
+
+function rotuloPrevisaoOuRetorno(manutencao: Manutencao) {
+  const interna = manutencao.tipo === "INTERNA";
+
+  if (manutencao.status === "FINALIZADA") {
+    return interna ? "Data de conclusão" : "Data de retorno";
+  }
+
+  return interna ? "Previsão de conclusão" : "Previsão de retorno";
+}
+
+function previsaoOuRetorno(manutencao: Manutencao) {
+  return formatarData(
+    manutencao.status === "FINALIZADA"
+      ? manutencao.dataRetorno
+      : manutencao.previsaoRetorno,
+  );
 }
 
 export function ManutencaoTable({
@@ -76,6 +118,39 @@ export function ManutencaoTable({
   onDetalhes,
   onFinalizar,
 }: ManutencaoTableProps) {
+  const { temTodasPermissoes } = useAuth();
+
+  const podeVisualizar = temTodasPermissoes("manutencoes.visualizar");
+
+  const podeFinalizar = temTodasPermissoes(
+    "manutencoes.visualizar",
+    "manutencoes.finalizar",
+  );
+
+  function permiteFinalizacao(manutencao: Manutencao) {
+    return (
+      podeFinalizar &&
+      typeof onFinalizar === "function" &&
+      manutencao.status === "EM_ANDAMENTO"
+    );
+  }
+
+  function abrirDetalhes(manutencao: Manutencao) {
+    if (!podeVisualizar) return;
+
+    onDetalhes(manutencao);
+  }
+
+  function finalizar(manutencao: Manutencao) {
+    if (!permiteFinalizacao(manutencao)) return;
+
+    onFinalizar?.(manutencao);
+  }
+
+  if (!podeVisualizar) {
+    return null;
+  }
+
   if (manutencoes.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
@@ -96,146 +171,186 @@ export function ManutencaoTable({
     <>
       {/* Visualização mobile */}
       <div className="space-y-4 lg:hidden">
-        {manutencoes.map((manutencao) => (
-          <article
-            key={manutencao.id}
-            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-slate-800">
-                  {manutencao.equipamento?.nome ??
-                    `Equipamento #${manutencao.equipamentoId}`}
-                </p>
+        {manutencoes.map((manutencao) => {
+          const exibirFinalizar = permiteFinalizacao(manutencao);
 
-                <p className="mt-1 text-sm text-slate-500">
-                  {manutencao.equipamento?.patrimonio || "Sem patrimônio"}
-                </p>
+          return (
+            <article
+              key={manutencao.id}
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words font-semibold text-slate-800">
+                    {manutencao.equipamento?.nome ??
+                      `Equipamento #${manutencao.equipamentoId}`}
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {manutencao.equipamento?.patrimonio || "Sem patrimônio"}
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    {textoTipo(manutencao)}
+                  </p>
+                </div>
+
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${classeStatus(
+                    manutencao.status,
+                  )}`}
+                >
+                  {textoStatus(manutencao.status)}
+                </span>
               </div>
 
-              <span
-                className={`shrink-0  px-2.5 py-1 text-xs font-semibold ${classeStatus(
-                  manutencao.status,
-                )}`}
+              <div className="mt-4 grid gap-3 text-sm min-[400px]:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium uppercase text-slate-400">
+                    Problema
+                  </p>
+
+                  <p className="mt-1 break-words text-slate-700">
+                    {manutencao.problemaInformado}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium uppercase text-slate-400">
+                    {manutencao.tipo === "INTERNA"
+                      ? "Técnico/Local"
+                      : "Empresa/Local"}
+                  </p>
+
+                  <p className="mt-1 break-words text-slate-700">
+                    {responsavelOuLocal(manutencao)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium uppercase text-slate-400">
+                    {rotuloDataInicio(manutencao)}
+                  </p>
+
+                  <p className="mt-1 text-slate-700">
+                    {formatarData(manutencao.dataSaida)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium uppercase text-slate-400">
+                    {rotuloPrevisaoOuRetorno(manutencao)}
+                  </p>
+
+                  <p className="mt-1 text-slate-700">
+                    {previsaoOuRetorno(manutencao)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium uppercase text-slate-400">
+                    Custo
+                  </p>
+
+                  <p className="mt-1 text-slate-700">
+                    {formatarCusto(manutencao.custo)}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className={`mt-4 grid grid-cols-1 gap-2 border-t border-slate-100 pt-4 ${
+                  exibirFinalizar ? "min-[400px]:grid-cols-2" : ""
+                }`}
               >
-                {textoStatus(manutencao.status)}
-              </span>
-            </div>
-
-            <div className="mt-4 grid gap-3 text-sm min-[400px]:grid-cols-2">
-              <div>
-                <p className="text-xs font-medium uppercase text-slate-400">
-                  Problema
-                </p>
-
-                <p className="mt-1 text-slate-700">
-                  {manutencao.problemaInformado}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs font-medium uppercase text-slate-400">
-                  Empresa/Local
-                </p>
-
-                <p className="mt-1 text-slate-700">
-                  {empresaOuLocal(manutencao)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs font-medium uppercase text-slate-400">
-                  Data de saída
-                </p>
-
-                <p className="mt-1 text-slate-700">
-                  {formatarData(manutencao.dataSaida)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs font-medium uppercase text-slate-400">
-                  {manutencao.status === "FINALIZADA"
-                    ? "Data de retorno"
-                    : "Previsão de retorno"}
-                </p>
-
-                <p className="mt-1 text-slate-700">
-                  {previsaoOuRetorno(manutencao)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs font-medium uppercase text-slate-400">
-                  Custo
-                </p>
-
-                <p className="mt-1 text-slate-700">
-                  {formatarCusto(manutencao.custo)}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-2 border-t border-slate-100 pt-4 min-[400px]:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => onDetalhes(manutencao)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
-              >
-                <Eye size={17} />
-                Ver detalhes
-              </button>
-
-              {manutencao.status === "EM_ANDAMENTO" && onFinalizar && (
                 <button
                   type="button"
-                  onClick={() => onFinalizar(manutencao)}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                  onClick={() => abrirDetalhes(manutencao)}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
                 >
-                  <CheckCircle2 size={17} />
-                  Finalizar
+                  <Eye size={17} />
+                  Ver detalhes
                 </button>
-              )}
-            </div>
-          </article>
-        ))}
+
+                {exibirFinalizar && (
+                  <button
+                    type="button"
+                    onClick={() => finalizar(manutencao)}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                  >
+                    <CheckCircle2 size={17} />
+                    Finalizar
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       {/* Visualização desktop */}
       <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:block">
         <div className="overflow-x-auto">
           <table className="w-full">
+            <caption className="sr-only">
+              Histórico de manutenções dos equipamentos
+            </caption>
+
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
                   Equipamento
                 </th>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
                   Problema
                 </th>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Empresa/Local
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  Responsável/Local
                 </th>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Saída
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  Início/Saída
                 </th>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Previsão/Retorno
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  Previsão/Conclusão
                 </th>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
                   Custo
                 </th>
 
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
                   Status
                 </th>
 
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
                   Ações
                 </th>
               </tr>
@@ -256,21 +371,36 @@ export function ManutencaoTable({
                     <p className="text-xs text-slate-500">
                       {manutencao.equipamento?.patrimonio || "Sem patrimônio"}
                     </p>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      {textoTipo(manutencao)}
+                    </p>
                   </td>
 
                   <td className="max-w-xs px-4 py-3 text-sm text-slate-600">
-                    <p className="truncate">{manutencao.problemaInformado}</p>
+                    <p
+                      className="truncate"
+                      title={manutencao.problemaInformado}
+                    >
+                      {manutencao.problemaInformado}
+                    </p>
                   </td>
 
                   <td className="px-4 py-3 text-sm text-slate-600">
-                    {empresaOuLocal(manutencao)}
+                    {responsavelOuLocal(manutencao)}
                   </td>
 
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
+                  <td
+                    className="whitespace-nowrap px-4 py-3 text-sm text-slate-600"
+                    title={rotuloDataInicio(manutencao)}
+                  >
                     {formatarData(manutencao.dataSaida)}
                   </td>
 
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
+                  <td
+                    className="whitespace-nowrap px-4 py-3 text-sm text-slate-600"
+                    title={rotuloPrevisaoOuRetorno(manutencao)}
+                  >
                     {previsaoOuRetorno(manutencao)}
                   </td>
 
@@ -280,7 +410,7 @@ export function ManutencaoTable({
 
                   <td className="px-4 py-3 text-center">
                     <span
-                      className={`inline-flex whitespace-nowrap  px-2.5 py-1 text-xs font-semibold ${classeStatus(
+                      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${classeStatus(
                         manutencao.status,
                       )}`}
                     >
@@ -292,7 +422,7 @@ export function ManutencaoTable({
                     <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
-                        onClick={() => onDetalhes(manutencao)}
+                        onClick={() => abrirDetalhes(manutencao)}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
                         title="Ver detalhes da manutenção"
                       >
@@ -300,10 +430,10 @@ export function ManutencaoTable({
                         Detalhes
                       </button>
 
-                      {manutencao.status === "EM_ANDAMENTO" && onFinalizar && (
+                      {permiteFinalizacao(manutencao) && (
                         <button
                           type="button"
-                          onClick={() => onFinalizar(manutencao)}
+                          onClick={() => finalizar(manutencao)}
                           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
                           title="Finalizar manutenção"
                         >

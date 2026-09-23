@@ -158,6 +158,8 @@ export interface GarantiaEquipamento {
     id: number;
     nome: string;
     patrimonio: string | null;
+    fornecedorCadastrado: boolean;
+    fornecedorAtivo: boolean;
   };
 
   possuiGarantia: boolean;

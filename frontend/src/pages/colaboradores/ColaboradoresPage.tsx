@@ -11,9 +11,75 @@ import { ConfirmModal } from "../../components/ConfirmModal";
 import { ColaboradorForm } from "../../components/ColaboradorForm";
 import { ColaboradorTable } from "../../components/ColaboradorTable";
 
+import { useAuth } from "../../hooks/useAuth";
 import { useColaboradores } from "../../hooks/useColaboradores";
 
+interface PermissoesColaboradores {
+  podeCriar: boolean;
+  podeEditar: boolean;
+  podeExcluir: boolean;
+}
+
 export function ColaboradoresPage() {
+  const { carregando, carregandoPermissoes, temTodasPermissoes } = useAuth();
+
+  if (carregando || carregandoPermissoes) {
+    return (
+      <MainLayout>
+        <Card>
+          <SkeletonTable />
+        </Card>
+      </MainLayout>
+    );
+  }
+
+  if (!temTodasPermissoes("colaboradores.visualizar")) {
+    return (
+      <MainLayout>
+        <Card className="p-8 text-center">
+          <h1 className="text-xl font-semibold text-slate-900">
+            Acesso não permitido
+          </h1>
+
+          <p className="mt-2 text-sm text-slate-600">
+            Você não possui permissão para visualizar colaboradores.
+          </p>
+        </Card>
+      </MainLayout>
+    );
+  }
+
+  const podeCriar = temTodasPermissoes(
+    "colaboradores.visualizar",
+    "colaboradores.criar",
+  );
+
+  const podeEditar = temTodasPermissoes(
+    "colaboradores.visualizar",
+    "colaboradores.editar",
+  );
+
+  const podeExcluir = temTodasPermissoes(
+    "colaboradores.visualizar",
+    "colaboradores.excluir",
+  );
+
+  // Ao mudar as permissões, descarta formulários e seleções anteriores.
+  return (
+    <ConteudoColaboradores
+      key={`${podeCriar}-${podeEditar}-${podeExcluir}`}
+      podeCriar={podeCriar}
+      podeEditar={podeEditar}
+      podeExcluir={podeExcluir}
+    />
+  );
+}
+
+function ConteudoColaboradores({
+  podeCriar,
+  podeEditar,
+  podeExcluir,
+}: PermissoesColaboradores) {
   const {
     colaboradoresFiltrados,
 
@@ -51,6 +117,8 @@ export function ColaboradoresPage() {
     finalizarCadastroOuEdicao,
   } = useColaboradores();
 
+  const podeUsarFormulario = colaboradorSelecionado ? podeEditar : podeCriar;
+
   return (
     <MainLayout>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -58,14 +126,24 @@ export function ColaboradoresPage() {
           <h1 className="text-3xl font-bold">Colaboradores</h1>
 
           <p className="text-sm text-gray-500">
-            Total encontrado: {colaboradoresFiltrados.length}
+            {carregando
+              ? "Carregando colaboradores..."
+              : `Total encontrado: ${colaboradoresFiltrados.length}`}
           </p>
         </div>
 
-        <Button onClick={abrirModalCriacao}>
-          <Plus size={18} />
-          Adicionar colaborador
-        </Button>
+        {podeCriar && (
+          <Button
+            type="button"
+            onClick={() => {
+              if (!podeCriar) return;
+              abrirModalCriacao();
+            }}
+          >
+            <Plus size={18} />
+            Adicionar colaborador
+          </Button>
+        )}
       </div>
 
       <Card className="mb-6">
@@ -121,39 +199,50 @@ export function ColaboradoresPage() {
         ) : (
           <ColaboradorTable
             colaboradores={colaboradoresFiltrados}
-            onEdit={abrirModalEdicao}
-            onDelete={abrirModalExclusao}
+            onEdit={(colaborador) => {
+              if (!podeEditar) return;
+              abrirModalEdicao(colaborador);
+            }}
+            onDelete={(colaborador) => {
+              if (!podeExcluir) return;
+              abrirModalExclusao(colaborador);
+            }}
           />
         )}
       </Card>
 
-      <Modal
-        aberto={modalAberto}
-        titulo={
-          colaboradorSelecionado ? "Editar colaborador" : "Novo colaborador"
-        }
-        onClose={fecharModal}
-      >
-        <ColaboradorForm
-          modo={colaboradorSelecionado ? "editar" : "criar"}
-          colaborador={colaboradorSelecionado ?? undefined}
-          onCancel={fecharModal}
-          onSuccess={finalizarCadastroOuEdicao}
-        />
-      </Modal>
+      {modalAberto && podeUsarFormulario && (
+        <Modal
+          aberto
+          titulo={
+            colaboradorSelecionado ? "Editar colaborador" : "Novo colaborador"
+          }
+          onClose={fecharModal}
+        >
+          <ColaboradorForm
+            modo={colaboradorSelecionado ? "editar" : "criar"}
+            {...(colaboradorSelecionado
+              ? { colaborador: colaboradorSelecionado }
+              : {})}
+            onCancel={fecharModal}
+            onSuccess={finalizarCadastroOuEdicao}
+          />
+        </Modal>
+      )}
 
-      <ConfirmModal
-        aberto={modalExcluirAberto}
-        titulo="Excluir colaborador"
-        mensagem={
-          colaboradorExcluir
-            ? `Deseja realmente excluir "${colaboradorExcluir.nome}"?`
-            : ""
-        }
-        carregando={excluindo}
-        onCancel={fecharModalExclusao}
-        onConfirm={confirmarExclusao}
-      />
+      {modalExcluirAberto && podeExcluir && colaboradorExcluir && (
+        <ConfirmModal
+          aberto
+          titulo="Excluir colaborador"
+          mensagem={`Deseja realmente excluir "${colaboradorExcluir.nome}"?`}
+          carregando={excluindo}
+          onCancel={fecharModalExclusao}
+          onConfirm={async () => {
+            if (!podeExcluir || excluindo) return;
+            await confirmarExclusao();
+          }}
+        />
+      )}
     </MainLayout>
   );
 }

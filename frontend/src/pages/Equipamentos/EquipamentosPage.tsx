@@ -96,7 +96,41 @@ function correspondeSituacaoPeca(
 
 export function EquipamentosPage() {
   const navigate = useNavigate();
-  const { usuario } = useAuth();
+  const { temTodasPermissoes } = useAuth();
+
+  const podeCriar = temTodasPermissoes(
+    "equipamentos.visualizar",
+    "equipamentos.criar",
+  );
+
+  const podeEditar = temTodasPermissoes(
+    "equipamentos.visualizar",
+    "equipamentos.editar",
+  );
+
+  const podeExcluir = temTodasPermissoes(
+    "equipamentos.visualizar",
+    "equipamentos.excluir",
+  );
+
+  const podeVerHardware = temTodasPermissoes(
+    "equipamentos.visualizar",
+    "hardware.visualizar",
+  );
+
+  const podeAbrirManutencao = temTodasPermissoes(
+    "equipamentos.visualizar",
+    "manutencoes.visualizar",
+    "manutencoes.abrir",
+  );
+
+  const podeMovimentarPecas = temTodasPermissoes(
+    "equipamentos.visualizar",
+    "pecas.visualizar",
+    "pecas.movimentar",
+    "manutencoes.visualizar",
+    "manutencoes.abrir",
+  );
 
   const [grupoSelecionado, setGrupoSelecionado] = useState<Grupo>("TODOS");
 
@@ -157,8 +191,6 @@ export function EquipamentosPage() {
     finalizarCadastroOuEdicao,
   } = useEquipamentos();
 
-  // Usa a lista original para manter as categorias disponíveis
-  // mesmo quando pesquisa e outros filtros reduzem os resultados.
   const gruposPorCategoria = useMemo(() => {
     const resultado = new Map<string, GrupoCategoria>();
 
@@ -243,6 +275,15 @@ export function EquipamentosPage() {
     );
   }, [categorias, grupoSelecionado, gruposPorCategoria]);
 
+  function verificarPermissao(permitido: boolean): boolean {
+    if (!permitido) {
+      toast.error("Você não possui permissão para esta operação.");
+      return false;
+    }
+
+    return true;
+  }
+
   function selecionarGrupo(grupo: Grupo) {
     setGrupoSelecionado(grupo);
     setSituacaoPeca("TODAS");
@@ -262,43 +303,92 @@ export function EquipamentosPage() {
     limparFiltros();
   }
 
+  function abrirCadastro() {
+    if (!verificarPermissao(podeCriar)) {
+      return;
+    }
+
+    abrirModalCriacao();
+  }
+
+  function abrirEdicao(equipamento: Equipamento) {
+    if (!verificarPermissao(podeEditar)) {
+      return;
+    }
+
+    abrirModalEdicao(equipamento);
+  }
+
+  function abrirExclusao(equipamento: Equipamento) {
+    if (!verificarPermissao(podeExcluir)) {
+      return;
+    }
+
+    abrirModalExclusao(equipamento);
+  }
+
+  async function confirmarExclusaoPermitida() {
+    if (!verificarPermissao(podeExcluir)) {
+      return;
+    }
+
+    await confirmarExclusao();
+  }
+
   function abrirHardware(equipamento: Equipamento) {
+    if (!verificarPermissao(podeVerHardware)) {
+      return;
+    }
+
     navigate(`/equipamentos/${equipamento.id}`);
   }
 
   function abrirPecas(equipamento: Equipamento) {
+    if (!verificarPermissao(podeMovimentarPecas)) {
+      return;
+    }
+
     if (equipamento.instaladoEmId != null) {
       setOperacaoPeca({
         computadorId: equipamento.instaladoEmId,
         retiradaId: equipamento.id,
       });
-
       return;
     }
 
-    if (obterGrupo(equipamento.categoria) === "COMPUTADORES") {
-      setOperacaoPeca({
-        computadorId: equipamento.id,
-      });
+    const grupo = obterGrupo(equipamento.categoria);
 
+    if (grupo === "COMPUTADORES") {
+      setOperacaoPeca({ computadorId: equipamento.id });
       return;
     }
 
-    setOperacaoPeca({
-      pecaId: equipamento.id,
-    });
+    if (grupo !== "PECAS") {
+      toast.info("Selecione uma peça ou um computador.");
+      return;
+    }
+
+    setOperacaoPeca({ pecaId: equipamento.id });
   }
 
   function abrirModalManutencao(equipamento: Equipamento) {
+    if (!verificarPermissao(podeAbrirManutencao)) {
+      return;
+    }
+
     if (equipamento.instaladoEmId != null) {
       toast.info(
         "Registre o atendimento no computador ou retire a peça antes de abrir sua manutenção.",
       );
-
       return;
     }
 
-    if (normalizarTexto(equipamento.status) === "em manutencao") {
+    const status = normalizarTexto(equipamento.status)
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (status === "em manutencao") {
       toast.info("Este equipamento já está em manutenção.");
       return;
     }
@@ -315,6 +405,8 @@ export function EquipamentosPage() {
   async function finalizarAberturaManutencao() {
     await finalizarCadastroOuEdicao();
   }
+
+  const podeUsarFormulario = equipamentoSelecionado ? podeEditar : podeCriar;
 
   const possuiFiltro =
     filtrosAtivos || grupoSelecionado !== "TODOS" || situacaoPeca !== "TODAS";
@@ -339,10 +431,12 @@ export function EquipamentosPage() {
             </div>
           </div>
 
-          <Button type="button" onClick={abrirModalCriacao}>
-            <Plus size={18} />
-            Adicionar equipamento
-          </Button>
+          {podeCriar && (
+            <Button type="button" onClick={abrirCadastro}>
+              <Plus size={18} />
+              Adicionar equipamento
+            </Button>
+          )}
         </header>
 
         <nav
@@ -362,7 +456,6 @@ export function EquipamentosPage() {
               }`}
             >
               <Icone size={18} />
-
               {nome}
 
               <span
@@ -516,52 +609,60 @@ export function EquipamentosPage() {
           ) : (
             <EquipmentTable
               equipamentos={equipamentosExibidos}
-              onPecas={usuario?.perfil === "ADMIN" ? abrirPecas : undefined}
-              onEdit={abrirModalEdicao}
-              onDelete={abrirModalExclusao}
-              onHardware={abrirHardware}
-              onMaintenance={abrirModalManutencao}
+              {...(podeMovimentarPecas && { onPecas: abrirPecas })}
+              {...(podeEditar && { onEdit: abrirEdicao })}
+              {...(podeExcluir && { onDelete: abrirExclusao })}
+              {...(podeVerHardware && { onHardware: abrirHardware })}
+              {...(podeAbrirManutencao && {
+                onMaintenance: abrirModalManutencao,
+              })}
             />
           )}
         </section>
       </div>
 
-      <Modal
-        aberto={modalAberto}
-        titulo={
-          equipamentoSelecionado ? "Editar Equipamento" : "Novo Equipamento"
-        }
-        onClose={fecharModal}
-      >
-        <EquipmentForm
-          modo={equipamentoSelecionado ? "editar" : "criar"}
-          equipamento={equipamentoSelecionado ?? undefined}
-          onCancel={fecharModal}
-          onSuccess={finalizarCadastroOuEdicao}
+      {podeUsarFormulario && modalAberto && (
+        <Modal
+          aberto={modalAberto}
+          titulo={
+            equipamentoSelecionado ? "Editar Equipamento" : "Novo Equipamento"
+          }
+          onClose={fecharModal}
+        >
+          <EquipmentForm
+            modo={equipamentoSelecionado ? "editar" : "criar"}
+            equipamento={equipamentoSelecionado ?? undefined}
+            onCancel={fecharModal}
+            onSuccess={finalizarCadastroOuEdicao}
+          />
+        </Modal>
+      )}
+
+      {podeExcluir && modalExcluirAberto && (
+        <ConfirmModal
+          aberto={modalExcluirAberto}
+          titulo="Excluir equipamento"
+          mensagem={
+            equipamentoExcluir
+              ? `Deseja realmente excluir "${equipamentoExcluir.nome}"?`
+              : ""
+          }
+          carregando={excluindo}
+          onCancel={fecharModalExclusao}
+          onConfirm={confirmarExclusaoPermitida}
         />
-      </Modal>
+      )}
 
-      <ConfirmModal
-        aberto={modalExcluirAberto}
-        titulo="Excluir equipamento"
-        mensagem={
-          equipamentoExcluir
-            ? `Deseja realmente excluir "${equipamentoExcluir.nome}"?`
-            : ""
-        }
-        carregando={excluindo}
-        onCancel={fecharModalExclusao}
-        onConfirm={confirmarExclusao}
-      />
+      {podeAbrirManutencao && modalManutencaoAberto && (
+        <AbrirManutencaoModal
+          aberto={modalManutencaoAberto}
+          equipamento={equipamentoManutencao}
+          onFechar={fecharModalManutencao}
+          onSucesso={finalizarAberturaManutencao}
+        />
+      )}
 
-      <AbrirManutencaoModal
-        aberto={modalManutencaoAberto}
-        equipamento={equipamentoManutencao}
-        onFechar={fecharModalManutencao}
-        onSucesso={finalizarAberturaManutencao}
-      />
-
-      {operacaoPeca && (
+      {podeMovimentarPecas && operacaoPeca && (
         <PecasModal
           {...operacaoPeca}
           onFechar={() => setOperacaoPeca(null)}

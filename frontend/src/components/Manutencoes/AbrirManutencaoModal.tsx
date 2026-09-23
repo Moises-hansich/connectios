@@ -4,10 +4,14 @@ import { AlertTriangle, ShieldCheck, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "../Button";
+import { useAuth } from "../../hooks/useAuth";
 
 import { empresaService } from "../../services/empresaService";
 import { manutencaoService } from "../../services/manutencaoService";
-import { usuarioService, type Usuario } from "../../services/usuarioService";
+import {
+  usuarioService,
+  type TecnicoOption,
+} from "../../services/usuarioService";
 
 import type { Empresa } from "../../types/empresa";
 import type {
@@ -76,35 +80,122 @@ function obterMensagemErro(error: unknown): string {
 }
 
 function formatarDataGarantia(valor: string | null): string {
-  if (!valor) {
-    return "Não informada";
-  }
+  if (!valor) return "Não informada";
 
   const [ano, mes, dia] = valor.slice(0, 10).split("-");
 
   return ano && mes && dia ? `${dia}/${mes}/${ano}` : "Data inválida";
 }
 
+// Monta um formulário novo a cada abertura, equipamento ou alteração
+// das permissões relevantes, evitando reaproveitar seleções antigas.
 export function AbrirManutencaoModal({
   aberto,
   equipamento,
   onFechar,
   onSucesso,
 }: AbrirManutencaoModalProps) {
-  const [formulario, setFormulario] =
-    useState<FormularioManutencao>(formularioInicial);
+  const {
+    autenticado,
+    carregando,
+    carregandoPermissoes,
+    erroPermissoes,
+    temPermissao,
+    temTodasPermissoes,
+  } = useAuth();
+
+  if (!aberto) return null;
+
+  const verificando = carregando || carregandoPermissoes;
+
+  const podeAbrir =
+    autenticado &&
+    !verificando &&
+    !erroPermissoes &&
+    temTodasPermissoes(
+      "equipamentos.visualizar",
+      "manutencoes.visualizar",
+      "manutencoes.abrir",
+    );
+
+  if (verificando || !podeAbrir || !equipamento) {
+    const mensagem = verificando
+      ? "Verificando permissões..."
+      : erroPermissoes
+        ? "Não foi possível verificar suas permissões."
+        : !podeAbrir
+          ? "Você não possui permissão para abrir manutenções."
+          : "Selecione um equipamento.";
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="titulo-aviso-manutencao"
+          className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+        >
+          <h2
+            id="titulo-aviso-manutencao"
+            className="text-lg font-semibold text-slate-900"
+          >
+            Cadastrar manutenção
+          </h2>
+
+          <p role="status" className="mt-3 text-sm text-slate-600">
+            {mensagem}
+          </p>
+
+          <div className="mt-5 flex justify-end">
+            <Button type="button" variant="secondary" onClick={onFechar}>
+              Fechar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const podeVerEmpresas = temPermissao("empresas.visualizar");
+
+  return (
+    <FormularioAbertura
+      key={`${equipamento.id}-${podeVerEmpresas}`}
+      equipamento={equipamento}
+      podeVerEmpresas={podeVerEmpresas}
+      onFechar={onFechar}
+      onSucesso={onSucesso}
+    />
+  );
+}
+
+interface FormularioAberturaProps {
+  equipamento: EquipamentoSelecionado;
+  podeVerEmpresas: boolean;
+  onFechar: () => void;
+  onSucesso?: (() => void | Promise<void>) | undefined;
+}
+
+function FormularioAbertura({
+  equipamento,
+  podeVerEmpresas,
+  onFechar,
+  onSucesso,
+}: FormularioAberturaProps) {
+  const [formulario, setFormulario] = useState<FormularioManutencao>({
+    ...formularioInicial,
+  });
 
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [tecnicos, setTecnicos] = useState<Usuario[]>([]);
+  const [tecnicos, setTecnicos] = useState<TecnicoOption[]>([]);
 
-  const [carregandoEmpresas, setCarregandoEmpresas] = useState(true);
+  const [carregandoEmpresas, setCarregandoEmpresas] = useState(false);
   const [carregandoTecnicos, setCarregandoTecnicos] = useState(true);
 
   const [erroEmpresas, setErroEmpresas] = useState(false);
   const [erroTecnicos, setErroTecnicos] = useState(false);
 
   const [garantia, setGarantia] = useState<GarantiaEquipamento | null>(null);
-
   const [carregandoGarantia, setCarregandoGarantia] = useState(true);
   const [erroGarantia, setErroGarantia] = useState(false);
 
@@ -112,35 +203,44 @@ export function AbrirManutencaoModal({
   const [salvando, setSalvando] = useState(false);
 
   const envioEmAndamento = useRef(false);
+  const montadoRef = useRef(false);
 
-  const equipamentoId = equipamento?.id;
+  const equipamentoId = equipamento.id;
   const interna = formulario.tipo === "INTERNA";
   const garantiaAtiva = garantia?.garantiaAtiva === true;
   const fornecedorGarantia = garantia?.fornecedor ?? null;
 
   const fornecedorObrigatorio = !interna && garantiaAtiva;
 
-  const fornecedorInvalido =
-    fornecedorObrigatorio && (!fornecedorGarantia || !fornecedorGarantia.ativo);
+  const fornecedorCadastrado = garantia?.fornecedorCadastrado === true;
+  const fornecedorAtivo = garantia?.fornecedorAtivo === true;
 
-  const empresaSelecionada =
-    fornecedorObrigatorio && fornecedorGarantia
+  const fornecedorInvalido =
+    fornecedorObrigatorio && (!fornecedorCadastrado || !fornecedorAtivo);
+
+  const deveConsultarEmpresas =
+    !interna &&
+    podeVerEmpresas &&
+    !carregandoGarantia &&
+    !erroGarantia &&
+    garantia !== null &&
+    !garantiaAtiva;
+
+  const empresaSelecionada = !podeVerEmpresas
+    ? ""
+    : fornecedorObrigatorio && fornecedorGarantia
       ? String(fornecedorGarantia.id)
       : formulario.empresaResponsavelId;
 
   useEffect(() => {
-    if (!aberto) {
-      return;
-    }
+    montadoRef.current = true;
 
-    setFormulario({ ...formularioInicial });
-  }, [aberto, equipamentoId]);
+    return () => {
+      montadoRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
-    if (!aberto || equipamentoId === undefined) {
-      return;
-    }
-
     let ativo = true;
 
     setGarantia(null);
@@ -149,7 +249,7 @@ export function AbrirManutencaoModal({
 
     async function carregarGarantia() {
       try {
-        const dados = await manutencaoService.consultarGarantia(equipamentoId!);
+        const dados = await manutencaoService.consultarGarantia(equipamentoId);
 
         if (ativo) {
           setGarantia(dados);
@@ -172,54 +272,65 @@ export function AbrirManutencaoModal({
     return () => {
       ativo = false;
     };
-  }, [aberto, equipamentoId, tentativaCarga]);
+  }, [equipamentoId, tentativaCarga]);
 
   useEffect(() => {
-    if (!aberto) {
+    if (!interna) return;
+
+    let ativo = true;
+
+    setCarregandoTecnicos(true);
+    setErroTecnicos(false);
+    setTecnicos([]);
+
+    async function carregarTecnicos() {
+      try {
+        const dados = await usuarioService.listarTecnicos();
+
+        if (!Array.isArray(dados)) {
+          throw new Error("Resposta inválida ao listar técnicos.");
+        }
+
+        if (ativo) {
+          setTecnicos(
+            [...dados].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+          );
+        }
+      } catch (error) {
+        console.error("Erro ao carregar técnicos:", error);
+
+        if (ativo) {
+          setErroTecnicos(true);
+        }
+      } finally {
+        if (ativo) {
+          setCarregandoTecnicos(false);
+        }
+      }
+    }
+
+    void carregarTecnicos();
+
+    return () => {
+      ativo = false;
+    };
+  }, [interna, tentativaCarga]);
+
+  useEffect(() => {
+    if (!deveConsultarEmpresas) {
+      setEmpresas([]);
+      setErroEmpresas(false);
+      setCarregandoEmpresas(false);
       return;
     }
 
     let ativo = true;
 
-    async function carregarResponsaveis() {
-      if (interna) {
-        setCarregandoTecnicos(true);
-        setErroTecnicos(false);
-        setTecnicos([]);
+    setCarregandoEmpresas(true);
+    setErroEmpresas(false);
+    setEmpresas([]);
 
-        try {
-          const dados = await usuarioService.listar();
-
-          if (!Array.isArray(dados)) {
-            throw new Error("Resposta inválida ao listar usuários.");
-          }
-
-          if (ativo) {
-            setTecnicos(
-              dados
-                .filter((usuario) => usuario.ativo)
-                .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
-            );
-          }
-        } catch (error) {
-          console.error("Erro ao carregar técnicos:", error);
-
-          if (ativo) {
-            setErroTecnicos(true);
-          }
-        } finally {
-          if (ativo) {
-            setCarregandoTecnicos(false);
-          }
-        }
-
-        return;
-      }
-
-      setCarregandoEmpresas(true);
-      setErroEmpresas(false);
-      setEmpresas([]);
-
+    async function carregarEmpresas() {
       try {
         const dados = await empresaService.listarAtivas();
 
@@ -243,18 +354,14 @@ export function AbrirManutencaoModal({
       }
     }
 
-    void carregarResponsaveis();
+    void carregarEmpresas();
 
     return () => {
       ativo = false;
     };
-  }, [aberto, interna, tentativaCarga]);
+  }, [deveConsultarEmpresas, tentativaCarga]);
 
   useEffect(() => {
-    if (!aberto) {
-      return;
-    }
-
     function fecharComEscape(event: KeyboardEvent) {
       if (event.key === "Escape" && !envioEmAndamento.current) {
         onFechar();
@@ -266,12 +373,21 @@ export function AbrirManutencaoModal({
     return () => {
       window.removeEventListener("keydown", fecharComEscape);
     };
-  }, [aberto, onFechar]);
+  }, [onFechar]);
 
   function alterarCampo<K extends keyof FormularioManutencao>(
     campo: K,
     valor: FormularioManutencao[K],
   ) {
+    if (envioEmAndamento.current) return;
+
+    if (
+      campo === "empresaResponsavelId" &&
+      (!podeVerEmpresas || fornecedorObrigatorio)
+    ) {
+      return;
+    }
+
     setFormulario((anterior) => ({
       ...anterior,
       [campo]: valor,
@@ -279,7 +395,7 @@ export function AbrirManutencaoModal({
   }
 
   function alterarTipo(tipo: TipoManutencao) {
-    if (tipo === formulario.tipo) {
+    if (envioEmAndamento.current || tipo === formulario.tipo) {
       return;
     }
 
@@ -294,39 +410,41 @@ export function AbrirManutencaoModal({
       setCarregandoTecnicos(true);
       setErroTecnicos(false);
     } else {
-      setCarregandoEmpresas(true);
+      setCarregandoEmpresas(
+        podeVerEmpresas &&
+          !carregandoGarantia &&
+          !erroGarantia &&
+          garantia !== null &&
+          !garantiaAtiva,
+      );
       setErroEmpresas(false);
     }
   }
 
   function tentarNovamente() {
+    if (envioEmAndamento.current) return;
+
     setCarregandoGarantia(true);
     setErroGarantia(false);
 
     if (interna) {
       setCarregandoTecnicos(true);
       setErroTecnicos(false);
-    } else {
-      setCarregandoEmpresas(true);
-      setErroEmpresas(false);
     }
 
+    setErroEmpresas(false);
     setTentativaCarga((anterior) => anterior + 1);
   }
 
   function fecharModal() {
-    if (envioEmAndamento.current) {
-      return;
+    if (!envioEmAndamento.current) {
+      onFechar();
     }
-
-    onFechar();
   }
 
   let motivoBloqueio: string | null = null;
 
-  if (!equipamento) {
-    motivoBloqueio = "Selecione um equipamento.";
-  } else if (interna) {
+  if (interna) {
     if (carregandoTecnicos) {
       motivoBloqueio = "Carregando técnicos...";
     } else if (erroTecnicos) {
@@ -346,21 +464,27 @@ export function AbrirManutencaoModal({
     motivoBloqueio = "Consulte a garantia antes de continuar.";
   } else if (fornecedorInvalido) {
     motivoBloqueio = "Regularize o fornecedor da garantia antes de continuar.";
-  } else if (!fornecedorObrigatorio && carregandoEmpresas) {
+  } else if (deveConsultarEmpresas && carregandoEmpresas) {
     motivoBloqueio = "Carregando empresas...";
-  } else if (!fornecedorObrigatorio && erroEmpresas) {
+  } else if (deveConsultarEmpresas && erroEmpresas) {
     motivoBloqueio = "Não foi possível carregar as empresas.";
+  } else if (
+    deveConsultarEmpresas &&
+    formulario.empresaResponsavelId &&
+    !empresas.some(
+      (empresa) => empresa.id === Number(formulario.empresaResponsavelId),
+    )
+  ) {
+    motivoBloqueio = "Selecione uma empresa disponível ou deixe sem vínculo.";
   }
 
   async function enviarFormulario(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (envioEmAndamento.current) {
-      return;
-    }
+    if (envioEmAndamento.current) return;
 
-    if (!equipamento || motivoBloqueio) {
-      toast.error(motivoBloqueio ?? "Selecione um equipamento.");
+    if (motivoBloqueio) {
+      toast.error(motivoBloqueio);
       return;
     }
 
@@ -375,10 +499,11 @@ export function AbrirManutencaoModal({
       ? Number(formulario.tecnicoResponsavelId)
       : null;
 
-    const empresaResponsavelId = interna
-      ? null
-      : fornecedorObrigatorio && fornecedorGarantia
-        ? fornecedorGarantia.id
+    // Em garantia, o backend obtém o fornecedor do equipamento.
+    // Sem acesso às empresas, não envia seleção manual.
+    const empresaResponsavelId =
+      interna || fornecedorObrigatorio || !podeVerEmpresas
+        ? null
         : formulario.empresaResponsavelId
           ? Number(formulario.empresaResponsavelId)
           : null;
@@ -448,30 +573,32 @@ export function AbrirManutencaoModal({
       toast.error(obterMensagemErro(error));
 
       envioEmAndamento.current = false;
-      setSalvando(false);
+
+      if (montadoRef.current) {
+        setSalvando(false);
+      }
+
       return;
     }
 
     toast.success("Manutenção aberta com sucesso.");
 
-    // Uma falha na atualização da tabela não significa
-    // que o cadastro falhou e não deve permitir outro envio.
     try {
       await onSucesso?.();
     } catch (error) {
       console.error("Erro ao atualizar a listagem:", error);
+
       toast.warning(
         "A manutenção foi salva, mas a listagem não foi atualizada. Atualize a página.",
       );
     } finally {
       envioEmAndamento.current = false;
-      setSalvando(false);
-      onFechar();
-    }
-  }
 
-  if (!aberto) {
-    return null;
+      if (montadoRef.current) {
+        setSalvando(false);
+        onFechar();
+      }
+    }
   }
 
   return (
@@ -504,8 +631,8 @@ export function AbrirManutencaoModal({
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                {equipamento?.nome}
-                {equipamento?.patrimonio
+                {equipamento.nome}
+                {equipamento.patrimonio
                   ? ` • Patrimônio ${equipamento.patrimonio}`
                   : ""}
               </p>
@@ -563,12 +690,10 @@ export function AbrirManutencaoModal({
 
               {!carregandoGarantia && erroGarantia && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  <p>
-                    Não foi possível consultar a garantia.
-                    {interna
-                      ? " O atendimento interno pode ser registrado."
-                      : " Tente novamente antes de registrar o envio externo."}
-                  </p>
+                  Não foi possível consultar a garantia.
+                  {interna
+                    ? " O atendimento interno pode ser registrado."
+                    : " Tente novamente antes de registrar o envio externo."}
                 </div>
               )}
 
@@ -589,8 +714,10 @@ export function AbrirManutencaoModal({
                       {formatarDataGarantia(garantia?.garantiaAte ?? null)}.
                       {interna
                         ? " O atendimento interno será registrado sem encaminhamento obrigatório ao fornecedor."
-                        : fornecedorGarantia
-                          ? ` Encaminhamento para ${fornecedorGarantia.nome}.`
+                        : fornecedorCadastrado
+                          ? podeVerEmpresas && fornecedorGarantia
+                            ? ` Encaminhamento para ${fornecedorGarantia.nome}.`
+                            : " O fornecedor vinculado será definido automaticamente na abertura."
                           : " Nenhum fornecedor cadastrado."}
                     </p>
                   </div>
@@ -602,7 +729,7 @@ export function AbrirManutencaoModal({
                   <AlertTriangle size={20} className="shrink-0" />
 
                   <p>
-                    {!fornecedorGarantia
+                    {!fornecedorCadastrado
                       ? "Cadastre o fornecedor do equipamento para abrir a manutenção externa em garantia."
                       : "O fornecedor da garantia está inativo. Regularize seu cadastro para continuar."}
                   </p>
@@ -624,7 +751,10 @@ export function AbrirManutencaoModal({
                 </p>
               )}
 
-              {(erroGarantia || (interna ? erroTecnicos : erroEmpresas)) && (
+              {(erroGarantia ||
+                (interna
+                  ? erroTecnicos
+                  : deveConsultarEmpresas && erroEmpresas)) && (
                 <button
                   type="button"
                   disabled={salvando}
@@ -660,7 +790,7 @@ export function AbrirManutencaoModal({
 
                   {tecnicos.map((tecnico) => (
                     <option key={tecnico.id} value={tecnico.id}>
-                      {tecnico.nome} — {tecnico.email}
+                      {tecnico.nome}
                     </option>
                   ))}
                 </select>
@@ -679,9 +809,11 @@ export function AbrirManutencaoModal({
                   id="empresaResponsavelId"
                   disabled={
                     salvando ||
+                    !podeVerEmpresas ||
                     carregandoEmpresas ||
                     erroEmpresas ||
                     carregandoGarantia ||
+                    erroGarantia ||
                     fornecedorObrigatorio
                   }
                   value={empresaSelecionada}
@@ -691,12 +823,19 @@ export function AbrirManutencaoModal({
                   className={classeCampo}
                 >
                   <option value="">
-                    {carregandoEmpresas
-                      ? "Carregando empresas..."
-                      : "Selecione uma empresa"}
+                    {carregandoGarantia
+                      ? "Consultando a garantia..."
+                      : !podeVerEmpresas
+                        ? fornecedorObrigatorio
+                          ? "Fornecedor da garantia definido automaticamente"
+                          : "Sem empresa vinculada"
+                        : carregandoEmpresas
+                          ? "Carregando empresas..."
+                          : "Sem empresa vinculada"}
                   </option>
 
-                  {fornecedorObrigatorio &&
+                  {podeVerEmpresas &&
+                    fornecedorObrigatorio &&
                     fornecedorGarantia &&
                     !empresas.some(
                       (empresa) => empresa.id === fornecedorGarantia.id,
@@ -706,18 +845,26 @@ export function AbrirManutencaoModal({
                       </option>
                     )}
 
-                  {empresas.map((empresa) => (
-                    <option key={empresa.id} value={empresa.id}>
-                      {empresa.nome}
-                    </option>
-                  ))}
+                  {podeVerEmpresas &&
+                    empresas.map((empresa) => (
+                      <option key={empresa.id} value={empresa.id}>
+                        {empresa.nome}
+                      </option>
+                    ))}
                 </select>
 
-                {fornecedorObrigatorio && (
+                {fornecedorObrigatorio ? (
                   <p className="mt-1 text-xs text-emerald-700">
-                    Empresa definida pelo fornecedor da garantia.
+                    Empresa definida automaticamente pelo fornecedor da
+                    garantia.
                   </p>
-                )}
+                ) : !podeVerEmpresas ? (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Você não possui permissão para consultar empresas. Fora da
+                    garantia, a manutenção será registrada sem empresa
+                    vinculada.
+                  </p>
+                ) : null}
               </div>
             )}
 

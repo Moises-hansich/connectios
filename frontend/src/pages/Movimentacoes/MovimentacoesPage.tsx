@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useAuth } from "../../hooks/useAuth";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { Skeleton } from "../../components/Skeleton";
@@ -44,22 +45,10 @@ const tiposMovimentacao: Array<{
   valor: TipoMovimentacao;
   texto: string;
 }> = [
-  {
-    valor: "ENTREGA",
-    texto: "Entrega",
-  },
-  {
-    valor: "TROCA",
-    texto: "Troca",
-  },
-  {
-    valor: "DEVOLUCAO",
-    texto: "Devolução",
-  },
-  {
-    valor: "MUDANCA_SETOR",
-    texto: "Mudança de setor",
-  },
+  { valor: "ENTREGA", texto: "Entrega" },
+  { valor: "TROCA", texto: "Troca" },
+  { valor: "DEVOLUCAO", texto: "Devolução" },
+  { valor: "MUDANCA_SETOR", texto: "Mudança de setor" },
   {
     valor: "MUDANCA_LOCALIZACAO",
     texto: "Mudança de localização",
@@ -75,12 +64,121 @@ const tiposMovimentacao: Array<{
   { valor: "INSTALACAO_PECA", texto: "Instalação de peça" },
   { valor: "RETIRADA_PECA", texto: "Retirada de peça" },
   {
-    valor: "BAIXA",
-    texto: "Baixa",
+    valor: "ALTERACAO_CADASTRAL",
+    texto: "Alteração cadastral",
   },
+  { valor: "BAIXA", texto: "Baixa" },
 ];
 
+const classesTipo: Record<TipoMovimentacao, string> = {
+  ENTREGA: "bg-blue-100 text-blue-700",
+  TROCA: "bg-violet-100 text-violet-700",
+  DEVOLUCAO: "bg-cyan-100 text-cyan-700",
+  MUDANCA_SETOR: "bg-indigo-100 text-indigo-700",
+  MUDANCA_LOCALIZACAO: "bg-sky-100 text-sky-700",
+  ENTRADA_MANUTENCAO: "bg-amber-100 text-amber-700",
+  RETORNO_MANUTENCAO: "bg-emerald-100 text-emerald-700",
+  INSTALACAO_PECA: "bg-blue-100 text-blue-700",
+  RETIRADA_PECA: "bg-amber-100 text-amber-700",
+  ALTERACAO_CADASTRAL: "bg-orange-100 text-orange-700",
+  BAIXA: "bg-rose-100 text-rose-700",
+};
+
+const classeCampo =
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+
+function formatarData(valor: string) {
+  const data = new Date(valor);
+
+  if (Number.isNaN(data.getTime())) {
+    return "Data inválida";
+  }
+
+  return data.toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+function textoTipo(tipo: TipoMovimentacao) {
+  return tiposMovimentacao.find((item) => item.valor === tipo)?.texto ?? tipo;
+}
+
+function obterAlteracao(movimentacao: Movimentacao): AlteracaoMovimentacao {
+  switch (movimentacao.tipo) {
+    case "ENTREGA":
+      return {
+        origem: movimentacao.responsavelAnterior?.nome ?? "Estoque",
+        destino: movimentacao.responsavelNovo?.nome ?? "Não informado",
+      };
+
+    case "TROCA":
+      return {
+        origem:
+          movimentacao.equipamento?.nome ??
+          `Equipamento #${movimentacao.equipamentoId}`,
+        destino: movimentacao.equipamentoRelacionado?.nome ?? "Não informado",
+      };
+
+    case "DEVOLUCAO":
+      return {
+        origem: movimentacao.responsavelAnterior?.nome ?? "Não informado",
+        destino: movimentacao.responsavelNovo?.nome ?? "Estoque",
+      };
+
+    case "MUDANCA_SETOR":
+      return {
+        origem: movimentacao.setorAnterior?.nome ?? "Não informado",
+        destino: movimentacao.setorNovo?.nome ?? "Não informado",
+      };
+
+    case "MUDANCA_LOCALIZACAO":
+      return {
+        origem: movimentacao.localizacaoAnterior?.nome ?? "Não informado",
+        destino: movimentacao.localizacaoNova?.nome ?? "Não informado",
+      };
+
+    default:
+      return {
+        origem: movimentacao.statusAnterior ?? "—",
+        destino: movimentacao.statusNovo ?? "—",
+      };
+  }
+}
+
 export function MovimentacoesPage() {
+  const { carregando, carregandoPermissoes, temTodasPermissoes } = useAuth();
+
+  if (carregando || carregandoPermissoes) {
+    return (
+      <MainLayout>
+        <Skeleton />
+      </MainLayout>
+    );
+  }
+
+  if (!temTodasPermissoes("movimentacoes.visualizar")) {
+    return (
+      <MainLayout>
+        <Card className="p-8 text-center">
+          <History size={36} className="mx-auto mb-3 text-slate-400" />
+
+          <h1 className="text-xl font-semibold text-slate-900">
+            Acesso não permitido
+          </h1>
+
+          <p className="mt-2 text-sm text-slate-600">
+            Você não possui permissão para visualizar movimentações.
+          </p>
+        </Card>
+      </MainLayout>
+    );
+  }
+
+  return <ConteudoMovimentacoes />;
+}
+
+function ConteudoMovimentacoes() {
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
 
   const [filtrosFormulario, setFiltrosFormulario] =
@@ -92,11 +190,17 @@ export function MovimentacoesPage() {
   const [pagina, setPagina] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
-  const [carregando, setCarregando] = useState(true);
 
-  const carregarMovimentacoes = useCallback(async () => {
-    try {
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [tentativa, setTentativa] = useState(0);
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarMovimentacoes() {
       setCarregando(true);
+      setErro("");
 
       const filtros: MovimentacaoFilters = {
         page: pagina,
@@ -119,37 +223,52 @@ export function MovimentacoesPage() {
         filtros.dataFim = `${filtrosAplicados.dataFim}T23:59:59.999`;
       }
 
-      const resultado = await movimentacaoService.listar(filtros);
+      try {
+        const resultado = await movimentacaoService.listar(filtros);
 
-      setMovimentacoes(resultado.movimentacoes);
-      setTotal(resultado.total);
-      setTotalPaginas(resultado.totalPages);
-    } catch (error) {
-      console.error("Erro ao carregar movimentações:", error);
+        if (!ativo) return;
 
-      toast.error("Não foi possível carregar as movimentações.");
+        if (resultado.totalPages > 0 && pagina > resultado.totalPages) {
+          setPagina(resultado.totalPages);
+          return;
+        }
 
-      setMovimentacoes([]);
-      setTotal(0);
-      setTotalPaginas(0);
-    } finally {
-      setCarregando(false);
+        setMovimentacoes(resultado.movimentacoes);
+        setTotal(resultado.total);
+        setTotalPaginas(resultado.totalPages);
+      } catch (error) {
+        if (!ativo) return;
+
+        console.error("Erro ao carregar movimentações:", error);
+
+        setMovimentacoes([]);
+        setTotal(0);
+        setTotalPaginas(0);
+        setErro("Não foi possível carregar as movimentações.");
+      } finally {
+        if (ativo) {
+          setCarregando(false);
+        }
+      }
     }
-  }, [filtrosAplicados, pagina]);
 
-  useEffect(() => {
     void carregarMovimentacoes();
-  }, [carregarMovimentacoes]);
 
-  function aplicarFiltros(event: FormEvent) {
+    return () => {
+      ativo = false;
+    };
+  }, [filtrosAplicados, pagina, tentativa]);
+
+  function aplicarFiltros(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (filtrosFormulario.equipamentoId) {
-      const equipamentoId = Number(filtrosFormulario.equipamentoId);
+    const equipamentoIdTexto = filtrosFormulario.equipamentoId.trim();
 
-      if (!Number.isInteger(equipamentoId) || equipamentoId <= 0) {
+    if (equipamentoIdTexto) {
+      const equipamentoId = Number(equipamentoIdTexto);
+
+      if (!Number.isSafeInteger(equipamentoId) || equipamentoId <= 0) {
         toast.error("Informe um ID de equipamento válido.");
-
         return;
       }
     }
@@ -160,97 +279,20 @@ export function MovimentacoesPage() {
       filtrosFormulario.dataInicio > filtrosFormulario.dataFim
     ) {
       toast.error("A data inicial não pode ser posterior à data final.");
-
       return;
     }
 
     setPagina(1);
     setFiltrosAplicados({
       ...filtrosFormulario,
+      equipamentoId: equipamentoIdTexto,
     });
   }
 
   function limparFiltros() {
     setPagina(1);
-    setFiltrosFormulario(filtrosIniciais);
-    setFiltrosAplicados(filtrosIniciais);
-  }
-
-  function formatarData(data: string) {
-    const dataFormatada = new Date(data);
-
-    if (Number.isNaN(dataFormatada.getTime())) {
-      return "Data inválida";
-    }
-
-    return dataFormatada.toLocaleString("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
-  }
-
-  function textoTipo(tipo: TipoMovimentacao) {
-    if (tipo === "INSTALACAO_PECA") return "Instalação de peça";
-    if (tipo === "RETIRADA_PECA") return "Retirada de peça";
-    return tiposMovimentacao.find((item) => item.valor === tipo)?.texto ?? tipo;
-  }
-
-  function classeTipo(tipo: TipoMovimentacao) {
-    const classes: Record<TipoMovimentacao, string> = {
-      ENTREGA: "bg-blue-100 text-blue-700",
-      TROCA: "bg-violet-100 text-violet-700",
-      DEVOLUCAO: "bg-cyan-100 text-cyan-700",
-      MUDANCA_SETOR: "bg-indigo-100 text-indigo-700",
-      MUDANCA_LOCALIZACAO: "bg-sky-100 text-sky-700",
-      ENTRADA_MANUTENCAO: "bg-amber-100 text-amber-700",
-      RETORNO_MANUTENCAO: "bg-emerald-100 text-emerald-700",
-      INSTALACAO_PECA: "bg-blue-100 text-blue-700",
-      RETIRADA_PECA: "bg-amber-100 text-amber-700",
-      BAIXA: "bg-rose-100 text-rose-700",
-      ALTERACAO_CADASTRAL: "bg-orange-100 text-orange-700",
-    };
-
-    return classes[tipo];
-  }
-
-  function obterAlteracao(movimentacao: Movimentacao): AlteracaoMovimentacao {
-    switch (movimentacao.tipo) {
-      case "ENTREGA":
-        return {
-          origem: movimentacao.responsavelAnterior?.nome ?? "Estoque",
-          destino: movimentacao.responsavelNovo?.nome ?? "Não informado",
-        };
-
-      case "TROCA":
-        return {
-          origem: movimentacao.equipamento.nome,
-          destino: movimentacao.equipamentoRelacionado?.nome ?? "Não informado",
-        };
-
-      case "DEVOLUCAO":
-        return {
-          origem: movimentacao.responsavelAnterior?.nome ?? "Não informado",
-          destino: movimentacao.responsavelNovo?.nome ?? "Estoque",
-        };
-
-      case "MUDANCA_SETOR":
-        return {
-          origem: movimentacao.setorAnterior?.nome ?? "Não informado",
-          destino: movimentacao.setorNovo?.nome ?? "Não informado",
-        };
-
-      case "MUDANCA_LOCALIZACAO":
-        return {
-          origem: movimentacao.localizacaoAnterior?.nome ?? "Não informado",
-          destino: movimentacao.localizacaoNova?.nome ?? "Não informado",
-        };
-
-      default:
-        return {
-          origem: movimentacao.statusAnterior ?? "Não informado",
-          destino: movimentacao.statusNovo ?? "Não informado",
-        };
-    }
+    setFiltrosFormulario({ ...filtrosIniciais });
+    setFiltrosAplicados({ ...filtrosIniciais });
   }
 
   return (
@@ -297,7 +339,7 @@ export function MovimentacoesPage() {
                 }))
               }
               placeholder="Ex.: 12"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className={classeCampo}
             />
           </div>
 
@@ -318,7 +360,7 @@ export function MovimentacoesPage() {
                   tipo: event.target.value as FiltrosFormulario["tipo"],
                 }))
               }
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className={classeCampo}
             >
               <option value="">Todos</option>
 
@@ -348,7 +390,7 @@ export function MovimentacoesPage() {
                   dataInicio: event.target.value,
                 }))
               }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className={classeCampo}
             />
           </div>
 
@@ -370,7 +412,7 @@ export function MovimentacoesPage() {
                   dataFim: event.target.value,
                 }))
               }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className={classeCampo}
             />
           </div>
 
@@ -406,6 +448,19 @@ export function MovimentacoesPage() {
           <div className="p-5">
             <Skeleton />
           </div>
+        ) : erro ? (
+          <div className="space-y-4 px-5 py-10 text-center">
+            <p className="text-sm text-red-600">{erro}</p>
+
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setTentativa((anterior) => anterior + 1)}
+            >
+              <RotateCcw size={18} />
+              Tentar novamente
+            </Button>
+          </div>
         ) : movimentacoes.length === 0 ? (
           <div className="px-5 py-16 text-center">
             <History size={42} className="mx-auto mb-3 text-slate-300" />
@@ -421,20 +476,40 @@ export function MovimentacoesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1050px]">
+              <caption className="sr-only">
+                Histórico de movimentações dos equipamentos
+              </caption>
+
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-5 py-3">Data e hora</th>
-                  <th className="px-5 py-3">Tipo</th>
-                  <th className="px-5 py-3">Equipamento</th>
-                  <th className="px-5 py-3">Origem</th>
-                  <th className="px-5 py-3">Destino</th>
-                  <th className="px-5 py-3">Registrado por</th>
+                  <th scope="col" className="px-5 py-3">
+                    Data e hora
+                  </th>
+                  <th scope="col" className="px-5 py-3">
+                    Tipo
+                  </th>
+                  <th scope="col" className="px-5 py-3">
+                    Equipamento
+                  </th>
+                  <th scope="col" className="px-5 py-3">
+                    Origem
+                  </th>
+                  <th scope="col" className="px-5 py-3">
+                    Destino
+                  </th>
+                  <th scope="col" className="px-5 py-3">
+                    Registrado por
+                  </th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-100">
                 {movimentacoes.map((movimentacao) => {
                   const alteracao = obterAlteracao(movimentacao);
+
+                  const classe =
+                    classesTipo[movimentacao.tipo] ??
+                    "bg-slate-100 text-slate-700";
 
                   return (
                     <tr
@@ -447,9 +522,7 @@ export function MovimentacoesPage() {
 
                       <td className="px-5 py-4">
                         <span
-                          className={`inline-flex whitespace-nowrap  px-3 py-1 text-xs font-semibold ${classeTipo(
-                            movimentacao.tipo,
-                          )}`}
+                          className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${classe}`}
                         >
                           {textoTipo(movimentacao.tipo)}
                         </span>
@@ -457,22 +530,26 @@ export function MovimentacoesPage() {
 
                       <td className="px-5 py-4">
                         <p className="font-medium text-slate-900">
-                          {movimentacao.equipamento.nome}
+                          {movimentacao.equipamento?.nome ??
+                            `Equipamento #${movimentacao.equipamentoId}`}
                         </p>
 
                         <p className="text-xs text-slate-500">
-                          {movimentacao.equipamento.patrimonio ||
-                            movimentacao.equipamento.numeroSerie ||
+                          {movimentacao.equipamento?.patrimonio ||
+                            movimentacao.equipamento?.numeroSerie ||
                             "Sem identificação"}
                         </p>
 
                         {movimentacao.observacoes && (
-                          <p
-                            className="mt-1 max-w-xs truncate text-xs text-slate-400"
-                            title={movimentacao.observacoes}
-                          >
-                            {movimentacao.observacoes}
-                          </p>
+                          <details className="mt-2 max-w-sm text-xs text-slate-500">
+                            <summary className="cursor-pointer font-medium text-slate-600">
+                              Observações
+                            </summary>
+
+                            <p className="mt-2 whitespace-pre-wrap break-words">
+                              {movimentacao.observacoes}
+                            </p>
+                          </details>
                         )}
                       </td>
 
@@ -490,7 +567,8 @@ export function MovimentacoesPage() {
                         </p>
 
                         <p className="text-xs text-slate-500">
-                          {movimentacao.usuario?.email ?? "Registro automático"}
+                          {movimentacao.usuario?.email ??
+                            "Usuário não informado"}
                         </p>
                       </td>
                     </tr>
@@ -501,7 +579,7 @@ export function MovimentacoesPage() {
           </div>
         )}
 
-        {!carregando && totalPaginas > 1 && (
+        {!carregando && !erro && totalPaginas > 1 && (
           <div className="flex flex-col gap-3 border-t border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">
               Página {pagina} de {totalPaginas}
@@ -509,6 +587,7 @@ export function MovimentacoesPage() {
 
             <div className="flex gap-2">
               <Button
+                type="button"
                 variant="secondary"
                 disabled={pagina <= 1}
                 onClick={() =>
@@ -520,6 +599,7 @@ export function MovimentacoesPage() {
               </Button>
 
               <Button
+                type="button"
                 variant="secondary"
                 disabled={pagina >= totalPaginas}
                 onClick={() =>

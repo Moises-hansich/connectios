@@ -1,9 +1,12 @@
 import type { NextFunction, Request, Response } from "express";
 
+import { AppError } from "../errors/AppError";
+
 import type {
   CreateMovimentacaoData,
   MovimentacaoFilters,
 } from "../repositories/movimentacaoRepository";
+
 import { movimentacaoService } from "../services/movimentacaoService";
 
 class MovimentacaoController {
@@ -96,9 +99,24 @@ class MovimentacaoController {
 
   registrar = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!req.usuario) {
+        throw new AppError("Usuário não autenticado", 401);
+      }
+
+      if (
+        !req.body ||
+        typeof req.body !== "object" ||
+        Array.isArray(req.body)
+      ) {
+        throw new AppError("Dados da movimentação inválidos", 400);
+      }
+
       const data: CreateMovimentacaoData = {
         tipo: this.converterTextoObrigatorio(req.body.tipo),
         equipamentoId: Number(req.body.equipamentoId),
+
+        // A autoria vem da autenticação, nunca do corpo da requisição.
+        usuarioId: req.usuario.usuarioId,
       };
 
       this.adicionarNumeroNulavel(
@@ -140,8 +158,6 @@ class MovimentacaoController {
       );
 
       this.adicionarNumeroNulavel(data, "manutencaoId", req.body.manutencaoId);
-
-      this.adicionarNumeroNulavel(data, "usuarioId", req.body.usuarioId);
 
       this.adicionarTextoNulavel(
         data,

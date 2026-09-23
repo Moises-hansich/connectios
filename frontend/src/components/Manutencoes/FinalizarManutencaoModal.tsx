@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import axios from "axios";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -16,12 +16,23 @@ interface FinalizarManutencaoModalProps {
   onSucesso?: () => void | Promise<void>;
 }
 
+interface FormularioFinalizacaoProps {
+  manutencao: Manutencao;
+  onFechar: () => void;
+  onSucesso?: (() => void | Promise<void>) | undefined;
+}
+
 interface ApiErrorResponse {
   mensagem?: string;
   message?: string;
 }
 
-function formatarParaInputDataHora(data: Date | string) {
+const classeCampo =
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100";
+
+const classeLabel = "mb-1 block text-sm font-medium text-slate-700";
+
+function formatarParaInputDataHora(data: Date | string): string {
   const dataConvertida = new Date(data);
 
   if (Number.isNaN(dataConvertida.getTime())) {
@@ -32,10 +43,10 @@ function formatarParaInputDataHora(data: Date | string) {
 
   return new Date(dataConvertida.getTime() - diferencaFuso)
     .toISOString()
-    .slice(0, 16);
+    .slice(0, 19);
 }
 
-function mensagemDoErro(error: unknown) {
+function mensagemDoErro(error: unknown): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
     return (
       error.response?.data?.mensagem ??
@@ -57,30 +68,68 @@ export function FinalizarManutencaoModal({
   onFechar,
   onSucesso,
 }: FinalizarManutencaoModalProps) {
-  const [diagnostico, setDiagnostico] = useState("");
-  const [solucao, setSolucao] = useState("");
-  const [custo, setCusto] = useState("");
-  const [observacoes, setObservacoes] = useState("");
-  const [dataRetorno, setDataRetorno] = useState("");
+  if (!aberto || !manutencao) {
+    return null;
+  }
+
+  return (
+    <FormularioFinalizacao
+      key={manutencao.id}
+      manutencao={manutencao}
+      onFechar={onFechar}
+      onSucesso={onSucesso}
+    />
+  );
+}
+
+function FormularioFinalizacao({
+  manutencao,
+  onFechar,
+  onSucesso,
+}: FormularioFinalizacaoProps) {
+  const [diagnostico, setDiagnostico] = useState(manutencao.diagnostico ?? "");
+  const [solucao, setSolucao] = useState(manutencao.solucao ?? "");
+  const [custo, setCusto] = useState(String(manutencao.custo ?? ""));
+  const [observacoes, setObservacoes] = useState(manutencao.observacoes ?? "");
+  const [dataRetorno, setDataRetorno] = useState(() =>
+    formatarParaInputDataHora(new Date()),
+  );
   const [salvando, setSalvando] = useState(false);
 
-  useEffect(() => {
-    if (!aberto || !manutencao) {
-      return;
-    }
+  const envioEmAndamento = useRef(false);
+  const finalizadaRef = useRef(false);
 
-    setDiagnostico(manutencao.diagnostico ?? "");
-    setSolucao(manutencao.solucao ?? "");
-    setCusto(String(manutencao.custo ?? ""));
-    setObservacoes(manutencao.observacoes ?? "");
-    setDataRetorno(formatarParaInputDataHora(new Date()));
-    setSalvando(false);
-  }, [aberto, manutencao]);
+  const interna = manutencao.tipo === "INTERNA";
+  const emAndamento = manutencao.status === "EM_ANDAMENTO";
+  const desabilitado = salvando || !emAndamento;
+
+  const tituloData = interna ? "Data de conclusão" : "Data de retorno";
+
+  // Arredonda o mínimo para o próximo segundo quando a abertura
+  // possui milissegundos, preservando a comparação com o backend.
+  const saidaTimestamp = new Date(manutencao.dataSaida).getTime();
+
+  const dataMinima = Number.isFinite(saidaTimestamp)
+    ? formatarParaInputDataHora(
+        new Date(Math.ceil(saidaTimestamp / 1000) * 1000),
+      )
+    : undefined;
+
+  function fechar() {
+    if (!envioEmAndamento.current) {
+      onFechar();
+    }
+  }
 
   async function finalizar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!manutencao) {
+    if (envioEmAndamento.current || finalizadaRef.current) {
+      return;
+    }
+
+    if (!emAndamento) {
+      toast.error("Esta manutenção já foi finalizada.");
       return;
     }
 
@@ -98,27 +147,43 @@ export function FinalizarManutencaoModal({
     }
 
     if (!dataRetorno) {
-      toast.error("Informe a data de retorno.");
+      toast.error(
+        interna ? "Informe a data de conclusão." : "Informe a data de retorno.",
+      );
       return;
     }
 
     const retorno = new Date(dataRetorno);
-    const saida = new Date(manutencao.dataSaida);
 
     if (Number.isNaN(retorno.getTime())) {
-      toast.error("A data de retorno é inválida.");
+      toast.error(
+        interna
+          ? "A data de conclusão é inválida."
+          : "A data de retorno é inválida.",
+      );
       return;
     }
 
-    if (!Number.isNaN(saida.getTime()) && retorno < saida) {
-      toast.error("A data de retorno não pode ser anterior à data de saída.");
+    if (!Number.isFinite(saidaTimestamp)) {
+      toast.error(
+        "A data de início da manutenção é inválida. Confira o cadastro.",
+      );
+      return;
+    }
+
+    if (retorno.getTime() < saidaTimestamp) {
+      toast.error(
+        interna
+          ? "A conclusão não pode ser anterior ao início do atendimento."
+          : "A data de retorno não pode ser anterior à data de saída.",
+      );
       return;
     }
 
     let custoConvertido: number | undefined;
 
     if (custo.trim()) {
-      custoConvertido = Number(custo.replace(",", "."));
+      custoConvertido = Number(custo.trim().replace(",", "."));
 
       if (!Number.isFinite(custoConvertido) || custoConvertido < 0) {
         toast.error("Informe um custo válido.");
@@ -126,191 +191,208 @@ export function FinalizarManutencaoModal({
       }
     }
 
-    try {
-      setSalvando(true);
+    envioEmAndamento.current = true;
+    setSalvando(true);
 
+    try {
       const resultado = await manutencaoService.finalizar(manutencao.id, {
         diagnostico: diagnosticoLimpo || null,
-
         solucao: solucaoLimpa,
-
-        custo: custoConvertido,
-
+        ...(custoConvertido !== undefined ? { custo: custoConvertido } : {}),
         observacoes: observacoes.trim() || null,
 
+        // A API utiliza dataRetorno para ambos os tipos.
         dataRetorno: retorno.toISOString(),
       });
 
-      toast.success(resultado.mensagem || "Manutenção finalizada com sucesso.");
+      finalizadaRef.current = true;
 
-      await onSucesso?.();
-      onFechar();
+      toast.success(resultado.mensagem || "Manutenção finalizada com sucesso.");
     } catch (error) {
       console.error("Erro ao finalizar manutenção:", error);
-
       toast.error(mensagemDoErro(error));
-    } finally {
-      setSalvando(false);
-    }
-  }
 
-  function fechar() {
-    if (!salvando) {
+      envioEmAndamento.current = false;
+      setSalvando(false);
+      return;
+    }
+
+    try {
+      await onSucesso?.();
+    } catch (error) {
+      console.error("Erro ao atualizar a listagem:", error);
+
+      toast.warning(
+        "A manutenção foi finalizada, mas a listagem não foi atualizada. Atualize a página.",
+      );
+    } finally {
+      envioEmAndamento.current = false;
       onFechar();
     }
   }
 
   return (
-    <Modal aberto={aberto} titulo="Finalizar manutenção" onClose={fechar}>
-      {manutencao && (
-        <form className="space-y-5" onSubmit={finalizar}>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+    <Modal aberto titulo="Finalizar manutenção" onClose={fechar}>
+      <form className="space-y-5" onSubmit={finalizar}>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Equipamento
+          </p>
+
+          <p className="mt-1 break-words font-semibold text-slate-900">
+            {manutencao.equipamento.nome}
+          </p>
+
+          <p className="text-sm text-slate-500">
+            {manutencao.equipamento.patrimonio || "Sem patrimônio"}
+          </p>
+
+          <p className="mt-2 text-sm font-medium text-slate-600">
+            {interna
+              ? "Manutenção interna — equipe de TI"
+              : "Manutenção externa — assistência técnica"}
+          </p>
+
+          {interna && (
+            <p className="mt-1 text-sm text-slate-600">
+              Técnico responsável:{" "}
+              {manutencao.tecnicoResponsavel?.nome || "Não informado"}
+            </p>
+          )}
+
+          <div className="mt-3 border-t border-slate-200 pt-3">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              Equipamento
+              Problema informado
             </p>
 
-            <p className="mt-1 font-semibold text-slate-900">
-              {manutencao.equipamento.nome}
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+              {manutencao.problemaInformado}
             </p>
-
-            <p className="text-sm text-slate-500">
-              {manutencao.equipamento.patrimonio || "Sem patrimônio"}
-            </p>
-
-            <div className="mt-3 border-t border-slate-200 pt-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Problema informado
-              </p>
-
-              <p className="mt-1 break-words text-sm text-slate-700">
-                {manutencao.problemaInformado}
-              </p>
-            </div>
           </div>
+        </div>
 
+        {!emAndamento && (
+          <p
+            role="status"
+            className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
+          >
+            Esta manutenção já foi finalizada.
+          </p>
+        )}
+
+        <div>
+          <label htmlFor="diagnostico" className={classeLabel}>
+            Diagnóstico
+          </label>
+
+          <textarea
+            id="diagnostico"
+            value={diagnostico}
+            onChange={(event) => setDiagnostico(event.target.value)}
+            rows={3}
+            disabled={desabilitado}
+            placeholder="Descreva o diagnóstico encontrado"
+            className={`${classeCampo} resize-y`}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="solucao" className={classeLabel}>
+            Solução <span className="text-red-500">*</span>
+          </label>
+
+          <textarea
+            id="solucao"
+            value={solucao}
+            onChange={(event) => setSolucao(event.target.value)}
+            rows={3}
+            minLength={3}
+            required
+            disabled={desabilitado}
+            placeholder="Descreva o serviço realizado"
+            className={`${classeCampo} resize-y`}
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label
-              htmlFor="diagnostico"
-              className="mb-1 block text-sm font-medium text-slate-700"
-            >
-              Diagnóstico
+            <label htmlFor="dataRetorno" className={classeLabel}>
+              {tituloData} <span className="text-red-500">*</span>
             </label>
 
-            <textarea
-              id="diagnostico"
-              value={diagnostico}
-              onChange={(event) => setDiagnostico(event.target.value)}
-              rows={3}
-              disabled={salvando}
-              placeholder="Descreva o diagnóstico encontrado"
-              className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="solucao"
-              className="mb-1 block text-sm font-medium text-slate-700"
-            >
-              Solução <span className="text-red-500">*</span>
-            </label>
-
-            <textarea
-              id="solucao"
-              value={solucao}
-              onChange={(event) => setSolucao(event.target.value)}
-              rows={3}
-              minLength={3}
+            <input
+              id="dataRetorno"
+              type="datetime-local"
+              step="1"
+              value={dataRetorno}
+              min={dataMinima}
+              onChange={(event) => setDataRetorno(event.target.value)}
               required
-              disabled={salvando}
-              placeholder="Descreva o serviço realizado"
-              className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+              disabled={desabilitado}
+              className={classeCampo}
             />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label
-                htmlFor="dataRetorno"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
-                Data de retorno <span className="text-red-500">*</span>
-              </label>
-
-              <input
-                id="dataRetorno"
-                type="datetime-local"
-                value={dataRetorno}
-                min={formatarParaInputDataHora(manutencao.dataSaida)}
-                onChange={(event) => setDataRetorno(event.target.value)}
-                required
-                disabled={salvando}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="custoFinal"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
-                Custo final (R$)
-              </label>
-
-              <input
-                id="custoFinal"
-                type="text"
-                inputMode="decimal"
-                value={custo}
-                onChange={(event) => setCusto(event.target.value)}
-                disabled={salvando}
-                placeholder="0,00"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
-              />
-            </div>
           </div>
 
           <div>
-            <label
-              htmlFor="observacoesFinalizacao"
-              className="mb-1 block text-sm font-medium text-slate-700"
-            >
-              Observações
+            <label htmlFor="custoFinal" className={classeLabel}>
+              Custo final (R$)
             </label>
 
-            <textarea
-              id="observacoesFinalizacao"
-              value={observacoes}
-              onChange={(event) => setObservacoes(event.target.value)}
-              rows={3}
-              disabled={salvando}
-              placeholder="Informações adicionais sobre a manutenção"
-              className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+            <input
+              id="custoFinal"
+              type="text"
+              inputMode="decimal"
+              value={custo}
+              onChange={(event) => setCusto(event.target.value)}
+              disabled={desabilitado}
+              placeholder="0,00"
+              className={classeCampo}
             />
-          </div>
 
-          <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={fechar}
-              disabled={salvando}
-              className="w-full sm:w-auto"
-            >
-              Cancelar
-            </Button>
-
-            <Button
-              type="submit"
-              loading={salvando}
-              className="w-full sm:w-auto"
-            >
-              <CheckCircle2 size={18} />
-              Finalizar manutenção
-            </Button>
+            <p className="mt-1 text-xs text-slate-500">
+              Deixe vazio para manter o custo registrado. Informe 0 se não houve
+              custo.
+            </p>
           </div>
-        </form>
-      )}
+        </div>
+
+        <div>
+          <label htmlFor="observacoesFinalizacao" className={classeLabel}>
+            Observações
+          </label>
+
+          <textarea
+            id="observacoesFinalizacao"
+            value={observacoes}
+            onChange={(event) => setObservacoes(event.target.value)}
+            rows={3}
+            disabled={desabilitado}
+            placeholder="Informações adicionais sobre a manutenção"
+            className={`${classeCampo} resize-y`}
+          />
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={fechar}
+            disabled={salvando}
+            className="w-full sm:w-auto"
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            type="submit"
+            disabled={desabilitado}
+            className="w-full sm:w-auto"
+          >
+            <CheckCircle2 size={18} />
+            <span>{salvando ? "Finalizando..." : "Finalizar manutenção"}</span>
+          </Button>
+        </div>
+      </form>
     </Modal>
   );
 }

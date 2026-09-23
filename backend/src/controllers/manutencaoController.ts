@@ -4,7 +4,7 @@ import {
   ManutencaoService,
   type TipoManutencao,
 } from "../services/manutencaoService";
-
+import { usuarioPossuiPermissoes } from "../middlewares/permissaoMiddleware";
 import { AppError } from "../errors/AppError";
 
 export class ManutencaoController {
@@ -112,12 +112,29 @@ export class ManutencaoController {
     next: NextFunction,
   ) => {
     try {
+      const usuarioId = this.obterUsuarioAutenticadoId(req);
       const equipamentoId = Number(req.params.equipamentoId);
+
+      const podeVerEmpresas = await usuarioPossuiPermissoes(
+        usuarioId,
+        "empresas.visualizar",
+      );
 
       const garantia =
         await this.service.consultarGarantiaEquipamento(equipamentoId);
 
-      return res.status(200).json(garantia);
+      const { fornecedor, ...dadosGarantia } = garantia;
+
+      return res.status(200).json({
+        ...dadosGarantia,
+
+        // Informações necessárias para verificar o encaminhamento.
+        fornecedorCadastrado: fornecedor !== null,
+        fornecedorAtivo: fornecedor?.ativo === true,
+
+        // Dados cadastrais disponíveis somente com permissão.
+        fornecedor: podeVerEmpresas ? fornecedor : null,
+      });
     } catch (error) {
       next(error);
     }

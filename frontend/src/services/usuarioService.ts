@@ -10,6 +10,11 @@ export interface Usuario {
   atualizadoEm: string;
 }
 
+export interface TecnicoOption {
+  id: number;
+  nome: string;
+}
+
 export interface CriarUsuarioDTO {
   nome: string;
   email: string;
@@ -25,31 +30,51 @@ export interface AtualizarUsuarioDTO {
   ativo?: boolean;
 }
 
+interface RespostaApi<T> {
+  sucesso: boolean;
+  data: T;
+}
+
 export const usuarioService = {
+  async listarTecnicos(): Promise<TecnicoOption[]> {
+    const response =
+      await api.get<RespostaApi<TecnicoOption[]>>("/usuarios/tecnicos");
+
+    return response.data.data;
+  },
+
   async listar(): Promise<Usuario[]> {
-    const response = await api.get("/usuarios");
+    const response = await api.get<RespostaApi<Usuario[]>>("/usuarios");
+
     return response.data.data;
   },
 
   async buscar(id: number): Promise<Usuario> {
-    const response = await api.get(`/usuarios/${id}`);
+    const response = await api.get<RespostaApi<Usuario>>(`/usuarios/${id}`);
+
     return response.data.data;
   },
 
   async criar(dados: CriarUsuarioDTO): Promise<Usuario> {
-    const response = await api.post("/usuarios", dados);
+    const response = await api.post<RespostaApi<Usuario>>("/usuarios", dados);
+
     return response.data.data;
   },
 
   async atualizar(id: number, dados: AtualizarUsuarioDTO): Promise<Usuario> {
-    const response = await api.put(`/usuarios/${id}`, dados);
+    const response = await api.put<RespostaApi<Usuario>>(
+      `/usuarios/${id}`,
+      dados,
+    );
+
     return response.data.data;
   },
 
   async alterarStatus(id: number, ativo: boolean): Promise<Usuario> {
-    const response = await api.patch(`/usuarios/${id}/status`, {
-      ativo,
-    });
+    const response = await api.patch<RespostaApi<Usuario>>(
+      `/usuarios/${id}/status`,
+      { ativo },
+    );
 
     return response.data.data;
   },

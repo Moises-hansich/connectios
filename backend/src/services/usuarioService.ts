@@ -112,6 +112,18 @@ async function protegerUltimoAdministrador(
   }
 }
 export const usuarioService = {
+  async listarTecnicos() {
+    return prisma.usuario.findMany({
+      where: {
+        ativo: true,
+      },
+      select: {
+        id: true,
+        nome: true,
+      },
+      orderBy: [{ nome: "asc" }, { id: "asc" }],
+    });
+  },
   async listar() {
     return usuarioRepository.listar();
   },

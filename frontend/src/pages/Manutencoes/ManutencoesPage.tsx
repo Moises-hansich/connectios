@@ -1,4 +1,5 @@
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,24 +9,30 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+
 import { toast } from "sonner";
 
+import { useAuth } from "../../hooks/useAuth";
 import { MainLayout } from "../../layouts/MainLayout";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { Skeleton } from "../../components/Skeleton";
 
 import { manutencaoService } from "../../services/manutencaoService";
+import { equipamentoService } from "../../services/equipamentoService";
+
 import {
   ManutencaoTable,
   FinalizarManutencaoModal,
   DetalhesManutencaoModal,
 } from "../../components/Manutencoes";
-import type { Manutencao, StatusManutencao } from "../../types/manutencao";
-import { equipamentoService } from "../../services/equipamentoService";
-import type { Equipamento } from "../../types/equipamento";
 
 import { AbrirManutencaoModal } from "../../components/Manutencoes/AbrirManutencaoModal";
+
+import type { Manutencao, StatusManutencao } from "../../types/manutencao";
+
+import type { Equipamento } from "../../types/equipamento";
+
 interface FiltrosFormulario {
   status: "" | StatusManutencao;
   dataInicio: string;
@@ -38,135 +45,187 @@ const filtrosIniciais: FiltrosFormulario = {
   dataFim: "",
 };
 
+const classeCampo =
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100";
+
 export function ManutencoesPage() {
+  const { carregando, carregandoPermissoes, temTodasPermissoes } = useAuth();
+
+  if (carregando || carregandoPermissoes) {
+    return (
+      <MainLayout>
+        <Skeleton />
+      </MainLayout>
+    );
+  }
+
+  if (!temTodasPermissoes("manutencoes.visualizar")) {
+    return (
+      <MainLayout>
+        <Card className="p-8 text-center">
+          <Wrench size={36} className="mx-auto mb-3 text-slate-400" />
+
+          <h1 className="text-xl font-semibold text-slate-900">
+            Acesso não permitido
+          </h1>
+
+          <p className="mt-2 text-sm text-slate-600">
+            Você não possui permissão para visualizar manutenções.
+          </p>
+        </Card>
+      </MainLayout>
+    );
+  }
+
+  return <ConteudoManutencoes />;
+}
+
+function ConteudoManutencoes() {
+  const { temTodasPermissoes } = useAuth();
+
+  const podeAbrir = temTodasPermissoes(
+    "manutencoes.visualizar",
+    "manutencoes.abrir",
+    "equipamentos.visualizar",
+  );
+
+  const podeFinalizar = temTodasPermissoes(
+    "manutencoes.visualizar",
+    "manutencoes.finalizar",
+  );
+
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [versao, setVersao] = useState(0);
+
+  const [pagina, setPagina] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
 
   const [filtrosFormulario, setFiltrosFormulario] =
     useState<FiltrosFormulario>(filtrosIniciais);
 
   const [filtrosAplicados, setFiltrosAplicados] =
     useState<FiltrosFormulario>(filtrosIniciais);
+
   const [selecaoEquipamentoAberta, setSelecaoEquipamentoAberta] =
     useState(false);
 
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
   const [carregandoEquipamentos, setCarregandoEquipamentos] = useState(false);
+
   const [erroEquipamentos, setErroEquipamentos] = useState(false);
+  const [tentativaEquipamentos, setTentativaEquipamentos] = useState(0);
+
   const [equipamentoIdSelecionado, setEquipamentoIdSelecionado] = useState("");
 
   const [equipamentoCadastro, setEquipamentoCadastro] =
     useState<Equipamento | null>(null);
-  const [pagina, setPagina] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPaginas, setTotalPaginas] = useState(0);
-  const [carregando, setCarregando] = useState(true);
+
   const [manutencaoFinalizacao, setManutencaoFinalizacao] =
     useState<Manutencao | null>(null);
+
   const [manutencaoDetalhes, setManutencaoDetalhes] =
     useState<Manutencao | null>(null);
-  const carregarManutencoes = useCallback(async () => {
-    try {
-      await Promise.resolve();
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregar() {
       setCarregando(true);
+      setErro("");
 
-      const resultado = await manutencaoService.listar({
-        status: filtrosAplicados.status || undefined,
+      try {
+        const resultado = await manutencaoService.listar({
+          ...(filtrosAplicados.status
+            ? { status: filtrosAplicados.status }
+            : {}),
 
-        dataInicio: filtrosAplicados.dataInicio
-          ? `${filtrosAplicados.dataInicio}T00:00:00`
-          : undefined,
+          ...(filtrosAplicados.dataInicio
+            ? {
+                dataInicio: `${filtrosAplicados.dataInicio}T00:00:00`,
+              }
+            : {}),
 
-        dataFim: filtrosAplicados.dataFim
-          ? `${filtrosAplicados.dataFim}T23:59:59.999`
-          : undefined,
+          ...(filtrosAplicados.dataFim
+            ? {
+                dataFim: `${filtrosAplicados.dataFim}T23:59:59.999`,
+              }
+            : {}),
 
-        page: pagina,
-        limit: 10,
-      });
+          page: pagina,
+          limit: 10,
+        });
 
-      setManutencoes(resultado.manutencoes);
-      setTotal(resultado.total);
-      setTotalPaginas(resultado.totalPages);
-    } catch (error) {
-      console.error("Erro ao carregar manutenções:", error);
+        if (!ativo) return;
 
-      toast.error("Não foi possível carregar as manutenções.");
+        if (resultado.totalPages > 0 && pagina > resultado.totalPages) {
+          setPagina(resultado.totalPages);
+          return;
+        }
 
-      setManutencoes([]);
-      setTotal(0);
-      setTotalPaginas(0);
-    } finally {
-      setCarregando(false);
+        setManutencoes(resultado.manutencoes);
+        setTotal(resultado.total);
+        setTotalPaginas(resultado.totalPages);
+      } catch (error) {
+        if (!ativo) return;
+
+        console.error("Erro ao carregar manutenções:", error);
+
+        setManutencoes([]);
+        setTotal(0);
+        setTotalPaginas(0);
+        setErro("Não foi possível carregar as manutenções.");
+      } finally {
+        if (ativo) {
+          setCarregando(false);
+        }
+      }
     }
-  }, [filtrosAplicados, pagina]);
+
+    void carregar();
+
+    return () => {
+      ativo = false;
+    };
+  }, [filtrosAplicados, pagina, versao]);
 
   useEffect(() => {
-    void carregarManutencoes();
-  }, [carregarManutencoes]);
-
-  function aplicarFiltros(event: FormEvent) {
-    event.preventDefault();
-
-    if (
-      filtrosFormulario.dataInicio &&
-      filtrosFormulario.dataFim &&
-      filtrosFormulario.dataInicio > filtrosFormulario.dataFim
-    ) {
-      toast.error("A data inicial não pode ser posterior à data final.");
-
-      return;
+    if (!podeAbrir) {
+      setSelecaoEquipamentoAberta(false);
+      setEquipamentoCadastro(null);
+      setEquipamentoIdSelecionado("");
+      setEquipamentos([]);
     }
 
-    setPagina(1);
-    setFiltrosAplicados({
-      ...filtrosFormulario,
-    });
-  }
+    if (!podeFinalizar) {
+      setManutencaoFinalizacao(null);
+    }
+  }, [podeAbrir, podeFinalizar]);
 
-  function limparFiltros() {
-    setPagina(1);
-    setFiltrosFormulario(filtrosIniciais);
-    setFiltrosAplicados(filtrosIniciais);
-  }
-
-  function abrirModalFinalizacao(manutencao: Manutencao) {
-    setManutencaoFinalizacao(manutencao);
-  }
-
-  function fecharModalFinalizacao() {
-    setManutencaoFinalizacao(null);
-  }
-  function abrirModalDetalhes(manutencao: Manutencao) {
-    setManutencaoDetalhes(manutencao);
-  }
-
-  function fecharModalDetalhes() {
-    setManutencaoDetalhes(null);
-  }
   useEffect(() => {
-    if (!selecaoEquipamentoAberta) {
+    if (!selecaoEquipamentoAberta || !podeAbrir) {
       return;
     }
 
     let ativo = true;
 
     async function carregarEquipamentos() {
-      try {
-        setCarregandoEquipamentos(true);
-        setErroEquipamentos(false);
+      setCarregandoEquipamentos(true);
+      setErroEquipamentos(false);
 
+      try {
         const dados = await equipamentoService.listar();
 
         if (ativo) {
           setEquipamentos(dados);
         }
       } catch (error) {
-        console.error("Erro ao carregar equipamentos:", error);
-
         if (ativo) {
+          console.error("Erro ao carregar equipamentos:", error);
           setEquipamentos([]);
           setErroEquipamentos(true);
-          toast.error("Não foi possível carregar os equipamentos.");
         }
       } finally {
         if (ativo) {
@@ -182,15 +241,47 @@ export function ManutencoesPage() {
     }
 
     void carregarEquipamentos();
+
     window.addEventListener("keydown", fecharComEscape);
 
     return () => {
       ativo = false;
       window.removeEventListener("keydown", fecharComEscape);
     };
-  }, [selecaoEquipamentoAberta]);
+  }, [selecaoEquipamentoAberta, podeAbrir, tentativaEquipamentos]);
+
+  function atualizarManutencoes() {
+    setVersao((anterior) => anterior + 1);
+  }
+
+  function aplicarFiltros(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (
+      filtrosFormulario.dataInicio &&
+      filtrosFormulario.dataFim &&
+      filtrosFormulario.dataInicio > filtrosFormulario.dataFim
+    ) {
+      toast.error("A data inicial não pode ser posterior à data final.");
+      return;
+    }
+
+    setPagina(1);
+    setFiltrosAplicados({ ...filtrosFormulario });
+  }
+
+  function limparFiltros() {
+    setPagina(1);
+    setFiltrosFormulario({ ...filtrosIniciais });
+    setFiltrosAplicados({ ...filtrosIniciais });
+  }
 
   function abrirCadastroManutencao() {
+    if (!podeAbrir) {
+      toast.error("Você não possui permissão para abrir manutenções.");
+      return;
+    }
+
     setEquipamentoIdSelecionado("");
     setEquipamentos([]);
     setErroEquipamentos(false);
@@ -201,12 +292,21 @@ export function ManutencoesPage() {
   function continuarCadastro(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (!podeAbrir) return;
+
     const equipamento = equipamentos.find(
       (item) => item.id === Number(equipamentoIdSelecionado),
     );
 
     if (!equipamento) {
       toast.error("Selecione um equipamento.");
+      return;
+    }
+
+    if (equipamento.instaladoEmId != null) {
+      toast.info(
+        "Registre o atendimento no computador ou retire a peça antes de abrir sua manutenção.",
+      );
       return;
     }
 
@@ -219,8 +319,42 @@ export function ManutencoesPage() {
   }
 
   async function finalizarCadastroManutencao() {
-    await carregarManutencoes();
+    setEquipamentoCadastro(null);
+    atualizarManutencoes();
   }
+
+  function abrirModalFinalizacao(manutencao: Manutencao) {
+    if (!podeFinalizar) {
+      toast.error("Você não possui permissão para finalizar manutenções.");
+      return;
+    }
+
+    if (manutencao.status !== "EM_ANDAMENTO") {
+      toast.info("Esta manutenção já foi finalizada.");
+      return;
+    }
+
+    setManutencaoFinalizacao(manutencao);
+  }
+
+  function fecharModalFinalizacao() {
+    setManutencaoFinalizacao(null);
+  }
+
+  async function concluirFinalizacao() {
+    setManutencaoFinalizacao(null);
+    setManutencaoDetalhes(null);
+    atualizarManutencoes();
+  }
+
+  function abrirModalDetalhes(manutencao: Manutencao) {
+    setManutencaoDetalhes(manutencao);
+  }
+
+  function fecharModalDetalhes() {
+    setManutencaoDetalhes(null);
+  }
+
   return (
     <MainLayout>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -238,10 +372,12 @@ export function ManutencoesPage() {
           </div>
         </div>
 
-        <Button type="button" onClick={abrirCadastroManutencao}>
-          <Plus size={18} />
-          Cadastrar manutenção
-        </Button>
+        {podeAbrir && (
+          <Button type="button" onClick={abrirCadastroManutencao}>
+            <Plus size={18} />
+            Cadastrar manutenção
+          </Button>
+        )}
       </div>
 
       <Card className="mb-6">
@@ -266,7 +402,7 @@ export function ManutencoesPage() {
                   status: event.target.value as FiltrosFormulario["status"],
                 }))
               }
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className={classeCampo}
             >
               <option value="">Todos</option>
               <option value="EM_ANDAMENTO">Em andamento</option>
@@ -292,7 +428,7 @@ export function ManutencoesPage() {
                   dataInicio: event.target.value,
                 }))
               }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className={classeCampo}
             />
           </div>
 
@@ -314,7 +450,7 @@ export function ManutencoesPage() {
                   dataFim: event.target.value,
                 }))
               }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className={classeCampo}
             />
           </div>
 
@@ -348,6 +484,19 @@ export function ManutencoesPage() {
           <div className="p-5">
             <Skeleton />
           </div>
+        ) : erro ? (
+          <div className="space-y-4 p-8 text-center">
+            <p className="text-sm text-red-600">{erro}</p>
+
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={atualizarManutencoes}
+            >
+              <RotateCcw size={18} />
+              Tentar novamente
+            </Button>
+          </div>
         ) : (
           <ManutencaoTable
             manutencoes={manutencoes}
@@ -356,7 +505,7 @@ export function ManutencoesPage() {
           />
         )}
 
-        {!carregando && totalPaginas > 1 && (
+        {!carregando && !erro && totalPaginas > 1 && (
           <div className="flex flex-col gap-3 border-t border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-center text-sm text-slate-500 sm:text-left">
               Página {pagina} de {totalPaginas}
@@ -391,7 +540,7 @@ export function ManutencoesPage() {
         )}
       </Card>
 
-      {selecaoEquipamentoAberta && (
+      {podeAbrir && selecaoEquipamentoAberta && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
           onMouseDown={(event) => {
@@ -448,7 +597,7 @@ export function ManutencoesPage() {
                   onChange={(event) =>
                     setEquipamentoIdSelecionado(event.target.value)
                   }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                  className={classeCampo}
                 >
                   <option value="">
                     {carregandoEquipamentos
@@ -467,10 +616,22 @@ export function ManutencoesPage() {
                 </select>
 
                 {erroEquipamentos && (
-                  <p className="mt-2 text-sm text-red-600">
-                    Não foi possível carregar os equipamentos. Feche e abra
-                    novamente para tentar outra vez.
-                  </p>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-sm text-red-600">
+                      Não foi possível carregar os equipamentos.
+                    </p>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        setTentativaEquipamentos((anterior) => anterior + 1)
+                      }
+                    >
+                      <RotateCcw size={16} />
+                      Tentar novamente
+                    </Button>
+                  </div>
                 )}
 
                 {!carregandoEquipamentos &&
@@ -508,7 +669,7 @@ export function ManutencoesPage() {
         </div>
       )}
 
-      {equipamentoCadastro && (
+      {podeAbrir && equipamentoCadastro && (
         <AbrirManutencaoModal
           aberto
           equipamento={equipamentoCadastro}
@@ -517,18 +678,22 @@ export function ManutencoesPage() {
         />
       )}
 
-      <FinalizarManutencaoModal
-        aberto={manutencaoFinalizacao !== null}
-        manutencao={manutencaoFinalizacao}
-        onFechar={fecharModalFinalizacao}
-        onSucesso={carregarManutencoes}
-      />
+      {podeFinalizar && manutencaoFinalizacao && (
+        <FinalizarManutencaoModal
+          aberto
+          manutencao={manutencaoFinalizacao}
+          onFechar={fecharModalFinalizacao}
+          onSucesso={concluirFinalizacao}
+        />
+      )}
 
-      <DetalhesManutencaoModal
-        aberto={manutencaoDetalhes !== null}
-        manutencao={manutencaoDetalhes}
-        onFechar={fecharModalDetalhes}
-      />
+      {manutencaoDetalhes && (
+        <DetalhesManutencaoModal
+          aberto
+          manutencao={manutencaoDetalhes}
+          onFechar={fecharModalDetalhes}
+        />
+      )}
     </MainLayout>
   );
 }

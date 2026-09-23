@@ -1,30 +1,48 @@
 import { Router } from "express";
+
 import { localizacaoController } from "../controllers/localizacaoController";
 import { authMiddleware } from "../middlewares/authMiddleware";
-import { adminMiddleware } from "../middlewares/adminMiddleware";
+import { exigirPermissao } from "../middlewares/permissaoMiddleware";
 
 const router = Router();
 
 router.use(authMiddleware);
 
-router.get("/", (req, res) => localizacaoController.listar(req, res));
-
-router.get("/:id/colaboradores", (req, res) =>
-  localizacaoController.listarColaboradores(req, res),
+router.get("/", exigirPermissao("localizacoes.visualizar"), (req, res) =>
+  localizacaoController.listar(req, res),
 );
 
-router.get("/:id", (req, res) => localizacaoController.buscarPorId(req, res));
-
-router.post("/", adminMiddleware, (req, res) =>
-  localizacaoController.criar(req, res),
+router.get(
+  "/:id/colaboradores",
+  exigirPermissao(
+    "localizacoes.visualizar",
+    "colaboradores.visualizar",
+    "equipamentos.visualizar",
+    "zabbix.visualizar",
+  ),
+  (req, res) => localizacaoController.listarColaboradores(req, res),
 );
 
-router.put("/:id", adminMiddleware, (req, res) =>
-  localizacaoController.atualizar(req, res),
+router.get("/:id", exigirPermissao("localizacoes.visualizar"), (req, res) =>
+  localizacaoController.buscarPorId(req, res),
 );
 
-router.delete("/:id", adminMiddleware, (req, res) =>
-  localizacaoController.excluir(req, res),
+router.post(
+  "/",
+  exigirPermissao("localizacoes.visualizar", "localizacoes.criar"),
+  (req, res) => localizacaoController.criar(req, res),
+);
+
+router.put(
+  "/:id",
+  exigirPermissao("localizacoes.visualizar", "localizacoes.editar"),
+  (req, res) => localizacaoController.atualizar(req, res),
+);
+
+router.delete(
+  "/:id",
+  exigirPermissao("localizacoes.visualizar", "localizacoes.excluir"),
+  (req, res) => localizacaoController.excluir(req, res),
 );
 
 export default router;

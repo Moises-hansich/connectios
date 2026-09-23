@@ -1,32 +1,36 @@
+import { AppError } from "../errors/AppError";
+
 import {
   localizacaoRepository,
   type CreateLocalizacaoData,
   type UpdateLocalizacaoData,
 } from "../repositories/localizacaoRepository";
+
 import { zabbixService, type ZabbixHost } from "./zabbixService";
+
 export class LocalizacaoService {
   async listar() {
     return localizacaoRepository.findAll();
   }
 
   async buscarPorId(id: number) {
+    this.validarId(id);
+
     const localizacao = await localizacaoRepository.findById(id);
 
     if (!localizacao) {
-      throw new Error("Localização não encontrada.");
+      throw new AppError("Localização não encontrada.", 404);
     }
 
     return localizacao;
   }
+
   async listarColaboradores(id: number) {
     const localizacao = await this.buscarPorId(id);
 
     const colaboradores = await localizacaoRepository.findColaboradores(id);
 
-    /*
-     * Consulta o grupo PCS INTERNOS uma única vez.
-     * Depois relaciona os hosts pelo zabbixHostId.
-     */
+    // Consulta os hosts uma vez e relaciona pelo zabbixHostId.
     let hostsZabbix: ZabbixHost[] = [];
 
     try {
@@ -87,47 +91,97 @@ export class LocalizacaoService {
   }
 
   async criar(data: CreateLocalizacaoData) {
-    const nome = data.nome.trim();
+    this.validarCorpo(data);
 
-    if (!nome) {
-      throw new Error("O nome da localização é obrigatório.");
-    }
+    const nome = this.validarNome(data.nome);
+    const descricao = this.validarDescricao(data.descricao);
 
     const existente = await localizacaoRepository.findByNome(nome);
 
     if (existente) {
-      throw new Error("Já existe uma localização com esse nome.");
+      throw new AppError("Já existe uma localização com esse nome.", 409);
     }
 
-    return localizacaoRepository.create({
-      nome,
-      descricao: data.descricao?.trim() || undefined,
-    });
+    const dados: CreateLocalizacaoData = { nome };
+
+    if (descricao !== undefined) {
+      dados.descricao = descricao;
+    }
+
+    return localizacaoRepository.create(dados);
   }
 
   async atualizar(id: number, data: UpdateLocalizacaoData) {
+    this.validarId(id);
+    this.validarCorpo(data);
+
+    const dados: UpdateLocalizacaoData = {};
+
+    // Se o nome não foi enviado, preserva o valor existente.
+    if (data.nome !== undefined) {
+      dados.nome = this.validarNome(data.nome);
+    }
+
+    if (data.descricao !== undefined) {
+      dados.descricao = this.validarDescricao(data.descricao)!;
+    }
+
     await this.buscarPorId(id);
 
-    if (data.nome) {
-      const existente = await localizacaoRepository.findByNome(
-        data.nome.trim(),
-      );
+    if (dados.nome !== undefined) {
+      const existente = await localizacaoRepository.findByNome(dados.nome);
 
       if (existente && existente.id !== id) {
-        throw new Error("Já existe uma localização com esse nome.");
+        throw new AppError("Já existe uma localização com esse nome.", 409);
       }
     }
 
-    return localizacaoRepository.update(id, {
-      nome: data.nome?.trim(),
-      descricao: data.descricao?.trim() || undefined,
-    });
+    return localizacaoRepository.update(id, dados);
   }
 
   async excluir(id: number) {
     await this.buscarPorId(id);
 
     return localizacaoRepository.delete(id);
+  }
+
+  private validarId(id: number): void {
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new AppError("ID da localização inválido.", 400);
+    }
+  }
+
+  private validarCorpo(data: unknown): void {
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      throw new AppError("Envie um objeto com os dados da localização.", 400);
+    }
+  }
+
+  private validarNome(valor: unknown): string {
+    if (typeof valor !== "string") {
+      throw new AppError("O nome da localização deve ser um texto.", 400);
+    }
+
+    const nome = valor.trim();
+
+    if (!nome) {
+      throw new AppError("O nome da localização é obrigatório.", 400);
+    }
+
+    return nome;
+  }
+
+  private validarDescricao(valor: unknown): string | undefined {
+    if (valor === undefined) {
+      return undefined;
+    }
+
+    if (typeof valor !== "string") {
+      throw new AppError("A descrição da localização deve ser um texto.", 400);
+    }
+
+    // Uma string vazia permite limpar a descrição na edição.
+    return valor.trim();
   }
 }
 

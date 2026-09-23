@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   MapPin,
+  User,
   Wrench,
 } from "lucide-react";
 
@@ -24,7 +25,7 @@ interface CampoTextoProps {
   valor: string | null | undefined;
 }
 
-function formatarData(data: string | null) {
+function formatarData(data: string | null | undefined): string {
   if (!data) {
     return "Não informado";
   }
@@ -41,14 +42,14 @@ function formatarData(data: string | null) {
   });
 }
 
-function formatarCusto(custo: string | number | null) {
-  if (custo === null || String(custo).trim() === "") {
+function formatarCusto(custo: string | number | null | undefined): string {
+  if (custo == null || String(custo).trim() === "") {
     return "Não informado";
   }
 
   const valor = Number(custo);
 
-  if (Number.isNaN(valor)) {
+  if (!Number.isFinite(valor)) {
     return "Não informado";
   }
 
@@ -58,11 +59,11 @@ function formatarCusto(custo: string | number | null) {
   });
 }
 
-function textoStatus(status: StatusManutencao) {
+function textoStatus(status: StatusManutencao): string {
   return status === "EM_ANDAMENTO" ? "Em andamento" : "Finalizada";
 }
 
-function classeStatus(status: StatusManutencao) {
+function classeStatus(status: StatusManutencao): string {
   return status === "EM_ANDAMENTO"
     ? "bg-amber-100 text-amber-700"
     : "bg-emerald-100 text-emerald-700";
@@ -70,7 +71,7 @@ function classeStatus(status: StatusManutencao) {
 
 function CampoTexto({ titulo, valor }: CampoTextoProps) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
         {titulo}
       </p>
@@ -87,6 +88,15 @@ export function DetalhesManutencaoModal({
   manutencao,
   onFechar,
 }: DetalhesManutencaoModalProps) {
+  const interna = manutencao?.tipo === "INTERNA";
+
+  const intervencoes = (manutencao?.movimentacoes ?? []).filter(
+    (movimentacao) =>
+      movimentacao.equipamentoId === manutencao?.equipamentoId &&
+      (movimentacao.tipo === "INSTALACAO_PECA" ||
+        movimentacao.tipo === "RETIRADA_PECA"),
+  );
+
   return (
     <Modal aberto={aberto} titulo="Detalhes da manutenção" onClose={onFechar}>
       {manutencao && (
@@ -105,6 +115,12 @@ export function DetalhesManutencaoModal({
                 <p className="text-sm text-slate-500">
                   Patrimônio:{" "}
                   {manutencao.equipamento.patrimonio || "Não informado"}
+                </p>
+
+                <p className="mt-2 text-sm font-medium text-slate-600">
+                  {interna
+                    ? "Manutenção interna — equipe de TI"
+                    : "Manutenção externa — assistência técnica"}
                 </p>
               </div>
 
@@ -147,21 +163,30 @@ export function DetalhesManutencaoModal({
 
               <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="text-slate-500">Saída</dt>
+                  <dt className="text-slate-500">
+                    {interna ? "Início do atendimento" : "Saída"}
+                  </dt>
+
                   <dd className="font-medium text-slate-700">
                     {formatarData(manutencao.dataSaida)}
                   </dd>
                 </div>
 
                 <div>
-                  <dt className="text-slate-500">Previsão de retorno</dt>
+                  <dt className="text-slate-500">
+                    {interna ? "Previsão de conclusão" : "Previsão de retorno"}
+                  </dt>
+
                   <dd className="font-medium text-slate-700">
                     {formatarData(manutencao.previsaoRetorno)}
                   </dd>
                 </div>
 
                 <div>
-                  <dt className="text-slate-500">Retorno realizado</dt>
+                  <dt className="text-slate-500">
+                    {interna ? "Conclusão do atendimento" : "Retorno realizado"}
+                  </dt>
+
                   <dd className="font-medium text-slate-700">
                     {formatarData(manutencao.dataRetorno)}
                   </dd>
@@ -176,21 +201,35 @@ export function DetalhesManutencaoModal({
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-start gap-2">
-                  <Building2
-                    size={17}
-                    className="mt-0.5 shrink-0 text-slate-400"
-                  />
+                {interna ? (
+                  <div className="flex items-start gap-2">
+                    <User
+                      size={17}
+                      className="mt-0.5 shrink-0 text-slate-400"
+                    />
 
-                  <CampoTexto
-                    titulo="Empresa responsável"
-                    valor={
-                      manutencao.empresaResponsavel?.nome ||
-                      manutencao.empresaResponsavelTexto ||
-                      null
-                    }
-                  />
-                </div>
+                    <CampoTexto
+                      titulo="Técnico responsável"
+                      valor={manutencao.tecnicoResponsavel?.nome}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <Building2
+                      size={17}
+                      className="mt-0.5 shrink-0 text-slate-400"
+                    />
+
+                    <CampoTexto
+                      titulo="Empresa responsável"
+                      valor={
+                        manutencao.empresaResponsavel?.nome ||
+                        manutencao.empresaResponsavelTexto ||
+                        null
+                      }
+                    />
+                  </div>
+                )}
 
                 <div className="flex items-start gap-2">
                   <MapPin
@@ -199,7 +238,9 @@ export function DetalhesManutencaoModal({
                   />
 
                   <CampoTexto
-                    titulo="Local da manutenção"
+                    titulo={
+                      interna ? "Local do atendimento" : "Local da assistência"
+                    }
                     valor={manutencao.localManutencao}
                   />
                 </div>
@@ -225,26 +266,51 @@ export function DetalhesManutencaoModal({
           </div>
 
           <section className="rounded-xl border border-slate-200 p-4">
-            <h4 className="font-semibold text-slate-900">Intervenções em peças</h4>
-            <p className="mt-1 text-sm text-slate-500">Técnico: {manutencao.tecnicoResponsavel?.nome || "Não informado"}</p>
+            <h4 className="font-semibold text-slate-900">
+              Intervenções em peças
+            </h4>
+
             <div className="mt-3 space-y-3">
-              {(manutencao.movimentacoes ?? []).filter((m) =>
-                m.equipamentoId === manutencao.equipamentoId && ["INSTALACAO_PECA", "RETIRADA_PECA"].includes(m.tipo)
-              ).map((m) => <div key={m.id} className="rounded-lg bg-slate-50 p-3 text-sm">
-                <p className="whitespace-pre-wrap text-slate-800">{m.observacoes}</p>
-                <p className="mt-2 text-xs text-slate-500">{formatarData(m.dataHora)} · Registrado por {m.usuario?.nome || "Não informado"}</p>
-              </div>)}
-              {!(manutencao.movimentacoes ?? []).some((m) => ["INSTALACAO_PECA", "RETIRADA_PECA"].includes(m.tipo)) && <p className="text-sm text-slate-500">Nenhuma intervenção em peças registrada.</p>}
+              {intervencoes.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  Nenhuma intervenção em peças registrada.
+                </p>
+              ) : (
+                intervencoes.map((movimentacao) => (
+                  <div
+                    key={movimentacao.id}
+                    className="rounded-lg bg-slate-50 p-3 text-sm"
+                  >
+                    <p className="font-medium text-slate-800">
+                      {movimentacao.tipo === "INSTALACAO_PECA"
+                        ? "Instalação de peça"
+                        : "Retirada de peça"}
+                    </p>
+
+                    <p className="mt-1 whitespace-pre-wrap break-words text-slate-700">
+                      {movimentacao.observacoes?.trim() ||
+                        "Sem observações registradas."}
+                    </p>
+
+                    <p className="mt-2 text-xs text-slate-500">
+                      {formatarData(movimentacao.dataHora)}
+                      {" · Registrado por "}
+                      {movimentacao.usuario?.nome || "Não informado"}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </section>
+
           {manutencao.status === "EM_ANDAMENTO" && (
             <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               <ClipboardCheck size={19} className="mt-0.5 shrink-0" />
 
               <p>
-                Esta manutenção ainda está em andamento. O diagnóstico, a
-                solução e a data de retorno podem ser preenchidos na
-                finalização.
+                {interna
+                  ? "Esta manutenção ainda está em andamento. O diagnóstico, a solução e a data de conclusão podem ser preenchidos na finalização."
+                  : "Esta manutenção ainda está em andamento. O diagnóstico, a solução e a data de retorno podem ser preenchidos na finalização."}
               </p>
             </div>
           )}

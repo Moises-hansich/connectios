@@ -1,13 +1,14 @@
 import { Edit, MapPin, Trash2, Users } from "lucide-react";
 
+import { useAuth } from "../../hooks/useAuth";
 import type { Localizacao } from "../../services/localizacaoService";
 
 interface LocalizacaoTableProps {
   localizacoes: Localizacao[];
   carregando?: boolean;
-  onEditar: (localizacao: Localizacao) => void;
-  onExcluir: (localizacao: Localizacao) => void;
-  onVerColaboradores: (localizacao: Localizacao) => void;
+  onEditar?: (localizacao: Localizacao) => void;
+  onExcluir?: (localizacao: Localizacao) => void;
+  onVerColaboradores?: (localizacao: Localizacao) => void;
 }
 
 export function LocalizacaoTable({
@@ -17,6 +18,51 @@ export function LocalizacaoTable({
   onExcluir,
   onVerColaboradores,
 }: LocalizacaoTableProps) {
+  const { temTodasPermissoes } = useAuth();
+
+  const podeVisualizar = temTodasPermissoes("localizacoes.visualizar");
+
+  const podeEditar =
+    typeof onEditar === "function" &&
+    temTodasPermissoes("localizacoes.visualizar", "localizacoes.editar");
+
+  const podeExcluir =
+    typeof onExcluir === "function" &&
+    temTodasPermissoes("localizacoes.visualizar", "localizacoes.excluir");
+
+  const podeVerColaboradores =
+    typeof onVerColaboradores === "function" &&
+    temTodasPermissoes(
+      "localizacoes.visualizar",
+      "colaboradores.visualizar",
+      "equipamentos.visualizar",
+      "zabbix.visualizar",
+    );
+
+  const possuiAcoes = podeEditar || podeExcluir || podeVerColaboradores;
+
+  function editar(localizacao: Localizacao) {
+    if (!podeEditar) return;
+
+    onEditar?.(localizacao);
+  }
+
+  function excluir(localizacao: Localizacao) {
+    if (!podeExcluir) return;
+
+    onExcluir?.(localizacao);
+  }
+
+  function verColaboradores(localizacao: Localizacao) {
+    if (!podeVerColaboradores) return;
+
+    onVerColaboradores?.(localizacao);
+  }
+
+  if (!podeVisualizar) {
+    return null;
+  }
+
   if (carregando) {
     return (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -45,7 +91,7 @@ export function LocalizacaoTable({
           </h2>
 
           <p className="mt-2 max-w-md text-sm text-slate-500">
-            Cadastre uma nova localização ou altere o termo pesquisado.
+            Nenhuma localização corresponde à pesquisa atual.
           </p>
         </div>
       </div>
@@ -56,19 +102,32 @@ export function LocalizacaoTable({
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full">
+          <caption className="sr-only">Lista de localizações</caption>
+
           <thead className="border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <th
+                scope="col"
+                className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
+              >
                 Localização
               </th>
 
-              <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <th
+                scope="col"
+                className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
+              >
                 Descrição
               </th>
 
-              <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Ações
-              </th>
+              {possuiAcoes && (
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500"
+                >
+                  Ações
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -77,7 +136,7 @@ export function LocalizacaoTable({
               <tr key={localizacao.id} className="transition hover:bg-slate-50">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-slate-900">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-slate-900">
                       <MapPin size={19} />
                     </div>
 
@@ -97,36 +156,47 @@ export function LocalizacaoTable({
                   {localizacao.descricao || "Sem descrição"}
                 </td>
 
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onVerColaboradores(localizacao)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-600"
-                      title="Ver colaboradores"
-                    >
-                      <Users size={18} />
-                    </button>
+                {possuiAcoes && (
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      {podeVerColaboradores && (
+                        <button
+                          type="button"
+                          onClick={() => verColaboradores(localizacao)}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-600"
+                          title="Ver colaboradores"
+                          aria-label={`Ver colaboradores de ${localizacao.nome}`}
+                        >
+                          <Users size={18} />
+                        </button>
+                      )}
 
-                    <button
-                      type="button"
-                      onClick={() => onEditar(localizacao)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-blue-50 hover:text-slate-900"
-                      title="Editar localização"
-                    >
-                      <Edit size={17} />
-                    </button>
+                      {podeEditar && (
+                        <button
+                          type="button"
+                          onClick={() => editar(localizacao)}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-blue-50 hover:text-slate-900"
+                          title="Editar localização"
+                          aria-label={`Editar ${localizacao.nome}`}
+                        >
+                          <Edit size={17} />
+                        </button>
+                      )}
 
-                    <button
-                      type="button"
-                      onClick={() => onExcluir(localizacao)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-50 hover:text-red-600"
-                      title="Excluir localização"
-                    >
-                      <Trash2 size={17} />
-                    </button>
-                  </div>
-                </td>
+                      {podeExcluir && (
+                        <button
+                          type="button"
+                          onClick={() => excluir(localizacao)}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+                          title="Excluir localização"
+                          aria-label={`Excluir ${localizacao.nome}`}
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

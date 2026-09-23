@@ -14,6 +14,23 @@ function converterId(valor: string | string[]): number {
 }
 
 export const usuarioController = {
+  async listarTecnicos(_req: Request, res: Response) {
+    try {
+      const tecnicos = await usuarioService.listarTecnicos();
+
+      return res.status(200).json({
+        sucesso: true,
+        data: tecnicos,
+      });
+    } catch (error) {
+      console.error("Erro ao listar técnicos:", error);
+
+      return res.status(500).json({
+        sucesso: false,
+        mensagem: "Não foi possível carregar os técnicos.",
+      });
+    }
+  },
   async listar(_req: Request, res: Response) {
     try {
       const usuarios = await usuarioService.listar();

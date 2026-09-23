@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
@@ -7,12 +7,15 @@ import { Select } from "../Select";
 import { Button } from "../Button";
 import { Input } from "../Input";
 
+import { useAuth } from "../../hooks/useAuth";
+
 import { categoriaService } from "../../services/categoriaService";
 import { equipamentoService } from "../../services/equipamentoService";
 import { localizacaoService } from "../../services/localizacaoService";
 import { colaboradorService } from "../../services/colaboradorService";
 import { empresaService } from "../../services/empresaService";
 import { zabbixService, type ZabbixHost } from "../../services/zabbixService";
+
 import type {
   Categoria,
   CriarEquipamentoData,
@@ -67,36 +70,24 @@ interface ApiErrorResponse {
 }
 
 function formatarDataParaInput(valor: string | null | undefined): string {
-  if (!valor) {
-    return "";
-  }
-
-  return valor.slice(0, 10);
+  return valor ? valor.slice(0, 10) : "";
 }
 
 function criarEstadoInicial(equipamento?: Equipamento): FormData {
   return {
     nome: equipamento?.nome ?? "",
-
     categoriaId: equipamento?.categoriaId?.toString() ?? "",
-
     fabricante: equipamento?.fabricante ?? "",
     modelo: equipamento?.modelo ?? "",
     numeroSerie: equipamento?.numeroSerie ?? "",
     patrimonio: equipamento?.patrimonio ?? "",
     zabbixHostId: equipamento?.zabbixHostId ?? "",
     status: equipamento?.status ?? "Disponível",
-
     localizacaoId: equipamento?.localizacaoId?.toString() ?? "",
-
     responsavelId: equipamento?.responsavelId?.toString() ?? "",
-
     fornecedorId: equipamento?.fornecedorId?.toString() ?? "",
-
     dataCompra: formatarDataParaInput(equipamento?.dataCompra),
-
     garantiaAte: formatarDataParaInput(equipamento?.garantiaAte),
-
     observacoes: equipamento?.observacoes ?? "",
   };
 }
@@ -124,186 +115,195 @@ export function EquipmentForm({
   modo,
   equipamento,
 }: EquipmentFormProps) {
+  const {
+    autenticado,
+    carregando: carregandoAuth,
+    carregandoPermissoes,
+    erroPermissoes,
+    temPermissao,
+    temTodasPermissoes,
+  } = useAuth();
+
+  const permissoesProntas =
+    autenticado && !carregandoAuth && !carregandoPermissoes && !erroPermissoes;
+
+  const podeSalvar =
+    permissoesProntas &&
+    temTodasPermissoes(
+      "equipamentos.visualizar",
+      modo === "editar" ? "equipamentos.editar" : "equipamentos.criar",
+    );
+
+  const podeVerEmpresas =
+    permissoesProntas && temPermissao("empresas.visualizar");
+
   const [formData, setFormData] = useState<FormData>(() =>
     criarEstadoInicial(equipamento),
   );
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-
   const [localizacoes, setLocalizacoes] = useState<LocalizacaoOption[]>([]);
-
   const [colaboradores, setColaboradores] = useState<ColaboradorOption[]>([]);
-
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
-
   const [hostsZabbix, setHostsZabbix] = useState<ZabbixHost[]>([]);
 
-  const [carregandoHostsZabbix, setCarregandoHostsZabbix] = useState(true);
-
-  const [carregandoCategorias, setCarregandoCategorias] = useState(true);
-
-  const [carregandoLocalizacoes, setCarregandoLocalizacoes] = useState(true);
-
-  const [carregandoColaboradores, setCarregandoColaboradores] = useState(true);
-
+  const [carregandoDados, setCarregandoDados] = useState(true);
   const [carregandoEmpresas, setCarregandoEmpresas] = useState(true);
+  const [erroEmpresas, setErroEmpresas] = useState("");
 
   const [salvando, setSalvando] = useState(false);
+  const salvandoRef = useRef(false);
 
   useEffect(() => {
     setFormData(criarEstadoInicial(equipamento));
-  }, [equipamento]);
+  }, [equipamento, modo]);
 
   useEffect(() => {
-    async function carregarCategorias() {
+    if (!podeSalvar) {
+      return;
+    }
+
+    let ativo = true;
+
+    async function carregar<T>(
+      consulta: () => Promise<T>,
+      aplicar: (dados: T) => void,
+      mensagem: string,
+    ) {
       try {
-        setCarregandoCategorias(true);
+        const dados = await consulta();
 
-        const dados = await categoriaService.listarAtivas();
-
-        setCategorias(Array.isArray(dados) ? dados : []);
+        if (ativo) {
+          aplicar(dados);
+        }
       } catch (error) {
-        console.error("Erro ao carregar categorias:", error);
-
-        setCategorias([]);
-
-        toast.error(
-          obterMensagemErro(error, "Não foi possível carregar as categorias."),
-        );
-      } finally {
-        setCarregandoCategorias(false);
+        if (ativo) {
+          toast.error(obterMensagemErro(error, mensagem));
+        }
       }
     }
 
-    void carregarCategorias();
-  }, []);
+    async function carregarOpcoes() {
+      setCarregandoDados(true);
 
-  useEffect(() => {
-    async function carregarLocalizacoes() {
-      try {
-        setCarregandoLocalizacoes(true);
+      await Promise.all([
+        carregar(
+          () => categoriaService.listarAtivas(),
+          (dados) => setCategorias(Array.isArray(dados) ? dados : []),
+          "Não foi possível carregar as categorias.",
+        ),
 
-        const dados = await localizacaoService.listar();
+        carregar(
+          () => localizacaoService.listar(),
+          (dados) => {
+            const lista = Array.isArray(dados) ? dados : [];
 
-        const lista = Array.isArray(dados) ? dados : [];
+            setLocalizacoes(
+              lista.map((localizacao) => ({
+                id: localizacao.id,
+                nome: localizacao.nome,
+              })),
+            );
+          },
+          "Não foi possível carregar as localizações.",
+        ),
 
-        setLocalizacoes(
-          lista.map((localizacao) => ({
-            id: localizacao.id,
-            nome: localizacao.nome,
-          })),
-        );
-      } catch (error) {
-        console.error("Erro ao carregar localizações:", error);
+        carregar(
+          () => colaboradorService.listar(),
+          (dados) => {
+            const lista = Array.isArray(dados) ? dados : [];
 
-        setLocalizacoes([]);
+            setColaboradores(
+              lista
+                .filter((colaborador) => colaborador.ativo !== false)
+                .map((colaborador) => ({
+                  id: colaborador.id,
+                  nome: colaborador.nome,
+                  ativo: colaborador.ativo,
+                })),
+            );
+          },
+          "Não foi possível carregar os colaboradores.",
+        ),
 
-        toast.error(
-          obterMensagemErro(
-            error,
-            "Não foi possível carregar as localizações.",
-          ),
-        );
-      } finally {
-        setCarregandoLocalizacoes(false);
+        carregar(
+          () => zabbixService.listarHosts(),
+          (dados) => setHostsZabbix(dados),
+          "Não foi possível carregar os computadores do Zabbix.",
+        ),
+      ]);
+
+      if (ativo) {
+        setCarregandoDados(false);
       }
     }
 
-    void carregarLocalizacoes();
-  }, []);
+    void carregarOpcoes();
+
+    return () => {
+      ativo = false;
+    };
+  }, [podeSalvar]);
 
   useEffect(() => {
-    async function carregarColaboradores() {
-      try {
-        setCarregandoColaboradores(true);
-
-        const dados = await colaboradorService.listar();
-
-        const lista = Array.isArray(dados) ? dados : [];
-
-        setColaboradores(
-          lista
-            .filter((colaborador) => colaborador.ativo !== false)
-            .map((colaborador) => ({
-              id: colaborador.id,
-              nome: colaborador.nome,
-              ativo: colaborador.ativo,
-            })),
-        );
-      } catch (error) {
-        console.error("Erro ao carregar colaboradores:", error);
-
-        setColaboradores([]);
-
-        toast.error(
-          obterMensagemErro(
-            error,
-            "Não foi possível carregar os colaboradores.",
-          ),
-        );
-      } finally {
-        setCarregandoColaboradores(false);
-      }
+    if (!podeSalvar || !podeVerEmpresas) {
+      setEmpresas([]);
+      setErroEmpresas("");
+      setCarregandoEmpresas(false);
+      return;
     }
 
-    void carregarColaboradores();
-  }, []);
+    let ativo = true;
 
-  useEffect(() => {
     async function carregarEmpresas() {
-      try {
-        setCarregandoEmpresas(true);
+      setCarregandoEmpresas(true);
+      setErroEmpresas("");
 
+      try {
         const dados = await empresaService.listarAtivas();
 
-        setEmpresas(Array.isArray(dados) ? dados : []);
+        if (ativo) {
+          setEmpresas(Array.isArray(dados) ? dados : []);
+        }
       } catch (error) {
-        console.error("Erro ao carregar fornecedores:", error);
-
-        setEmpresas([]);
-
-        toast.error(
-          obterMensagemErro(
-            error,
-            "Não foi possível carregar os fornecedores.",
-          ),
-        );
+        if (ativo) {
+          setEmpresas([]);
+          setErroEmpresas(
+            obterMensagemErro(
+              error,
+              "Não foi possível carregar os fornecedores.",
+            ),
+          );
+        }
       } finally {
-        setCarregandoEmpresas(false);
+        if (ativo) {
+          setCarregandoEmpresas(false);
+        }
       }
     }
 
     void carregarEmpresas();
-  }, []);
 
-  useEffect(() => {
-    async function carregarHostsZabbix() {
-      try {
-        setCarregandoHostsZabbix(true);
+    return () => {
+      ativo = false;
+    };
+  }, [podeSalvar, podeVerEmpresas]);
 
-        const hosts = await zabbixService.listarHosts();
+  const podeAlterarFornecedor =
+    podeVerEmpresas && !carregandoEmpresas && !erroEmpresas;
 
-        setHostsZabbix(hosts);
-      } catch (error) {
-        console.error("Erro ao carregar hosts do Zabbix:", error);
-
-        setHostsZabbix([]);
-
-        toast.error(
-          obterMensagemErro(
-            error,
-            "Não foi possível carregar os computadores do Zabbix.",
-          ),
-        );
-      } finally {
-        setCarregandoHostsZabbix(false);
-      }
-    }
-
-    void carregarHostsZabbix();
-  }, []);
+  // Sem acesso à lista, preserva o fornecedor original na edição.
+  const fornecedorEfetivo = podeAlterarFornecedor
+    ? formData.fornecedorId
+    : modo === "editar"
+      ? (equipamento?.fornecedorId?.toString() ?? "")
+      : "";
 
   function handleChange(campo: keyof FormData, valor: string) {
+    if (campo === "fornecedorId" && !podeAlterarFornecedor) {
+      return;
+    }
+
     setFormData((dadosAtuais) => ({
       ...dadosAtuais,
       [campo]: valor,
@@ -313,63 +313,62 @@ export function EquipmentForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (salvando) {
+    if (salvandoRef.current || carregandoDados || carregandoEmpresas) {
+      return;
+    }
+
+    if (!podeSalvar) {
+      toast.error("Você não possui permissão para salvar este equipamento.");
+      return;
+    }
+
+    if (modo === "editar" && !equipamento) {
+      toast.error("Equipamento não informado para edição.");
       return;
     }
 
     if (formData.nome.trim().length < 3) {
       toast.error("O nome deve possuir pelo menos 3 caracteres.");
-
       return;
     }
 
-    const categoriaId = Number.parseInt(formData.categoriaId, 10);
+    const categoriaId = Number(formData.categoriaId);
 
-    if (!Number.isInteger(categoriaId) || categoriaId <= 0) {
+    if (!Number.isSafeInteger(categoriaId) || categoriaId <= 0) {
       toast.error("Selecione uma categoria válida.");
-
       return;
     }
 
     const localizacaoId =
-      formData.localizacaoId === ""
-        ? null
-        : Number.parseInt(formData.localizacaoId, 10);
+      formData.localizacaoId === "" ? null : Number(formData.localizacaoId);
 
     const responsavelId =
-      formData.responsavelId === ""
-        ? null
-        : Number.parseInt(formData.responsavelId, 10);
+      formData.responsavelId === "" ? null : Number(formData.responsavelId);
 
     const fornecedorId =
-      formData.fornecedorId === ""
-        ? null
-        : Number.parseInt(formData.fornecedorId, 10);
+      fornecedorEfetivo === "" ? null : Number(fornecedorEfetivo);
 
     if (
       localizacaoId !== null &&
-      (!Number.isInteger(localizacaoId) || localizacaoId <= 0)
+      (!Number.isSafeInteger(localizacaoId) || localizacaoId <= 0)
     ) {
       toast.error("Selecione uma localização válida.");
-
       return;
     }
 
     if (
       responsavelId !== null &&
-      (!Number.isInteger(responsavelId) || responsavelId <= 0)
+      (!Number.isSafeInteger(responsavelId) || responsavelId <= 0)
     ) {
       toast.error("Selecione um responsável válido.");
-
       return;
     }
 
     if (
       fornecedorId !== null &&
-      (!Number.isInteger(fornecedorId) || fornecedorId <= 0)
+      (!Number.isSafeInteger(fornecedorId) || fornecedorId <= 0)
     ) {
       toast.error("Selecione um fornecedor válido.");
-
       return;
     }
 
@@ -379,59 +378,49 @@ export function EquipmentForm({
       formData.garantiaAte < formData.dataCompra
     ) {
       toast.error("A data da garantia não pode ser anterior à data da compra.");
-
       return;
     }
 
     if (formData.garantiaAte && fornecedorId === null) {
-      toast.error("Selecione o fornecedor responsável pela garantia.");
-
+      toast.error(
+        podeAlterarFornecedor
+          ? "Selecione o fornecedor responsável pela garantia."
+          : "Para informar uma garantia, é necessário ter um fornecedor vinculado. Solicite a vinculação a um usuário autorizado.",
+      );
       return;
     }
 
     const dados: CriarEquipamentoData = {
       nome: formData.nome.trim(),
       categoriaId,
-
       fabricante: formData.fabricante.trim() || null,
-
       modelo: formData.modelo.trim() || null,
-
       numeroSerie: formData.numeroSerie.trim() || null,
-
       patrimonio: formData.patrimonio.trim() || null,
-
       zabbixHostId: formData.zabbixHostId.trim() || null,
-
       status: formData.status.trim(),
       localizacaoId,
       responsavelId,
       fornecedorId,
-
       dataCompra: formData.dataCompra || null,
-
       garantiaAte: formData.garantiaAte || null,
-
       observacoes: formData.observacoes.trim() || null,
     };
 
-    try {
-      setSalvando(true);
+    salvandoRef.current = true;
+    setSalvando(true);
 
+    try {
       if (modo === "editar" && equipamento) {
         await equipamentoService.atualizar(equipamento.id, dados);
-
         toast.success("Equipamento atualizado com sucesso.");
       } else {
         await equipamentoService.criar(dados);
-
         toast.success("Equipamento cadastrado com sucesso.");
       }
 
       onSuccess();
     } catch (error) {
-      console.error("Erro ao salvar equipamento:", error);
-
       toast.error(
         obterMensagemErro(
           error,
@@ -441,6 +430,7 @@ export function EquipmentForm({
         ),
       );
     } finally {
+      salvandoRef.current = false;
       setSalvando(false);
     }
   }
@@ -451,25 +441,44 @@ export function EquipmentForm({
       ? [equipamento.categoria, ...categorias]
       : categorias;
 
-  /*
-   * Caso a empresa tenha sido desativada depois de
-   * ser vinculada ao equipamento, ela continua
-   * aparecendo durante a edição.
-   */
   const empresasDisponiveis =
     equipamento?.fornecedor &&
     !empresas.some((empresa) => empresa.id === equipamento.fornecedor?.id)
       ? [equipamento.fornecedor, ...empresas]
       : empresas;
 
-  const carregandoDados =
-    carregandoCategorias ||
-    carregandoLocalizacoes ||
-    carregandoColaboradores ||
-    carregandoEmpresas ||
-    carregandoHostsZabbix;
+  const fornecedorForaDaLista =
+    fornecedorEfetivo !== "" &&
+    !empresasDisponiveis.some(
+      (empresa) => String(empresa.id) === fornecedorEfetivo,
+    );
 
-  const formularioDesabilitado = salvando || carregandoDados;
+  const formularioDesabilitado =
+    salvando || carregandoDados || carregandoEmpresas || !podeSalvar;
+
+  if (carregandoAuth || carregandoPermissoes) {
+    return (
+      <p className="py-6 text-center text-sm text-slate-500">
+        Verificando permissões...
+      </p>
+    );
+  }
+
+  if (!podeSalvar) {
+    return (
+      <div className="space-y-4">
+        <p role="alert" className="text-sm text-red-600">
+          {erroPermissoes
+            ? "Não foi possível verificar suas permissões."
+            : "Você não possui permissão para esta operação."}
+        </p>
+
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          Fechar
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -489,7 +498,7 @@ export function EquipmentForm({
         onChange={(event) => handleChange("categoriaId", event.target.value)}
       >
         <option value="">
-          {carregandoCategorias
+          {carregandoDados
             ? "Carregando categorias..."
             : "Selecione uma categoria"}
         </option>
@@ -529,6 +538,7 @@ export function EquipmentForm({
         disabled={formularioDesabilitado}
         onChange={(event) => handleChange("patrimonio", event.target.value)}
       />
+
       <Select
         label="Computador no Zabbix"
         value={formData.zabbixHostId}
@@ -536,10 +546,19 @@ export function EquipmentForm({
         onChange={(event) => handleChange("zabbixHostId", event.target.value)}
       >
         <option value="">
-          {carregandoHostsZabbix
+          {carregandoDados
             ? "Carregando computadores..."
             : "Sem vínculo com o Zabbix"}
         </option>
+
+        {formData.zabbixHostId &&
+          !hostsZabbix.some(
+            (host) => host.hostid === formData.zabbixHostId,
+          ) && (
+            <option value={formData.zabbixHostId}>
+              Vínculo atual — {formData.zabbixHostId}
+            </option>
+          )}
 
         {hostsZabbix.map((host) => (
           <option key={host.hostid} value={host.hostid}>
@@ -548,6 +567,7 @@ export function EquipmentForm({
           </option>
         ))}
       </Select>
+
       <Select
         label="Status"
         required
@@ -555,15 +575,20 @@ export function EquipmentForm({
         disabled={formularioDesabilitado}
         onChange={(event) => handleChange("status", event.target.value)}
       >
-        <option value="Disponível">Disponível</option>
-
-        <option value="Em uso">Em uso</option>
-
-        <option value="Em manutenção">Em manutenção</option>
-
-        <option value="Reservado">Reservado</option>
-
-        <option value="Baixado">Baixado</option>
+        {[
+          ...new Set([
+            "Disponível",
+            "Em uso",
+            "Em manutenção",
+            "Reservado",
+            "Baixado",
+            formData.status,
+          ]),
+        ].map((status) => (
+          <option key={status} value={status}>
+            {status}
+          </option>
+        ))}
       </Select>
 
       <Input
@@ -583,23 +608,59 @@ export function EquipmentForm({
         onChange={(event) => handleChange("garantiaAte", event.target.value)}
       />
 
-      <Select
-        label="Fornecedor da garantia"
-        value={formData.fornecedorId}
-        disabled={formularioDesabilitado}
-        onChange={(event) => handleChange("fornecedorId", event.target.value)}
-      >
-        <option value="">
-          {carregandoEmpresas ? "Carregando fornecedores..." : "Sem fornecedor"}
-        </option>
+      <div className="space-y-2">
+        {podeVerEmpresas ? (
+          <Select
+            label="Fornecedor da garantia"
+            value={fornecedorEfetivo}
+            disabled={formularioDesabilitado || !podeAlterarFornecedor}
+            onChange={(event) =>
+              handleChange("fornecedorId", event.target.value)
+            }
+          >
+            <option value="">
+              {carregandoEmpresas
+                ? "Carregando fornecedores..."
+                : "Sem fornecedor"}
+            </option>
 
-        {empresasDisponiveis.map((empresa) => (
-          <option key={empresa.id} value={String(empresa.id)}>
-            {empresa.nome}
-            {!empresa.ativo ? " (desativada)" : ""}
-          </option>
-        ))}
-      </Select>
+            {fornecedorForaDaLista && (
+              <option value={fornecedorEfetivo}>
+                Fornecedor vinculado — ID {fornecedorEfetivo}
+              </option>
+            )}
+
+            {empresasDisponiveis.map((empresa) => (
+              <option key={empresa.id} value={String(empresa.id)}>
+                {empresa.nome}
+                {!empresa.ativo ? " (desativada)" : ""}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          <Select label="Fornecedor da garantia" value="" disabled>
+            <option value="">
+              {fornecedorEfetivo
+                ? "Fornecedor vinculado — acesso restrito"
+                : "Sem fornecedor"}
+            </option>
+          </Select>
+        )}
+
+        {!podeVerEmpresas && (
+          <p className="text-xs text-slate-500">
+            Você não possui permissão para consultar fornecedores.
+            {modo === "editar" && " O vínculo atual será preservado."}
+          </p>
+        )}
+
+        {erroEmpresas && (
+          <p role="alert" className="text-xs text-red-600">
+            {erroEmpresas} Feche e abra o formulário para tentar novamente.
+            {modo === "editar" && " O vínculo atual será preservado."}
+          </p>
+        )}
+      </div>
 
       <Select
         label="Localização"
@@ -608,10 +669,17 @@ export function EquipmentForm({
         onChange={(event) => handleChange("localizacaoId", event.target.value)}
       >
         <option value="">
-          {carregandoLocalizacoes
-            ? "Carregando localizações..."
-            : "Sem localização"}
+          {carregandoDados ? "Carregando localizações..." : "Sem localização"}
         </option>
+
+        {formData.localizacaoId &&
+          !localizacoes.some(
+            (localizacao) => String(localizacao.id) === formData.localizacaoId,
+          ) && (
+            <option value={formData.localizacaoId}>
+              Localização atual — ID {formData.localizacaoId}
+            </option>
+          )}
 
         {localizacoes.map((localizacao) => (
           <option key={localizacao.id} value={String(localizacao.id)}>
@@ -627,10 +695,17 @@ export function EquipmentForm({
         onChange={(event) => handleChange("responsavelId", event.target.value)}
       >
         <option value="">
-          {carregandoColaboradores
-            ? "Carregando colaboradores..."
-            : "Sem responsável"}
+          {carregandoDados ? "Carregando colaboradores..." : "Sem responsável"}
         </option>
+
+        {formData.responsavelId &&
+          !colaboradores.some(
+            (colaborador) => String(colaborador.id) === formData.responsavelId,
+          ) && (
+            <option value={formData.responsavelId}>
+              Responsável atual — ID {formData.responsavelId}
+            </option>
+          )}
 
         {colaboradores.map((colaborador) => (
           <option key={colaborador.id} value={String(colaborador.id)}>
