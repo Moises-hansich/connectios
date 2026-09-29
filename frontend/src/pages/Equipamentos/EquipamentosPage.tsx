@@ -133,7 +133,6 @@ export function EquipamentosPage() {
   );
 
   const [grupoSelecionado, setGrupoSelecionado] = useState<Grupo>("TODOS");
-
   const [situacaoPeca, setSituacaoPeca] = useState<SituacaoPeca>("TODAS");
 
   const [operacaoPeca, setOperacaoPeca] = useState<OperacaoPeca | null>(null);
@@ -142,6 +141,22 @@ export function EquipamentosPage() {
 
   const [equipamentoManutencao, setEquipamentoManutencao] =
     useState<Equipamento | null>(null);
+
+  const [equipamentoParaDuplicar, setEquipamentoParaDuplicar] =
+    useState<Equipamento | null>(null);
+
+  const dadosDuplicacao = useMemo(() => {
+    if (!equipamentoParaDuplicar) {
+      return undefined;
+    }
+
+    return {
+      nome: equipamentoParaDuplicar.nome,
+      categoriaId: equipamentoParaDuplicar.categoriaId,
+      fabricante: equipamentoParaDuplicar.fabricante,
+      modelo: equipamentoParaDuplicar.modelo,
+    };
+  }, [equipamentoParaDuplicar]);
 
   const {
     equipamentos,
@@ -308,6 +323,7 @@ export function EquipamentosPage() {
       return;
     }
 
+    setEquipamentoParaDuplicar(null);
     abrirModalCriacao();
   }
 
@@ -316,7 +332,35 @@ export function EquipamentosPage() {
       return;
     }
 
+    setEquipamentoParaDuplicar(null);
     abrirModalEdicao(equipamento);
+  }
+
+  function abrirDuplicacao(equipamento: Equipamento) {
+    if (!verificarPermissao(podeCriar)) {
+      return;
+    }
+
+    fecharModal();
+    setEquipamentoParaDuplicar(equipamento);
+  }
+
+  function fecharDuplicacao() {
+    setEquipamentoParaDuplicar(null);
+  }
+
+  async function finalizarDuplicacao() {
+    setEquipamentoParaDuplicar(null);
+
+    try {
+      await carregarEquipamentos();
+    } catch (error) {
+      console.error("Erro ao atualizar a lista de equipamentos:", error);
+
+      toast.warning(
+        "O equipamento foi cadastrado, mas a lista não foi atualizada. Atualize a página.",
+      );
+    }
   }
 
   function abrirExclusao(equipamento: Equipamento) {
@@ -609,6 +653,7 @@ export function EquipamentosPage() {
           ) : (
             <EquipmentTable
               equipamentos={equipamentosExibidos}
+              {...(podeCriar && { onDuplicate: abrirDuplicacao })}
               {...(podeMovimentarPecas && { onPecas: abrirPecas })}
               {...(podeEditar && { onEdit: abrirEdicao })}
               {...(podeExcluir && { onDelete: abrirExclusao })}
@@ -631,9 +676,23 @@ export function EquipamentosPage() {
         >
           <EquipmentForm
             modo={equipamentoSelecionado ? "editar" : "criar"}
-            equipamento={equipamentoSelecionado ?? undefined}
+            {...(equipamentoSelecionado && {
+              equipamento: equipamentoSelecionado,
+            })}
             onCancel={fecharModal}
             onSuccess={finalizarCadastroOuEdicao}
+          />
+        </Modal>
+      )}
+
+      {podeCriar && equipamentoParaDuplicar && dadosDuplicacao && (
+        <Modal aberto titulo="Duplicar equipamento" onClose={fecharDuplicacao}>
+          <EquipmentForm
+            key={`duplicar-${equipamentoParaDuplicar.id}`}
+            modo="criar"
+            dadosIniciais={dadosDuplicacao}
+            onCancel={fecharDuplicacao}
+            onSuccess={finalizarDuplicacao}
           />
         </Modal>
       )}

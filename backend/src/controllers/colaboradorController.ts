@@ -89,7 +89,18 @@ export class ColaboradorController {
       },
     });
   }
+  async listarTodosSemPaginacao(req: Request, res: Response) {
+    const podeVerEquipamentos = await this.podeVerEquipamentos(req);
 
+    const colaboradores = await this.service.listarTodos();
+
+    return res.status(200).json({
+      success: true,
+      data: colaboradores.map((colaborador) =>
+        prepararResposta(colaborador, podeVerEquipamentos),
+      ),
+    });
+  }
   async criar(req: Request, res: Response) {
     const podeVerEquipamentos = await this.podeVerEquipamentos(req);
 

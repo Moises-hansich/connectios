@@ -23,7 +23,11 @@ export const colaboradorService = {
 
     return response.data.data;
   },
+  async listarTodos() {
+    const response = await api.get<ColaboradorResponse>("/colaboradores/todos");
 
+    return response.data.data;
+  },
   async buscarPorId(id: number) {
     const response = await api.get<ColaboradorPorIdResponse>(
       `/colaboradores/${id}`,

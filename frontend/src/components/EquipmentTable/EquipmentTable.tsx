@@ -2,6 +2,7 @@ import { obterGrupo } from "../../utils/grupoEquipamento";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
+  Copy,
   Cpu,
   Image as ImageIcon,
   MoreHorizontal,
@@ -238,6 +239,7 @@ function MenuAcoes({ nome, acoes }: { nome: string; acoes: Acao[] }) {
 interface EquipmentTableProps {
   equipamentos: Equipamento[];
   onEdit?: (equipamento: Equipamento) => void;
+  onDuplicate?: (equipamento: Equipamento) => void;
   onDelete?: (equipamento: Equipamento) => void;
   onHardware?: (equipamento: Equipamento) => void;
   onPecas?: (equipamento: Equipamento) => void;
@@ -247,6 +249,7 @@ interface EquipmentTableProps {
 export function EquipmentTable({
   equipamentos,
   onEdit,
+  onDuplicate,
   onDelete,
   onHardware,
   onMaintenance,
@@ -290,6 +293,14 @@ export function EquipmentTable({
         titulo: "Editar",
         icone: Pencil,
         executar: () => onEdit(equipamento),
+      });
+    }
+
+    if (onDuplicate) {
+      acoes.push({
+        titulo: "Duplicar equipamento",
+        icone: Copy,
+        executar: () => onDuplicate(equipamento),
       });
     }
 

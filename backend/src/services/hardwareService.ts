@@ -1,12 +1,14 @@
 import { AppError } from "../errors/AppError";
+
 import { equipamentoRepository } from "../repositories/equipamentoRepository";
 import { hardwareRepository } from "../repositories/hardwareRepository";
 import { tipoHardwareRepository } from "../repositories/tipoHardwareRepository";
+
 import {
   atualizarHardwareSchema,
   criarHardwareSchema,
-  AtualizarHardwareInput,
-  CriarHardwareInput,
+  type AtualizarHardwareInput,
+  type CriarHardwareInput,
 } from "../validators/hardwareValidator";
 
 class HardwareService {
@@ -29,18 +31,6 @@ class HardwareService {
       throw new AppError("Tipo de hardware não encontrado.", 404);
     }
 
-    const hardwareExistente = await hardwareRepository.findByNome(
-      dadosValidados.nome,
-      dadosValidados.equipamentoId,
-    );
-
-    if (hardwareExistente) {
-      throw new AppError(
-        "Já existe um hardware com esse nome neste equipamento.",
-        409,
-      );
-    }
-
     return hardwareRepository.create(dadosValidados);
   }
 
@@ -61,21 +51,7 @@ class HardwareService {
   async update(id: number, data: AtualizarHardwareInput) {
     const dadosValidados = atualizarHardwareSchema.parse(data);
 
-    const hardwareAtual = await this.findById(id);
-
-    if (dadosValidados.nome) {
-      const hardwareExistente = await hardwareRepository.findByNome(
-        dadosValidados.nome,
-        hardwareAtual.equipamentoId,
-      );
-
-      if (hardwareExistente && hardwareExistente.id !== id) {
-        throw new AppError(
-          "Já existe um hardware com esse nome neste equipamento.",
-          409,
-        );
-      }
-    }
+    await this.findById(id);
 
     return hardwareRepository.update(id, dadosValidados);
   }

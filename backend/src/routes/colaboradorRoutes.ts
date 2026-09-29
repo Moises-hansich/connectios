@@ -18,10 +18,19 @@ const controller = new ColaboradorController();
 
 router.use(authMiddleware);
 
+// Paginado (tela de colaboradores) — NÃO MEXI
 router.get(
   "/",
   exigirPermissao("colaboradores.visualizar"),
   asyncHandler((req, res) => controller.listarTodos(req, res)),
+);
+
+// ✅ NOVO — retorna TODOS, sem paginação (usado no EquipmentForm)
+// Precisa vir ANTES de "/:id" para o Express não confundir "todos" com um id
+router.get(
+  "/todos",
+  exigirPermissao("colaboradores.visualizar"),
+  asyncHandler((req, res) => controller.listarTodosSemPaginacao(req, res)),
 );
 
 // Retorna o colaborador com equipamentos e hardwares.

@@ -24,11 +24,19 @@ import type {
 
 import type { Empresa } from "../../types/empresa";
 
+interface DadosIniciaisEquipamento {
+  nome: Equipamento["nome"];
+  categoriaId: Equipamento["categoriaId"];
+  fabricante: Equipamento["fabricante"];
+  modelo: Equipamento["modelo"];
+}
+
 interface EquipmentFormProps {
   onSuccess: () => void;
   onCancel: () => void;
   modo: "criar" | "editar";
   equipamento?: Equipamento;
+  dadosIniciais?: DadosIniciaisEquipamento;
 }
 
 interface LocalizacaoOption {
@@ -73,22 +81,45 @@ function formatarDataParaInput(valor: string | null | undefined): string {
   return valor ? valor.slice(0, 10) : "";
 }
 
-function criarEstadoInicial(equipamento?: Equipamento): FormData {
+function criarEstadoInicial(
+  modo: "criar" | "editar",
+  equipamento?: Equipamento,
+  dadosIniciais?: DadosIniciaisEquipamento,
+): FormData {
+  if (modo === "editar" && equipamento) {
+    return {
+      nome: equipamento.nome ?? "",
+      categoriaId: equipamento.categoriaId?.toString() ?? "",
+      fabricante: equipamento.fabricante ?? "",
+      modelo: equipamento.modelo ?? "",
+      numeroSerie: equipamento.numeroSerie ?? "",
+      patrimonio: equipamento.patrimonio ?? "",
+      zabbixHostId: equipamento.zabbixHostId ?? "",
+      status: equipamento.status ?? "Disponível",
+      localizacaoId: equipamento.localizacaoId?.toString() ?? "",
+      responsavelId: equipamento.responsavelId?.toString() ?? "",
+      fornecedorId: equipamento.fornecedorId?.toString() ?? "",
+      dataCompra: formatarDataParaInput(equipamento.dataCompra),
+      garantiaAte: formatarDataParaInput(equipamento.garantiaAte),
+      observacoes: equipamento.observacoes ?? "",
+    };
+  }
+
   return {
-    nome: equipamento?.nome ?? "",
-    categoriaId: equipamento?.categoriaId?.toString() ?? "",
-    fabricante: equipamento?.fabricante ?? "",
-    modelo: equipamento?.modelo ?? "",
-    numeroSerie: equipamento?.numeroSerie ?? "",
-    patrimonio: equipamento?.patrimonio ?? "",
-    zabbixHostId: equipamento?.zabbixHostId ?? "",
-    status: equipamento?.status ?? "Disponível",
-    localizacaoId: equipamento?.localizacaoId?.toString() ?? "",
-    responsavelId: equipamento?.responsavelId?.toString() ?? "",
-    fornecedorId: equipamento?.fornecedorId?.toString() ?? "",
-    dataCompra: formatarDataParaInput(equipamento?.dataCompra),
-    garantiaAte: formatarDataParaInput(equipamento?.garantiaAte),
-    observacoes: equipamento?.observacoes ?? "",
+    nome: dadosIniciais?.nome ?? "",
+    categoriaId: dadosIniciais?.categoriaId?.toString() ?? "",
+    fabricante: dadosIniciais?.fabricante ?? "",
+    modelo: dadosIniciais?.modelo ?? "",
+    numeroSerie: "",
+    patrimonio: "",
+    zabbixHostId: "",
+    status: "Disponível",
+    localizacaoId: "",
+    responsavelId: "",
+    fornecedorId: "",
+    dataCompra: "",
+    garantiaAte: "",
+    observacoes: "",
   };
 }
 
@@ -114,6 +145,7 @@ export function EquipmentForm({
   onCancel,
   modo,
   equipamento,
+  dadosIniciais,
 }: EquipmentFormProps) {
   const {
     autenticado,
@@ -138,7 +170,7 @@ export function EquipmentForm({
     permissoesProntas && temPermissao("empresas.visualizar");
 
   const [formData, setFormData] = useState<FormData>(() =>
-    criarEstadoInicial(equipamento),
+    criarEstadoInicial(modo, equipamento, dadosIniciais),
   );
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -155,8 +187,8 @@ export function EquipmentForm({
   const salvandoRef = useRef(false);
 
   useEffect(() => {
-    setFormData(criarEstadoInicial(equipamento));
-  }, [equipamento, modo]);
+    setFormData(criarEstadoInicial(modo, equipamento, dadosIniciais));
+  }, [equipamento, modo, dadosIniciais]);
 
   useEffect(() => {
     if (!podeSalvar) {
@@ -209,7 +241,7 @@ export function EquipmentForm({
         ),
 
         carregar(
-          () => colaboradorService.listar(),
+          () => colaboradorService.listarTodos(),
           (dados) => {
             const lista = Array.isArray(dados) ? dados : [];
 
@@ -482,6 +514,13 @@ export function EquipmentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {modo === "criar" && dadosIniciais && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          Os dados básicos foram copiados. Informe o patrimônio e o número de
+          série deste novo equipamento, selecione o responsável e a localização
+          e confira o status antes de cadastrar.
+        </div>
+      )}
       <Input
         label="Nome"
         required
@@ -736,7 +775,9 @@ export function EquipmentForm({
           loading={salvando}
           disabled={formularioDesabilitado}
         >
-          {modo === "editar" ? "Atualizar" : "Salvar"}
+          {modo === "editar"
+            ? "Atualizar equipamento"
+            : "Cadastrar equipamento"}
         </Button>
       </div>
     </form>

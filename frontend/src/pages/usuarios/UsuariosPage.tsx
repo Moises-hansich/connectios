@@ -255,7 +255,7 @@ export function UsuariosPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-blue-100 p-3 text-blue-700">
+            <div className="rounded-xl bg-blue-100 p-3 text-slate-900">
               <Users size={25} />
             </div>
 
